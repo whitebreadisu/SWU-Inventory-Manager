@@ -197,10 +197,10 @@ files:
     is_organized_play: true
     has_unique_variant_numbers: true
     # KNOWN DATA GAP: extNumber column is absent from this file.
-    # Sequential integers starting at "1" are assigned as placeholder card numbers.
-    # Non-foil promo cards assigned numbers 1-N will produce ON CONFLICT DO NOTHING
-    # skips against SEC base Standard cards sharing those numbers. These cards will
-    # not appear in the database until accurate card numbers are available.
+    # Sequential integers starting at 2000 are assigned as placeholder card numbers.
+    # This range is safely above all real SEC card numbers (~1167 max), so all
+    # promo cards insert without conflict. These placeholder numbers must be
+    # replaced with accurate data when available.
     # Update card_number values directly in the database when source data is provided.
     card_number_strategy: sequential
     field_map:

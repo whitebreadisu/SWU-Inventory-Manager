@@ -137,7 +137,7 @@ def _parse_file(
 
     rows: list[dict] = []
     filtered = 0
-    seq_counter = 1
+    seq_counter = 2000
 
     with open(filepath, newline="", encoding="utf-8") as f:
         for raw_row in csv.DictReader(f):

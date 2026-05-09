@@ -16,7 +16,7 @@ _VARIANT_SUFFIXES = [
     ("(Hyperspace)", False, True, False, False, True),
     ("(Prestige)", False, False, True, False, True),
     ("(Foil)", True, False, False, False, True),
-    ("(Showcase)", False, False, False, True, False),  # keep in stored name per domain rules
+    ("(Showcase)", True, False, False, True, False),  # always foil; keep in stored name per domain rules
 ]
 
 

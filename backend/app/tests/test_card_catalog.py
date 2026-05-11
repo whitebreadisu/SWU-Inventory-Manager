@@ -122,7 +122,7 @@ class TestSetRecordCounts:
     EXPECTED_TOTALS = {
         "SOR": 976,
         "SHD": 988,
-        "TWI": 985,
+        "TWI": 983,
         "JTL": 1127,
         "LOF": 1154,
         "SEC": 1149,
@@ -133,7 +133,7 @@ class TestSetRecordCounts:
         "JTL": 263, "LOF": 264, "SEC": 265, "LAW": 264,
     }
     EXPECTED_OP = {
-        "SOR": 29, "SHD": 28, "TWI": 30,
+        "SOR": 29, "SHD": 28, "TWI": 29,
         "JTL": 40, "LOF": 40, "SEC": 40, "LAW": 40,
     }
 

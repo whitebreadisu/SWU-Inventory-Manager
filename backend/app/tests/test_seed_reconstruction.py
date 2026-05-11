@@ -1,16 +1,17 @@
 """
-Seed reconstruction test.
+Seed reconstruction tests.
 
-Verifies that the catalog can be fully rebuilt from the seed file alone.
+Verifies that the catalog can be fully rebuilt from the seed file alone,
+and that the rebuilt catalog passes all domain rule checks (same rules used
+against the live ingested database).
 
-Process:
+Process for each test:
   1. Record current catalog and inventory counts.
   2. Open a savepoint (nested transaction).
-  3. TRUNCATE sets and cards CASCADE — this also clears inventory due to FK.
+  3. TRUNCATE sets and cards CASCADE — also clears inventory due to FK.
   4. Apply seed line-by-line (same logic as apply_seed.py).
-  5. Assert catalog counts match the pre-truncate values.
+  5. Run assertions against the seed-only catalog state.
   6. Roll back the savepoint — all data, including inventory, is restored.
-  7. Assert the rollback was complete.
 
 PostgreSQL TRUNCATE is transactional and fully reversed by a savepoint rollback.
 """
@@ -20,55 +21,63 @@ from pathlib import Path
 import pytest
 from sqlalchemy import text
 
+from app.tests.test_card_domain_rules import (
+    TestBaseCardVariants        as _BaseCardVariants,
+    TestLeaderCardVariants      as _LeaderCardVariants,
+    TestNonLeaderNonBaseCardVariants as _NonLeaderNonBaseCardVariants,
+)
+
 SEED_PATH = Path(os.environ.get("CATALOG_SEED_PATH", "/db/seeds/catalog_seed.sql"))
 
 
-def test_reconstruct_catalog_from_seed(db):
-    assert SEED_PATH.exists(), f"Seed file not found: {SEED_PATH}"
+def _apply_seed(db, seed_lines):
+    db.execute(text("TRUNCATE sets, cards RESTART IDENTITY CASCADE"))
+    for stmt in seed_lines:
+        db.execute(text(stmt))
 
-    # Record pre-test state
-    pre_sets = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
-    pre_cards = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
-    pre_inventory = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
 
-    assert pre_sets > 0, "Database has no sets — run ingestion before this test"
-    assert pre_cards > 0, "Database has no cards — run ingestion before this test"
-
-    seed_lines = [
+def _seed_lines():
+    return [
         line.strip()
         for line in SEED_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.strip().startswith("--")
     ]
 
-    # Savepoint: everything inside is rolled back at the end
+
+def test_reconstruct_catalog_from_seed(db):
+    assert SEED_PATH.exists(), f"Seed file not found: {SEED_PATH}"
+
+    pre_sets      = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
+    pre_cards     = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
+    pre_inventory = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
+
+    assert pre_sets  > 0, "Database has no sets — run ingestion before this test"
+    assert pre_cards > 0, "Database has no cards — run ingestion before this test"
+
     savepoint = db.begin_nested()
+    _apply_seed(db, _seed_lines())
 
-    # Clear catalog (CASCADE removes inventory rows due to FK)
-    db.execute(text("TRUNCATE sets, cards RESTART IDENTITY CASCADE"))
-    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar() == 0
-    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar() == 0
+    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar()  == pre_sets,  "Set count mismatch after reconstruction"
+    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar() == pre_cards, "Card count mismatch after reconstruction"
 
-    # Apply seed
-    for stmt in seed_lines:
-        db.execute(text(stmt))
-
-    post_sets = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
-    post_cards = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
-
-    assert post_sets == pre_sets, (
-        f"Reconstruction produced {post_sets} sets, expected {pre_sets}"
-    )
-    assert post_cards == pre_cards, (
-        f"Reconstruction produced {post_cards} cards, expected {pre_cards}"
-    )
-
-    # Rollback savepoint — restores catalog and inventory
     savepoint.rollback()
 
-    restored_sets = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
-    restored_cards = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
-    restored_inventory = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
+    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar()      == pre_sets,      "Savepoint rollback did not restore sets"
+    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar()     == pre_cards,     "Savepoint rollback did not restore cards"
+    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_inventory, "Savepoint rollback did not restore inventory"
 
-    assert restored_sets == pre_sets, "Savepoint rollback did not restore sets"
-    assert restored_cards == pre_cards, "Savepoint rollback did not restore cards"
-    assert restored_inventory == pre_inventory, "Savepoint rollback did not restore inventory"
+
+def test_seed_rebuilt_catalog_passes_domain_rules(db):
+    """Rebuild the catalog from the seed file and run all domain rule checks
+    against that seed-only state. Inventory is preserved via savepoint rollback."""
+    assert SEED_PATH.exists(), f"Seed file not found: {SEED_PATH}"
+
+    savepoint = db.begin_nested()
+    _apply_seed(db, _seed_lines())
+
+    _BaseCardVariants().test_common_base_cards_have_standard_and_hyperspace(db)
+    _BaseCardVariants().test_rare_base_cards_have_standard_foil_hyperspace_and_foil_hyperspace(db)
+    _LeaderCardVariants().test_common_and_rare_leaders_have_standard_hyperspace_and_showcase(db)
+    _NonLeaderNonBaseCardVariants().test_all_valid_variants_present(db)
+
+    savepoint.rollback()

@@ -120,7 +120,7 @@ class TestSetRecordCounts:
     or a migration changes the catalog."""
 
     EXPECTED_TOTALS = {
-        "SOR": 976,
+        "SOR": 977,
         "SHD": 988,
         "TWI": 983,
         "JTL": 1127,

@@ -166,14 +166,18 @@ def identify_inventory_columns(header_row: tuple) -> dict[int, dict[str, bool]]:
 
     Non-inventory columns (Playset, HS-Playset, Rarity, Card Name, etc.) are ignored.
     Matching is case-insensitive to handle variations like 'PRESTIGE' (JTL).
+    Only the first occurrence of each column name is used; trailing duplicate
+    headers (e.g. summary columns in LOF) are ignored.
     """
     result: dict[int, dict[str, bool]] = {}
+    seen: set[str] = set()
     for i, cell in enumerate(header_row):
         if cell is None:
             continue
         key = str(cell).strip().lower()
-        if key in VARIANT_COLUMN_FLAGS:
+        if key in VARIANT_COLUMN_FLAGS and key not in seen:
             result[i] = VARIANT_COLUMN_FLAGS[key]
+            seen.add(key)
     return result
 
 

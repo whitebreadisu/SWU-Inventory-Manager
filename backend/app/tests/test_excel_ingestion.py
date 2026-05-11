@@ -130,6 +130,20 @@ class TestIdentifyInventoryColumns:
         # Only the 8 inventory columns; Playset, HS-Playset, Rarity, Unique are skipped
         assert set(cols.keys()) == {1, 2, 3, 4, 5, 6, 7, 8}
 
+    def test_duplicate_column_names_use_first_occurrence_only(self):
+        # Some sheets (e.g. LOF) have trailing summary columns with the same
+        # header as a primary inventory column. Only the first occurrence should
+        # be used; the trailing duplicate must be ignored.
+        header = (
+            "Card #", "Non-Foil", "Foil", "Hyperspace",
+            "Card Name", "Cost",
+            "Foil", "Hyperspace",   # trailing duplicates — must be ignored
+        )
+        cols = identify_inventory_columns(header)
+        assert set(cols.keys()) == {1, 2, 3}   # indices 6 and 7 must not appear
+        assert 6 not in cols
+        assert 7 not in cols
+
 
 class TestIsValidQuantity:
     def test_positive_integer(self):

@@ -37,6 +37,9 @@ postgres_data/
 # Source data files (imported once locally; not needed in repo)
 tcgcsv_files/
 
+# Personal card inventory (local data file, not source code)
+personal_card_inventory/
+
 # Documentation folders (personal notes, not source code)
 learning_journal/
 learning_guide/

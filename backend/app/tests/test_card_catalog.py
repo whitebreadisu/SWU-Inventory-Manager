@@ -69,15 +69,15 @@ class TestBaseCardNumberIntegrity:
 
     def test_variant_groups_share_consistent_base_name(self, db):
         """All cards that share a base_card_number within a set must share
-        the same base name. The only permitted name difference is the
-        '(Showcase)' suffix, which is preserved in stored names by design."""
+        the same name. Showcase suffixes are stripped before storage so no
+        special-casing is needed here."""
         inconsistent = db.execute(text("""
             SELECT s.code, c.base_card_number,
-                   COUNT(DISTINCT REPLACE(c.name, ' (Showcase)', '')) AS distinct_names
+                   COUNT(DISTINCT c.name) AS distinct_names
             FROM cards c
             JOIN sets s ON s.id = c.set_id
             GROUP BY s.code, c.base_card_number
-            HAVING COUNT(DISTINCT REPLACE(c.name, ' (Showcase)', '')) > 1
+            HAVING COUNT(DISTINCT c.name) > 1
         """)).fetchall()
         assert inconsistent == [], (
             f"{len(inconsistent)} variant group(s) have inconsistent names — "

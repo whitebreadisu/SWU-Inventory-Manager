@@ -119,11 +119,6 @@ class TestLeaderCardVariants:
 
     Special (S) rarity Leaders are starter-deck exclusives and follow different
     product release rules depending on the set — they are excluded from this test.
-
-    Implementation note: Showcase cards in LOF and SEC have their own
-    base_card_number rather than pointing back to the standard card, so the
-    showcase check is done by name matching ('Card Name (Showcase)') rather
-    than by base_card_number grouping.
     """
 
     def test_common_and_rare_leaders_have_standard_hyperspace_and_showcase(self, db):
@@ -161,15 +156,15 @@ class TestLeaderCardVariants:
             if not hs:
                 missing_hyperspace.append(f"{row.code} '{row.name}'")
 
-            # Showcase: check by name match to handle LOF/SEC unlinked showcases
+            # Showcase: match on base name — suffix is now stripped during ingestion
             sc = db.execute(text("""
                 SELECT 1 FROM cards c
                 JOIN sets s ON s.id = c.set_id
-                WHERE s.code   = :code
-                  AND c.name   = :showcase_name
+                WHERE s.code      = :code
+                  AND c.name      = :name
                   AND c.is_showcase = true
                 LIMIT 1
-            """), {"code": row.code, "showcase_name": f"{row.name} (Showcase)"}).fetchone()
+            """), {"code": row.code, "name": row.name}).fetchone()
 
             if not sc:
                 missing_showcase.append(f"{row.code} '{row.name}'")

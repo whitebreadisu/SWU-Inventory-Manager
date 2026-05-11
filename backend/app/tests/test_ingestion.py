@@ -107,13 +107,14 @@ class TestParseVariantFlags:
         assert pres is False
         assert show is False
 
-    def test_showcase_kept_in_stored_name_and_always_foil(self):
+    def test_showcase_suffix_stripped_and_always_foil(self):
         # Showcase cards are always physically foil — is_foil must be True.
-        # The (Showcase) suffix is kept in the stored name per domain rules.
+        # The (Showcase) suffix is stripped from stored names; is_showcase=True
+        # captures the variant type.
         name, foil, hyp, pres, show = parse_variant_flags(
             "Jyn Erso - Time to Fight (Showcase)", ""
         )
-        assert name == "Jyn Erso - Time to Fight (Showcase)"
+        assert name == "Jyn Erso - Time to Fight"
         assert show is True
         assert foil is True
         assert hyp is False
@@ -123,8 +124,9 @@ class TestParseVariantFlags:
         # Both subTypeName=Normal and subTypeName=Foil CSV rows for a Showcase card
         # must parse identically (both is_foil=True) so the unique constraint
         # deduplicates them to a single record per Showcase card.
-        _, foil_n, _, _, _ = parse_variant_flags("Vader (Showcase)", "Normal")
-        _, foil_f, _, _, _ = parse_variant_flags("Vader (Showcase)", "Foil")
+        name_n, foil_n, _, _, _ = parse_variant_flags("Vader (Showcase)", "Normal")
+        name_f, foil_f, _, _, _ = parse_variant_flags("Vader (Showcase)", "Foil")
+        assert name_n == name_f == "Vader"
         assert foil_n is True
         assert foil_f is True
 

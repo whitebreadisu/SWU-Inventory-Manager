@@ -29,6 +29,7 @@ services:
       - ./backend:/app
       - ./tcgcsv_files:/tcgcsv_files:ro
       - ./personal_card_inventory:/personal_card_inventory:ro
+      - ./db/seeds:/db/seeds
     restart: unless-stopped
 
   frontend:

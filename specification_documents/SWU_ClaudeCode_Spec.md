@@ -211,10 +211,15 @@ After Foundation phase F4 is complete and catalog data is validated, a SQL seed 
 - **Catalog seed file** — A single SQL file generated from the validated database. Applied once after schema migrations, before any user inventory is loaded.
 - **Ingestion pipeline** — Retained for future set releases. After each new set is ingested and validated, the seed file is regenerated to incorporate it.
 
-**Fresh install sequence:**
+**Fresh install sequence (post-F5):**
 1. Run schema migrations (Alembic)
 2. Apply catalog seed file
-3. Load user inventory (Excel ingestion)
+3. Apply inventory snapshot (see Section 5.5)
+
+**Fresh install sequence (F4-era, before F5 is executed):**
+1. Run schema migrations (Alembic)
+2. Apply catalog seed file
+3. Run Excel inventory ingestion (F4)
 
 **New set release sequence:**
 1. Run ingestion pipeline for new set CSVs
@@ -224,6 +229,21 @@ After Foundation phase F4 is complete and catalog data is validated, a SQL seed 
 The CSV source files and ingestion pipeline are development tools used to produce and update the seed file — not production dependencies.
 
 **Seed file location:** `db/seeds/catalog_seed.sql` — committed to version control.
+
+### 5.5 Inventory Snapshot
+
+> ⚠ This section describes the state of the system after Foundation phase F5 is complete. F5 has a hard precondition: it must not be executed until Slice S4 (increment/decrement inventory) is live and validated as the source of truth for your collection. See Section 8.2.
+
+Once the UI owns the inventory, the Excel file is retired and a snapshot-based pattern takes over — parallel to the catalog seed but with a different operational rhythm.
+
+- **`generate_inventory_snapshot.py`** — exports the `inventory` table to `db/snapshots/inventory_snapshot.sql`. Run after every significant update to your collection, and always before any destructive database operation.
+- **`apply_inventory_snapshot.py`** — restores inventory on a fresh database. Idempotent: skips if inventory is already populated.
+
+**Operational rhythm:** The catalog seed changes infrequently (only when a new set releases). The inventory snapshot should be updated regularly — it is a living record of your collection committed to version control.
+
+**F4 retirement:** When F5 is executed, F4's ON CONFLICT behavior is changed from DO UPDATE to DO NOTHING, and the Excel file mount is removed from docker-compose. This makes accidental F4 re-runs safe and signals clearly that the Excel file is no longer authoritative.
+
+**Snapshot file location:** `db/snapshots/inventory_snapshot.sql` — committed to version control.
 
 ---
 
@@ -314,6 +334,7 @@ Development proceeds in vertical slices. Each slice delivers a complete, working
 | Slice 2 | S2 | GET /api/inventory and inventory columns in card list table. Playset status indicators. |
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
 | Slice 4 | S4 | Increment/decrement inventory. Trade/sell signal. Playset complete confirmation. |
+| Foundation | F5 | Inventory snapshot & F4 retirement. ⚠ **Precondition: S4 must be complete and the UI validated as the source of truth for inventory before executing this phase.** `generate_inventory_snapshot.py` exports inventory to `db/snapshots/inventory_snapshot.sql`. `apply_inventory_snapshot.py` restores it idempotently on a fresh database. F4 ON CONFLICT changed from DO UPDATE to DO NOTHING. Excel file mount removed from docker-compose. See Section 5.5. |
 | Slice 5 | S5 | Filter bar (Type, Rarity, Variant). Missing cards view (/api/inventory/missing). |
 
 ### 8.3 Testing Requirements

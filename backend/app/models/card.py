@@ -10,7 +10,7 @@ from app.models.base import Base
 class Card(Base):
     __tablename__ = "cards"
     __table_args__ = (
-        UniqueConstraint("set_id", "card_number", "is_foil", name="uq_cards_set_card_number_foil"),
+        UniqueConstraint("set_id", "card_number", "is_foil", "is_organized_play", name="uq_cards_set_card_number_foil_op"),
         CheckConstraint(
             "NOT is_showcase OR type = 'Leader'",
             name="ck_cards_showcase_leader_only",

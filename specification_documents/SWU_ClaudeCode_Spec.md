@@ -102,7 +102,7 @@ Known sets at initial import:
 | id | SERIAL | PRIMARY KEY | |
 | code | VARCHAR(3) | NOT NULL, UNIQUE | Three-character set code (e.g., SOR, SHD) |
 | name | VARCHAR(100) | NOT NULL | Full set name |
-| has_unique_variant_numbers | BOOLEAN | NOT NULL | True if variants have distinct card numbers in this set |
+| has_unique_variant_numbers | BOOLEAN | NOT NULL | True if Standard and Foil variants have distinct card numbers (JTL, LOF, SEC, LAW). False if Standard and Foil share a card number (SOR, SHD, TWI). Note: Hyperspace and OP variants always have distinct card numbers regardless of this flag. |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 
 ### 4.3 Cards Table (MVP Attributes)
@@ -122,7 +122,7 @@ Known sets at initial import:
 | is_organized_play | BOOLEAN | NOT NULL, DEFAULT FALSE | Identifies the Organized Play variant. OP printings are distinct physical cards tracked separately in inventory from regular set printings. |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 
-> ⚠ UNIQUE constraint on (set_id, card_number, is_foil) — the combination of set, card number, and foil status is unique within the database. is_foil is included because early sets (SOR, SHD, TWI) assign the same card number to both Standard and Foil variants of the same card.
+> ⚠ UNIQUE constraint on (set_id, card_number, is_foil, is_organized_play) — is_foil is included because early sets (SOR, SHD, TWI) assign the same card number to both Standard and Foil variants. is_organized_play is included because OP CSVs use sequential card numbers (1–40) that collide with base set card numbers; without it, OP records would be silently dropped by ON CONFLICT.
 
 > ⚠ Showcase flag: is_showcase = TRUE is only valid when type = 'Leader'. Enforced as a DB CHECK constraint (NOT is_showcase OR type = 'Leader') and validated at the service layer.
 
@@ -194,9 +194,7 @@ Each set's CSV may use different field names. A field mapping configuration file
 
 - For each row, read the base card number.
 - For each variant quantity field in the row with a non-null value > 0:
-  - Look up the card record in the database by (set_id, base_card_number) plus the variant flags (is_foil, is_hyperspace, is_prestige, is_showcase, is_organized_play) that correspond to the Excel column being processed.
-  - In sets with unique variant numbers (JTL, LOF, SOP, LAW): the variant's card_number differs from base_card_number. Resolve by querying WHERE set_id = ? AND base_card_number = ? AND [variant flags match]. This lookup is always deterministic — one result guaranteed.
-  - In sets with shared card numbers (SOR, SHD, TWI): query WHERE set_id = ? AND card_number = ? AND is_foil = ?.
+  - Look up the card record in the database by (set_id, base_card_number) plus the variant flags (is_foil, is_hyperspace, is_prestige, is_showcase, is_organized_play) that correspond to the Excel column being processed. This lookup is consistent across all sets — base_card_number is always the Standard card's number for that name, regardless of the variant being looked up. This lookup is always deterministic — one result guaranteed.
   - Create or update the inventory record with the quantity.
 
 > ⚠ If a lookup fails to find a matching card record, log the failure with full row details and continue processing. Do not abort the entire import. Produce a summary report of all failed lookups after import completes.

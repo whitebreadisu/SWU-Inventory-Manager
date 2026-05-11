@@ -21,6 +21,7 @@ from app.ingestion.normalize import (
     normalize_rarity,
     parse_card_number,
     parse_variant_flags,
+    strip_token_back,
 )
 from app.models.card import Card
 from app.models.set_model import CardSet
@@ -84,7 +85,7 @@ def run_ingestion(db: Session, csv_dir: Path, mappings_file: Path) -> IngestionR
                 filtered,
             )
 
-        _assign_base_card_numbers(all_rows, has_unique)
+        _assign_base_card_numbers(all_rows)
 
         inserted, skipped = _insert_cards(db, all_rows)
         db.commit()
@@ -145,7 +146,7 @@ def _parse_file(
                 filtered += 1
                 continue
 
-            name = raw_row["name"]
+            name = strip_token_back(raw_row["name"])
 
             if is_serialized_name(name):
                 filtered += 1
@@ -180,22 +181,20 @@ def _parse_file(
     return rows, filtered
 
 
-def _assign_base_card_numbers(rows: list[dict], has_unique_variant_numbers: bool) -> None:
+def _assign_base_card_numbers(rows: list[dict]) -> None:
     """Set base_card_number on each row in-place.
 
-    For SOR/SHD/TWI (has_unique_variant_numbers=False): base_card_number equals
-    card_number for all variants — Normal and Foil share the same number.
+    Finds the Standard card (all flags False, not OP) for each card name and
+    stamps its card_number as base_card_number on every variant with that name.
+    Falls back to card_number if no Standard match exists (e.g., OP-only cards).
 
-    For JTL/LOF/SEC/LAW (has_unique_variant_numbers=True): each variant has a
-    distinct card_number, so base_card_number is resolved by finding the Standard
-    card (all flags False, not OP) with the same name and using its card_number.
-    Falls back to card_number if no Standard match exists.
+    Applies universally to all sets. For SOR/SHD/TWI (has_unique_variant_numbers=False),
+    Standard and Foil share the same card_number so their base_card_number is
+    unchanged. Hyperspace and OP variants in those sets have distinct card_numbers
+    and are correctly linked to the Standard card's number by this resolution.
     """
-    if not has_unique_variant_numbers:
-        return  # placeholder value from _parse_file is already correct
-
     name_to_std: dict[str, str] = {
-        row["name"]: row["card_number"]
+        row["name"].lower(): row["card_number"]
         for row in rows
         if not row["is_foil"]
         and not row["is_hyperspace"]
@@ -205,7 +204,7 @@ def _assign_base_card_numbers(rows: list[dict], has_unique_variant_numbers: bool
     }
 
     for row in rows:
-        std_number = name_to_std.get(row["name"])
+        std_number = name_to_std.get(row["name"].lower())
         if std_number:
             row["base_card_number"] = std_number
         # else: base_card_number stays as card_number (already set in _parse_file)
@@ -221,7 +220,7 @@ def _insert_cards(db: Session, rows: list[dict]) -> tuple[int, int]:
 
     stmt = pg_insert(Card.__table__).values(rows)
     stmt = stmt.on_conflict_do_nothing(
-        index_elements=["set_id", "card_number", "is_foil"]
+        index_elements=["set_id", "card_number", "is_foil", "is_organized_play", "name"]
     )
     result = db.execute(stmt)
     inserted = result.rowcount

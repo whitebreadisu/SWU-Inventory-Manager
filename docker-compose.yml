@@ -28,6 +28,7 @@ services:
     volumes:
       - ./backend:/app
       - ./tcgcsv_files:/tcgcsv_files:ro
+      - ./personal_card_inventory:/personal_card_inventory:ro
     restart: unless-stopped
 
   frontend:

@@ -13,6 +13,7 @@ from app.ingestion.normalize import (
     normalize_rarity,
     parse_card_number,
     parse_variant_flags,
+    strip_token_back,
 )
 
 
@@ -180,6 +181,48 @@ class TestParseVariantFlags:
         assert hyp is True
 
 
+class TestStripTokenBack:
+    def test_no_token_unchanged(self):
+        assert strip_token_back("Sundari") == "Sundari"
+
+    def test_standard_base_strips_to_front_face(self):
+        assert strip_token_back("Sundari // Battle Droid") == "Sundari"
+
+    def test_different_token_backs_produce_same_name(self):
+        assert strip_token_back("Sundari // Battle Droid") == strip_token_back("Sundari // Clone Trooper")
+
+    def test_hyperspace_suffix_preserved(self):
+        assert strip_token_back("Sundari // Battle Droid (Hyperspace)") == "Sundari (Hyperspace)"
+
+    def test_hyperspace_different_token_backs_produce_same_name(self):
+        a = strip_token_back("Sundari // Battle Droid (Hyperspace)")
+        b = strip_token_back("Sundari // Clone Trooper (Hyperspace)")
+        assert a == b == "Sundari (Hyperspace)"
+
+    def test_hyperspace_foil_suffix_preserved(self):
+        assert strip_token_back("Sundari // Battle Droid (Hyperspace Foil)") == "Sundari (Hyperspace Foil)"
+
+    def test_regular_card_name_unchanged(self):
+        assert strip_token_back("Darth Vader - Dark Lord of the Sith") == "Darth Vader - Dark Lord of the Sith"
+
+    def test_round_trip_with_parse_variant_flags(self):
+        # Stripping then parsing must yield the base name with correct flags
+        stripped = strip_token_back("Level 1313 // Battle Droid (Hyperspace)")
+        assert stripped == "Level 1313 (Hyperspace)"
+        name, is_foil, is_hyperspace, is_prestige, is_showcase = parse_variant_flags(stripped, "Normal")
+        assert name == "Level 1313"
+        assert is_hyperspace is True
+        assert is_foil is False
+
+    def test_standard_base_round_trip(self):
+        stripped = strip_token_back("Level 1313 // Battle Droid")
+        assert stripped == "Level 1313"
+        name, is_foil, is_hyperspace, *_ = parse_variant_flags(stripped, "Normal")
+        assert name == "Level 1313"
+        assert is_hyperspace is False
+        assert is_foil is False
+
+
 class TestIsCardRow:
     def test_card_with_rarity(self):
         assert is_card_row({"extRarity": "Common"}) is True
@@ -219,67 +262,84 @@ class TestAssignBaseCardNumbers:
             **flags,
         }
 
-    def test_non_unique_variant_numbers_unchanged(self):
+    def test_shared_number_standard_and_foil_unchanged(self):
+        # SOR/SHD/TWI: Standard and Foil share card_number "5".
+        # base_card_number resolves to the Standard card's number — same value, no change.
         rows = [
             self._row("Clone Trooper", "5"),
             self._row("Clone Trooper", "5", is_foil=True),
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=False)
+        _assign_base_card_numbers(rows)
         assert rows[0]["base_card_number"] == "5"
         assert rows[1]["base_card_number"] == "5"
 
-    def test_unique_variant_standard_card_self_references(self):
+    def test_shared_number_hyperspace_links_to_standard(self):
+        # SOR/SHD/TWI: Hyperspace and Hyperspace Foil have a distinct card_number ("281")
+        # but must link back to the Standard card's number ("1") via name resolution.
+        rows = [
+            self._row("Director Krennic", "1"),
+            self._row("Director Krennic", "1", is_foil=True),
+            self._row("Director Krennic", "281", is_hyperspace=True),
+            self._row("Director Krennic", "281", is_foil=True, is_hyperspace=True),
+        ]
+        _assign_base_card_numbers(rows)
+        assert rows[0]["base_card_number"] == "1"
+        assert rows[1]["base_card_number"] == "1"
+        assert rows[2]["base_card_number"] == "1"
+        assert rows[3]["base_card_number"] == "1"
+
+    def test_standard_card_self_references(self):
         rows = [self._row("Vader", "1")]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[0]["base_card_number"] == "1"
 
-    def test_unique_variant_foil_links_to_standard(self):
+    def test_foil_links_to_standard(self):
         rows = [
             self._row("Vader", "1"),
             self._row("Vader", "525", is_foil=True),
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[0]["base_card_number"] == "1"
         assert rows[1]["base_card_number"] == "1"
 
-    def test_unique_variant_hyperspace_links_to_standard(self):
+    def test_hyperspace_links_to_standard(self):
         rows = [
             self._row("Grogu", "10"),
             self._row("Grogu", "300", is_hyperspace=True),
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[1]["base_card_number"] == "10"
 
-    def test_unique_variant_op_card_links_to_standard(self):
+    def test_op_card_links_to_standard(self):
         rows = [
             self._row("Vader", "1"),
             self._row("Vader", "2", is_organized_play=True),
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[1]["base_card_number"] == "1"
 
-    def test_unique_variant_multiple_variants_all_link_to_same_standard(self):
+    def test_multiple_variants_all_link_to_same_standard(self):
         rows = [
             self._row("Grogu", "10"),
             self._row("Grogu", "300", is_hyperspace=True),
             self._row("Grogu", "525", is_foil=True),
             self._row("Grogu", "2", is_organized_play=True),
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         for row in rows:
             assert row["base_card_number"] == "10"
 
-    def test_unique_variant_no_standard_fallback_to_own_number(self):
+    def test_no_standard_fallback_to_own_number(self):
         # Only a foil exists — no Standard to link to
         rows = [self._row("Rare Card", "525", is_foil=True)]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[0]["base_card_number"] == "525"
 
-    def test_unique_variant_op_standard_not_used_as_lookup(self):
-        # OP Standard card should not pollute the name→number lookup
+    def test_op_standard_not_used_as_lookup(self):
+        # OP Standard card must not pollute the name→number lookup
         rows = [
-            self._row("Vader", "99", is_organized_play=True),  # OP Standard — excluded from lookup
+            self._row("Vader", "99", is_organized_play=True),  # OP Standard — excluded
             self._row("Vader", "200", is_foil=True),           # no base Standard → fallback
         ]
-        _assign_base_card_numbers(rows, has_unique_variant_numbers=True)
+        _assign_base_card_numbers(rows)
         assert rows[1]["base_card_number"] == "200"  # fallback, not "99"

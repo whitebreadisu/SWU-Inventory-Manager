@@ -1,4 +1,5 @@
 """Pure normalization functions for CSV ingestion. No database dependencies."""
+import unicodedata
 
 RARITY_MAP = {
     "Common": "C",
@@ -18,6 +19,46 @@ _VARIANT_SUFFIXES = [
     ("(Foil)", True, False, False, False, True),
     ("(Showcase)", True, False, False, True, False),  # always foil; keep in stored name per domain rules
 ]
+
+
+def normalize_card_name(name: str) -> str:
+    """Strip combining diacritical marks for consistent storage and name matching.
+
+    Guards against source CSV inconsistencies where the same physical card uses
+    different Unicode characters across variant rows (e.g. 'Chirrut Îmwe' on the
+    standard row vs 'Chirrut Imwe' on Hyperspace/Prestige rows in the LAW CSV).
+    """
+    return "".join(
+        c for c in unicodedata.normalize("NFD", name)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
+def strip_token_back(name: str) -> str:
+    """Strip the token-back portion from a double-sided base card name.
+
+    Some sets include Base cards that are double-sided: the front is the Base
+    and the back is a Token card. The CSV contains one row per token variant
+    (e.g. 'Sundari // Battle Droid' and 'Sundari // Clone Trooper'), but these
+    are the same physical card for inventory purposes. This function reduces all
+    variants to the front-face name only.
+
+    Any variant suffix on the back portion is moved to the front portion so
+    that parse_variant_flags can still detect it:
+        'Sundari // Battle Droid'             → 'Sundari'
+        'Sundari // Battle Droid (Hyperspace)' → 'Sundari (Hyperspace)'
+        'Sundari'                              → 'Sundari'  (unchanged)
+    """
+    name = normalize_card_name(name)
+    if " // " not in name:
+        return name
+    front, back = name.split(" // ", 1)
+    front = front.strip()
+    back = back.strip()
+    for suffix, *_ in _VARIANT_SUFFIXES:
+        if back.endswith(suffix):
+            return f"{front} {suffix}"
+    return front
 
 
 def parse_card_number(raw: str) -> str:

@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import openpyxl
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -147,7 +146,7 @@ def _process_sheet(
                 )
                 continue
 
-            _upsert_inventory(db, card.id, quantity)
+            _insert_inventory(db, card.id, quantity)
             upserted += 1
 
     return upserted, skipped, failures
@@ -260,11 +259,13 @@ def _lookup_card(
     return card
 
 
-def _upsert_inventory(db: Session, card_id: int, quantity: int) -> None:
-    """Insert or update an inventory record with the given quantity."""
+def _insert_inventory(db: Session, card_id: int, quantity: int) -> None:
+    """Insert an inventory record. Skips if one already exists (DO NOTHING).
+
+    DO NOTHING rather than DO UPDATE: once the UI is live, the database is
+    the source of truth for quantities. Overwriting on re-run would silently
+    discard UI-managed changes with stale Excel values.
+    """
     stmt = pg_insert(Inventory.__table__).values(card_id=card_id, quantity=quantity)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["card_id"],
-        set_={"quantity": quantity, "updated_at": func.now()},
-    )
+    stmt = stmt.on_conflict_do_nothing(index_elements=["card_id"])
     db.execute(stmt)

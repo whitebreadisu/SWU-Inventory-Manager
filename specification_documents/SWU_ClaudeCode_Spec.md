@@ -160,6 +160,8 @@ The following tables are defined here for documentation purposes. They are **not
 
 The ingestion pipeline runs once during initial setup. It processes 14 source files (7 standard set CSVs + 7 Organized Play CSVs) and 1 Excel inventory file. All source files are discarded after successful import. The pipeline must be idempotent — running it twice on a clean database must produce the same result without errors.
 
+After the catalog data is validated at the end of Foundation F4, a catalog seed file is generated from the current database state (see Section 5.4). The seed file — not the original CSVs or the migration history — becomes the authoritative source for rebuilding the catalog on a fresh database.
+
 ### 5.2 CSV Ingestion (Card & Set Data)
 
 #### Field Normalization Rules
@@ -198,6 +200,30 @@ Each set's CSV may use different field names. A field mapping configuration file
   - Create or update the inventory record with the quantity.
 
 > ⚠ If a lookup fails to find a matching card record, log the failure with full row details and continue processing. Do not abort the entire import. Produce a summary report of all failed lookups after import completes.
+
+### 5.4 Catalog Seed File
+
+After Foundation phase F4 is complete and catalog data is validated, a SQL seed file is generated from the current database state. This file is the authoritative source for populating the `sets` and `cards` tables on a fresh database — not the original CSVs and not the sequence of data-fix migrations.
+
+**Rationale:** Schema migrations (DDL) and catalog data are different concerns. Migrations that patch specific data rows encode bugs as permanent, load-bearing history. The correct model separates them:
+
+- **Schema migrations** — DDL only: table structure, indexes, constraints. Always run on fresh install.
+- **Catalog seed file** — A single SQL file generated from the validated database. Applied once after schema migrations, before any user inventory is loaded.
+- **Ingestion pipeline** — Retained for future set releases. After each new set is ingested and validated, the seed file is regenerated to incorporate it.
+
+**Fresh install sequence:**
+1. Run schema migrations (Alembic)
+2. Apply catalog seed file
+3. Load user inventory (Excel ingestion)
+
+**New set release sequence:**
+1. Run ingestion pipeline for new set CSVs
+2. Validate catalog completeness
+3. Regenerate seed file
+
+The CSV source files and ingestion pipeline are development tools used to produce and update the seed file — not production dependencies.
+
+**Seed file location:** `db/seeds/catalog_seed.sql` — committed to version control.
 
 ---
 
@@ -283,7 +309,7 @@ Development proceeds in vertical slices. Each slice delivers a complete, working
 | Foundation | F1 | Docker Compose environment: PostgreSQL + FastAPI container + React dev server. All services start with a single command. |
 | Foundation | F2 | Database schema migration (sets, cards, and inventory tables from Section 4). Phase 2 attribute tables (card_aspects, card_keywords, card_traits, card_details) defined as SQLAlchemy models only; database migration deferred to Phase 2. |
 | Foundation | F3 | CSV ingestion pipeline with field mapping config. All 14 CSVs imported and validated. Schema refined (migration 0002): variant string column replaced with boolean flags (is_foil, is_hyperspace, is_prestige, is_showcase). SOP Organized Play CSV has no card numbers — sequential values assigned from 1; requires future correction when source data is available. |
-| Foundation | F4 | Excel inventory ingestion. Inventory data loaded and reconciled against card records. |
+| Foundation | F4 | Excel inventory ingestion. Inventory data loaded and reconciled against card records. After F4 validation, a catalog seed file is generated from the current database state (see Section 5.4). |
 | Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints. React set selector and card list table (no inventory data yet). |
 | Slice 2 | S2 | GET /api/inventory and inventory columns in card list table. Playset status indicators. |
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
@@ -311,7 +337,7 @@ The following enhancements are explicitly acknowledged and should inform archite
 | Enhancement | Impact on Version 1 Design |
 |-------------|---------------------------|
 | Phase 2 card attributes (Aspects, Keywords, Traits, Cost, Power, HP, Arena, Unique, Sub-text) | Phase 2 tables defined in schema now (Section 4.5). Modular service layer ensures attributes can be added without restructuring. |
-| Add new sets post-launch | Field mapping YAML format and ingestion pipeline must be designed to be extensible. New set = new mapping entry + new CSV run. |
+| Add new sets post-launch | Field mapping YAML format and ingestion pipeline must be designed to be extensible. New set = new mapping entry + new CSV run + validation + regenerate catalog seed file. |
 | External API for card/set data | The ingestion module must be loosely coupled. The repository layer abstracts data source so a future API adapter can replace CSV processing without touching services or routes. |
 | Cloud hosting (AWS / GCP / Azure) | Docker Compose setup must use environment variables for all configuration (DB credentials, ports). No hardcoded local paths. |
 | CI/CD pipeline to production | GitHub Actions structure established in V1. Production deployment job added as a future workflow step. |

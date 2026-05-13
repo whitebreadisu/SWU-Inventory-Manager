@@ -105,9 +105,7 @@ Known sets at initial import:
 | has_unique_variant_numbers | BOOLEAN | NOT NULL | True if Standard and Foil variants have distinct card numbers (JTL, LOF, SEC, LAW). False if Standard and Foil share a card number (SOR, SHD, TWI). Note: Hyperspace and OP variants always have distinct card numbers regardless of this flag. |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 
-### 4.3 Cards Table (MVP Attributes)
-
-> ⚠ The data model is intentionally designed to support Phase 2 multi-value attributes (Aspects, Keywords, Traits) via separate junction tables. These tables are not populated in Phase 1 but the base Card record is structured to accommodate them without schema changes to this table.
+### 4.3 Cards Table
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
@@ -137,20 +135,25 @@ Known sets at initial import:
 | quantity | INTEGER | NOT NULL, DEFAULT 0, CHECK >= 0 | Count owned. Null in source Excel is treated as 0 on import. |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | Updated on every inventory change |
 
-### 4.5 Phase 2 Attribute Tables (Schema Placeholders)
+### 4.5 Card Attribute Tables
 
-The following tables are defined here for documentation purposes. They are **not populated in Phase 1**. SQLAlchemy ORM models are defined in Phase 1 for structural reference, but the database migration for these tables is deferred to Phase 2. Deferral rationale: field definitions may evolve before Phase 2 implementation begins, and creating empty tables now would require a drop-and-recreate migration later. The models inform the cards table design without requiring immediate schema commitment.
+The following tables extend the core card record with multi-value attributes and game stat details. They were originally planned as Phase 2 but were brought into Phase 1 during the UI session when catalog display required the data. All four tables were created in migration 0016 and populated via `backend/app/ingestion/backfill_card_details.py`, which reads the 7 standard-set CSVs and matches rows to cards by `base_card_number`.
 
-- `card_aspects` — junction table: card_id, aspect (Heroism, Villainy, Cunning, Aggression, Command, Vigilance)
-- `card_keywords` — junction table: card_id, keyword (enumerated list to be defined before Phase 2)
-- `card_traits` — junction table: card_id, trait (enumerated list to be defined before Phase 2)
-- `card_details` — one-to-one extension: card_id, sub_text, cost, power, hp, arena, is_unique
+| Table | Structure | Notes |
+|-------|-----------|-------|
+| `card_aspects` | card_id (FK), aspect (VARCHAR 20) — composite PK | Valid values: Heroism, Villainy, Cunning, Aggression, Command, Vigilance |
+| `card_keywords` | card_id (FK), keyword (VARCHAR 50) — composite PK | Keyword data not present in TCGPlayer CSV source; table exists but is unpopulated |
+| `card_traits` | card_id (FK), trait (VARCHAR 50) — composite PK | Populated from CSV `extTraits` field (semicolon-delimited) |
+| `card_details` | card_id (FK, PK), sub_text, cost, power, hp, arena, is_unique | Populated from CSV `extCost`, `extPower`, `extHP`, `extArenaType` fields |
 
-**Phase 2 nullability rules to implement when card_details is populated:**
+**Known data gaps:**
+- `card_keywords`: No keyword source in the TCGPlayer CSV. Will require a separate data source.
+- `sub_text` and `is_unique`: Not available in the CSV source. Reserved for future population.
 
-- `power` and `hp`: NOT NULL for types Leader, Unit, Upgrade — always NULL for Base and Event
-- `sub_text`: Cannot be null when is_unique = true (to be confirmed before Phase 2 implementation)
-- `arena`: 0 or 1 values from [Ground, Space]
+**Nullability rules (in effect):**
+- `power` and `hp`: NULL for Base and Event types; populated for Leader, Unit, Upgrade.
+- `arena`: "Ground" or "Space" for unit cards; NULL for non-unit types.
+- `cost`: NULL for Base cards; populated for all other types.
 
 ---
 
@@ -213,7 +216,7 @@ After Foundation phase F4 is complete and catalog data is validated, a SQL seed 
 
 **Fresh install sequence (post-F5):**
 1. Run schema migrations (Alembic)
-2. Apply catalog seed file
+2. Apply catalog seed file (includes sets, cards, card_aspects, card_traits, card_details)
 3. Apply inventory snapshot (see Section 5.5)
 
 **Fresh install sequence (F4-era, before F5 is executed):**
@@ -287,20 +290,95 @@ Once the UI owns the inventory, the Excel file is retired and a snapshot-based p
 
 ### 7.1 Application Shell
 
-Single-page React application. No full page reloads between views. Set selector is always visible. The primary view is set-centric — selecting a set loads that set's card list with inventory data overlaid.
+Single-page React application. No full page reloads between views. The application is structured around three top-level sections: **Inventory**, **Catalog**, and **Decks**. The active section is controlled by a tabbed header navigation; content below the section separator changes on tab selection.
 
-### 7.2 Primary View: Set Card List
+**Shell components:**
 
-- **Set selector:** dropdown of all sets, defaults to the first set on load.
-- **Filter bar:** filter by Type, Rarity, Variant. Filters are additive (AND logic).
-- **Card table/grid:** displays Card Number, Card Name, Variant, Rarity, Type, and inventory columns.
-- **Inventory columns:** quantity owned, playset status indicator (e.g., 0/3, 1/3, 2/3, ✓ for complete).
-- Cards with quantity = 3 display a clear 'playset complete' visual signal.
-- Cards with quantity = 0 and at least one variant owned display differently than cards with no inventory at all.
+| Component | Description |
+|-----------|-------------|
+| `Header` | Full-width dark bar containing the brand label, tab navigation (Inventory / Catalog / Decks), and a context-sensitive sub-navigation row for section-specific action buttons. The active tab has a 2px blue underline indicator. |
+| `SectionSeparator` | A full-width decorative bar separating the header from the content area. Styled as a dark band with a dot-matrix background pattern and thin blue top/bottom borders — approximating the transparent-PNG separator used on the official SWU site. |
 
-### 7.3 Core Interaction: Card Number Lookup & Inventory Update
+### 7.2 Design System
 
-This is the primary user flow and must be fast and frictionless. It is designed for use while holding a physical card.
+The application visual design mirrors the official Star Wars: Unlimited website (starwarsunlimited.com). The design system is defined via CSS custom properties in `index.css`.
+
+**Color palette:**
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--bg-page` | `#090b14` | Page background |
+| `--bg-surface` | `#0f1528` | Header, table header |
+| `--bg-surface-alt` | `#0b0f1f` | Alternating table rows |
+| `--color-primary` | `#2563eb` | Active buttons, underlines, borders |
+| `--color-btn-off` | `#2d3748` | Inactive/greyed-out filter buttons |
+| `--color-text` | `#e6e6e6` | Primary text |
+| `--color-text-muted` | `#6b7a99` | Secondary text, column headers |
+| `--color-border` | `#1e2748` | Table borders, surface dividers |
+
+**Typography:**
+- Headings and navigation: `Barlow Condensed` (Google Fonts), weights 400/600/700, uppercase with letter-spacing.
+- Body and table content: `Barlow` (Google Fonts), weights 400/500.
+
+**SWU Button (`SWUButton` component):**
+The button shape is recreated from the polygon paths used by the official site's SVG button assets (`swh_button_blue_l.svg`, `swh_button_blue_r.svg`). Each button is assembled from three parts: an inline SVG left cap (angled/pointed edge), a flat center label area, and an inline SVG right cap with a shadow polygon. Button color is driven by an `active` prop — blue (`#2563eb`) when active, dark grey (`#2d3748`) when inactive. Supports three sizes: `sm` (40px), `md` (52px), `lg` (64px).
+
+**Aspect Icons (`AspectIcon` component):**
+Diamond-shaped SVG polygons in the canonical aspect colors:
+
+| Aspect | Fill | Aspect | Fill |
+|--------|------|--------|------|
+| Command | `#16a34a` (green) | Vigilance | `#0369a1` (blue) |
+| Aggression | `#dc2626` (red) | Heroism | `#94a3b8` (silver) |
+| Cunning | `#ca8a04` (amber) | Villainy | `#7e22ce` (purple) |
+
+**Variant Circles (`VariantCircles` component):**
+A row of 12px circles, one per variant type that exists for a given base card. Solid fill for non-foil variants; transparent with a colored border for foil variants.
+
+| Variant | Color | Style |
+|---------|-------|-------|
+| Standard | `#6b7280` | Solid |
+| Foil | `#9ca3af` | Outlined |
+| Hyperspace | `#2563eb` | Solid |
+| Hyperspace Foil | `#60a5fa` | Outlined |
+| Prestige | `#d97706` | Solid |
+| Prestige Foil | `#fbbf24` | Outlined |
+| OP | `#dc2626` | Solid |
+| OP Foil | `#f87171` | Outlined |
+
+### 7.3 Catalog View
+
+The Catalog view displays the complete card catalog across all sets. It is the primary read-only reference view — inventory interaction happens in the Inventory section.
+
+**Filter bar:**
+
+- **Set filter:** Seven `SWUButton` toggle buttons (SOR / TWI / SHD / JTL / LOF / SEC / LAW). All sets are active by default. Clicking a button deactivates it (grey) and removes cards from that set from the table results.
+- **Aspect filter:** Six `AspectIcon` circular toggle buttons. All aspects are active by default. Clicking an aspect deactivates it and removes cards that have that aspect from results. A card with multiple aspects is removed if *any* of its aspects is deactivated.
+
+**Card table:**
+
+One row per **base card** (not per variant). Cards are grouped by `base_card_number` on the frontend before rendering. The `Variants` column shows which variants exist for that card using the `VariantCircles` component.
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| Name | `cards.name` | |
+| Rarity | `cards.rarity` | Displayed as full label: Common, Uncommon, Rare, Legendary, Starter |
+| Aspect | `card_aspects.aspect` | Rendered as `AspectIcon` diamonds |
+| Type | `cards.type` | |
+| Cost | `card_details.cost` | `—` if null |
+| Power | `card_details.power` | `—` if null |
+| HP | `card_details.hp` | `—` if null |
+| Trait | `card_traits.trait` | Semicolon-joined list; `—` if none |
+| Keyword | `card_keywords.keyword` | Semicolon-joined list; `—` if none (currently unpopulated) |
+| Arena | `card_details.arena` | `—` if null |
+| Variants | Derived | `VariantCircles` component |
+| Set | `cards.set_code` | |
+
+**API:** The catalog fetches all cards in a single call (`GET /api/cards` with no filters) and performs grouping and filtering entirely on the frontend. This avoids multiple round-trips and keeps the filter interaction instant.
+
+### 7.4 Core Interaction: Card Number Lookup & Inventory Update
+
+This is the primary user flow for the Inventory section and must be fast and frictionless. It is designed for use while holding a physical card.
 
 - A persistent search/input field accepts a card number.
 - On entry of a valid card number (within the selected set), all variant records for that card are displayed immediately, with current inventory counts.
@@ -310,7 +388,7 @@ This is the primary user flow and must be fast and frictionless. It is designed 
   - If resulting quantity = 3: update inventory count, display prominent 'Playset complete' confirmation.
   - If resulting quantity > 3: do NOT increment. Display a prominent 'Trade/Sell' signal instead. The card is not added to inventory.
 
-### 7.4 Variant Display
+### 7.5 Variant Display
 
 Because different sets have different variant types, the UI must derive the available variant columns dynamically from the set's card data rather than hardcoding variant columns. This ensures the UI adapts correctly as sets with different variant compositions are selected.
 
@@ -327,10 +405,10 @@ Development proceeds in vertical slices. Each slice delivers a complete, working
 | Phase | Slice | Deliverable |
 |-------|-------|-------------|
 | Foundation | F1 | Docker Compose environment: PostgreSQL + FastAPI container + React dev server. All services start with a single command. |
-| Foundation | F2 | Database schema migration (sets, cards, and inventory tables from Section 4). Phase 2 attribute tables (card_aspects, card_keywords, card_traits, card_details) defined as SQLAlchemy models only; database migration deferred to Phase 2. |
+| Foundation | F2 | Database schema migration (sets, cards, and inventory tables from Section 4). Card attribute table SQLAlchemy models (card_aspects, card_keywords, card_traits, card_details) defined in code; database migration deferred — these tables were created in migration 0016 during the S1 UI session. |
 | Foundation | F3 | CSV ingestion pipeline with field mapping config. All 14 CSVs imported and validated. Schema refined (migration 0002): variant string column replaced with boolean flags (is_foil, is_hyperspace, is_prestige, is_showcase). SOP Organized Play CSV has no card numbers — sequential values assigned from 1; requires future correction when source data is available. |
 | Foundation | F4 | Excel inventory ingestion. Inventory data loaded and reconciled against card records. After F4 validation, a catalog seed file is generated from the current database state (see Section 5.4). |
-| Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints. React set selector and card list table (no inventory data yet). |
+| Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints (initial). React set selector and basic card table. Extended in the UI session: full application design system, Catalog view with set/aspect filter toggles, one-row-per-base-card table, variant circles, aspect icons, SWU-style button component, Header and SectionSeparator components. CardResponse expanded to include aspects, traits, and detail fields. Card attribute tables migrated (migration 0016) and backfilled from CSV source data. |
 | Slice 2 | S2 | GET /api/inventory and inventory columns in card list table. Playset status indicators. |
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
 | Slice 4 | S4 | Increment/decrement inventory. Trade/sell signal. Playset complete confirmation. |
@@ -357,7 +435,7 @@ The following enhancements are explicitly acknowledged and should inform archite
 
 | Enhancement | Impact on Version 1 Design |
 |-------------|---------------------------|
-| Phase 2 card attributes (Aspects, Keywords, Traits, Cost, Power, HP, Arena, Unique, Sub-text) | Phase 2 tables defined in schema now (Section 4.5). Modular service layer ensures attributes can be added without restructuring. |
+| Phase 2 card attributes (Keywords, Sub-text, is_unique) | card_aspects, card_traits, card_details (cost, power, hp, arena) are now Phase 1 — migrated (0016) and backfilled from CSV. Remaining gaps: `card_keywords` has no CSV source; `sub_text` and `is_unique` require a separate data source. UI display of these fields is defined in Section 7.3 but data interpretation and display refinement are ongoing work. |
 | Add new sets post-launch | Field mapping YAML format and ingestion pipeline must be designed to be extensible. New set = new mapping entry + new CSV run + validation + regenerate catalog seed file. |
 | External API for card/set data | The ingestion module must be loosely coupled. The repository layer abstracts data source so a future API adapter can replace CSV processing without touching services or routes. |
 | Cloud hosting (AWS / GCP / Azure) | Docker Compose setup must use environment variables for all configuration (DB credentials, ports). No hardcoded local paths. |

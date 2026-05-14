@@ -23,6 +23,17 @@ export interface BaseCard {
   hasOpFoil: boolean;
 }
 
+export function parseCardDisplay(card: BaseCard): { displayName: string; subtitle: string | null } {
+  if (card.type === 'Base') {
+    return { displayName: card.name, subtitle: card.traits[0] ?? null };
+  }
+  const sep = card.name.indexOf(' - ');
+  if (sep !== -1) {
+    return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
+  }
+  return { displayName: card.name, subtitle: null };
+}
+
 export function groupByBaseCard(cards: Card[]): BaseCard[] {
   const map = new Map<string, BaseCard>();
 

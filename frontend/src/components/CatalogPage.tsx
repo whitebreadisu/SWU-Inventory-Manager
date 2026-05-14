@@ -1,13 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getCards, type Card } from '../api/cards';
-import { groupByBaseCard } from '../utils/catalog';
+import { groupByBaseCard, parseCardDisplay } from '../utils/catalog';
 import { getRarityLabel } from '../utils/variants';
-import { SWUButton } from './SWUButton';
 import { AspectIcon } from './AspectIcon';
 import { VariantCircles } from './VariantCircles';
 
-const SET_CODES = ['SOR', 'TWI', 'SHD', 'JTL', 'LOF', 'SEC', 'LAW'] as const;
-const ASPECTS = ['Command', 'Aggression', 'Cunning', 'Vigilance', 'Heroism', 'Villainy'] as const;
+const SET_CODES = ['SOR', 'SHD', 'TWI', 'JTL', 'LOF', 'SEC', 'LAW'] as const;
+const SET_IMAGES: Record<string, string> = {
+  SOR: '/images/set_SOR.png',
+  SHD: '/images/set_SHD.png',
+  TWI: '/images/set_TWI.png',
+  JTL: '/images/set_JTL.png',
+  LOF: '/images/set_LOF.png',
+  SEC: '/images/set_SEC.png',
+  LAW: '/images/set_LAW.png',
+};
+const ASPECTS = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'] as const;
 
 export function CatalogPage() {
   const [allCards, setAllCards] = useState<Card[]>([]);
@@ -56,9 +64,14 @@ export function CatalogPage() {
       <div className="filter-bar">
         <div className="filter-group">
           {SET_CODES.map(code => (
-            <SWUButton key={code} active={activeSets.has(code)} onClick={() => toggleSet(code)} size="sm">
-              {code}
-            </SWUButton>
+            <button
+              key={code}
+              className={`set-filter-btn${activeSets.has(code) ? '' : ' set-filter-btn--inactive'}`}
+              onClick={() => toggleSet(code)}
+              title={code}
+            >
+              <img src={SET_IMAGES[code]} alt={code} className="set-filter-img" />
+            </button>
           ))}
         </div>
 
@@ -98,26 +111,38 @@ export function CatalogPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(card => (
-                <tr key={`${card.set_code}-${card.base_card_number}`}>
-                  <td>{card.name}</td>
-                  <td>{getRarityLabel(card.rarity)}</td>
-                  <td>
-                    <span className="aspect-cell">
-                      {card.aspects.map(a => <AspectIcon key={a} aspect={a} size={16} />)}
-                    </span>
-                  </td>
-                  <td>{card.type}</td>
-                  <td className={card.cost == null ? 'cell-muted' : ''}>{card.cost ?? '—'}</td>
-                  <td className={card.power == null ? 'cell-muted' : ''}>{card.power ?? '—'}</td>
-                  <td className={card.hp == null ? 'cell-muted' : ''}>{card.hp ?? '—'}</td>
-                  <td className={card.traits.length === 0 ? 'cell-muted' : ''}>{card.traits.join(', ') || '—'}</td>
-                  <td className={card.keywords.length === 0 ? 'cell-muted' : ''}>{card.keywords.join(', ') || '—'}</td>
-                  <td className={card.arena == null ? 'cell-muted' : ''}>{card.arena ?? '—'}</td>
-                  <td><VariantCircles card={card} /></td>
-                  <td className="cell-muted">{card.set_code}</td>
-                </tr>
-              ))}
+              {filtered.map(card => {
+                const { displayName, subtitle } = parseCardDisplay(card);
+                const isBase = card.type === 'Base';
+                return (
+                  <tr key={`${card.set_code}-${card.base_card_number}`}>
+                    <td>
+                      {displayName}
+                      {subtitle && <span className="card-subtitle">{subtitle}</span>}
+                    </td>
+                    <td>{getRarityLabel(card.rarity)}</td>
+                    <td>
+                      <span className="aspect-cell">
+                        {card.aspects
+                        .slice()
+                        .sort((a, b) => ASPECTS.indexOf(a) - ASPECTS.indexOf(b))
+                        .map(a => <AspectIcon key={a} aspect={a} size={16} />)}
+                      </span>
+                    </td>
+                    <td>{card.type}</td>
+                    <td className={card.cost == null ? 'cell-muted' : ''}>{card.cost ?? '—'}</td>
+                    <td className={card.power == null ? 'cell-muted' : ''}>{card.power ?? '—'}</td>
+                    <td className={card.hp == null ? 'cell-muted' : ''}>{card.hp ?? '—'}</td>
+                    <td className={isBase || card.traits.length === 0 ? 'cell-muted' : ''}>
+                      {isBase ? '—' : (card.traits.join(', ') || '—')}
+                    </td>
+                    <td className={card.keywords.length === 0 ? 'cell-muted' : ''}>{card.keywords.join(', ') || '—'}</td>
+                    <td className={card.arena == null ? 'cell-muted' : ''}>{card.arena ?? '—'}</td>
+                    <td><VariantCircles card={card} /></td>
+                    <td className="cell-muted">{card.set_code}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

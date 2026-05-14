@@ -1,10 +1,10 @@
-const ASPECTS: Record<string, { fill: string; stroke: string }> = {
-  Command:    { fill: '#16a34a', stroke: '#15803d' },
-  Aggression: { fill: '#dc2626', stroke: '#b91c1c' },
-  Cunning:    { fill: '#ca8a04', stroke: '#a16207' },
-  Vigilance:  { fill: '#0369a1', stroke: '#075985' },
-  Heroism:    { fill: '#94a3b8', stroke: '#64748b' },
-  Villainy:   { fill: '#7e22ce', stroke: '#6b21a8' },
+const ASPECT_IMAGES: Record<string, string> = {
+  Command:    '/images/SWH_Aspects_Command.png',
+  Aggression: '/images/SWH_Aspects_Aggression.png',
+  Cunning:    '/images/SWH_Aspects_Cunning.png',
+  Vigilance:  '/images/SWH_Aspects_Vigilance.png',
+  Heroism:    '/images/SWH_Aspects_Heroism.png',
+  Villainy:   '/images/SWH_Aspects_Villainy.png',
 };
 
 interface Props {
@@ -13,19 +13,17 @@ interface Props {
 }
 
 export function AspectIcon({ aspect, size = 24 }: Props) {
-  const config = ASPECTS[aspect];
-  if (!config) return null;
-
-  const h = size;
-  const m = h / 2;
-  const pad = h * 0.08;
-
-  // Diamond points: top, right, bottom, left
-  const pts = `${m},${pad} ${h - pad},${m} ${m},${h - pad} ${pad},${m}`;
+  const src = ASPECT_IMAGES[aspect];
+  if (!src) return null;
 
   return (
-    <svg width={h} height={h} viewBox={`0 0 ${h} ${h}`} title={aspect} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-      <polygon points={pts} fill={config.fill} stroke={config.stroke} strokeWidth="1" />
-    </svg>
+    <img
+      src={src}
+      alt={aspect}
+      title={aspect}
+      width={size}
+      height={size}
+      style={{ display: 'inline-block', verticalAlign: 'middle' }}
+    />
   );
 }

@@ -88,8 +88,8 @@ Known sets at initial import:
 | Code | Full Name |
 |------|-----------|
 | SOR | Spark of Rebellion |
-| TWI | Twilight of the Republic |
 | SHD | Shadows of the Galaxy |
+| TWI | Twilight of the Republic |
 | JTL | Jump to Lightspeed |
 | LOF | Legends of the Force |
 | SEC | Secrets of Power |
@@ -143,15 +143,27 @@ The following tables extend the core card record with multi-value attributes and
 |-------|-----------|-------|
 | `card_aspects` | card_id (FK), aspect (VARCHAR 20) — composite PK | Valid values: Heroism, Villainy, Cunning, Aggression, Command, Vigilance |
 | `card_keywords` | card_id (FK), keyword (VARCHAR 50) — composite PK | Keyword data not present in TCGPlayer CSV source; table exists but is unpopulated |
-| `card_traits` | card_id (FK), trait (VARCHAR 50) — composite PK | Populated from CSV `extTraits` field (semicolon-delimited) |
+| `card_traits` | card_id (FK), trait (VARCHAR 50) — composite PK | Populated from CSV `extTraits` field. Base cards receive special handling — see note below. |
 | `card_details` | card_id (FK, PK), sub_text, cost, power, hp, arena, is_unique | Populated from CSV `extCost`, `extPower`, `extHP`, `extArenaType` fields |
 
 **Known data gaps:**
 - `card_keywords`: No keyword source in the TCGPlayer CSV. Will require a separate data source.
 - `sub_text` and `is_unique`: Not available in the CSV source. Reserved for future population.
 
+**Base card trait handling:**
+
+TCGPlayer repurposes the `extTraits` CSV field for base cards: it stores the card's location name (a display subtitle, not a gameplay trait) mixed with traits belonging to the token card printed on the reverse side of double-sided bases. The backfill script isolates the location name using two steps:
+
+1. **Intersection** — collects `extTraits` across all rows sharing a `card_number`. Traits that vary between token variants (e.g., Armor on a Shield token, Learned on an Experience token) are eliminated; only the value common to every variant survives. Effective for JTL (4 token types) and LOF (3 token types).
+2. **Token trait filter** — removes a maintained set of known token card traits (`Armor`, `Learned`, `Fighter`, `Vehicle`, `Force`, `Official`, `Supply`). Handles sets with only one token variant (SEC, LAW) where intersection alone cannot separate the location from the token trait.
+
+The result is that `card_traits` for base cards contains only the location name (e.g., `Tatooine`, `Coruscant`), or is empty if no location is present in the CSV. This must be updated when a new set introduces a new token type.
+
+**Backfill idempotency:** Trait rows are deleted and re-inserted on each run (unlike aspects and details which use `ON CONFLICT DO NOTHING`). This ensures corrections to the backfill logic take effect without requiring a manual cleanup step.
+
 **Nullability rules (in effect):**
-- `power` and `hp`: NULL for Base and Event types; populated for Leader, Unit, Upgrade.
+- `power`: NULL for Base and Event types; populated for Leader, Unit, Upgrade.
+- `hp`: NULL for Event types; populated for Leader, Unit, Upgrade, and Base (base HP is 25, 27, 30, or 35 depending on the card). Some base cards have NULL hp due to missing data in the TCGPlayer CSV source.
 - `arena`: "Ground" or "Space" for unit cards; NULL for non-unit types.
 - `cost`: NULL for Base cards; populated for all other types.
 
@@ -324,13 +336,7 @@ The application visual design mirrors the official Star Wars: Unlimited website 
 The button shape is recreated from the polygon paths used by the official site's SVG button assets (`swh_button_blue_l.svg`, `swh_button_blue_r.svg`). Each button is assembled from three parts: an inline SVG left cap (angled/pointed edge), a flat center label area, and an inline SVG right cap with a shadow polygon. Button color is driven by an `active` prop — blue (`#2563eb`) when active, dark grey (`#2d3748`) when inactive. Supports three sizes: `sm` (40px), `md` (52px), `lg` (64px).
 
 **Aspect Icons (`AspectIcon` component):**
-Diamond-shaped SVG polygons in the canonical aspect colors:
-
-| Aspect | Fill | Aspect | Fill |
-|--------|------|--------|------|
-| Command | `#16a34a` (green) | Vigilance | `#0369a1` (blue) |
-| Aggression | `#dc2626` (red) | Heroism | `#94a3b8` (silver) |
-| Cunning | `#ca8a04` (amber) | Villainy | `#7e22ce` (purple) |
+Official PNG images downloaded from the SWU media kit (`starwarsunlimited.com/media-kit`), served as static assets from `frontend/public/images/SWH_Aspects_*.png`. Rendered via `<img>` with a configurable `size` prop (width and height in px). One file per aspect: `SWH_Aspects_Command.png`, `SWH_Aspects_Aggression.png`, `SWH_Aspects_Cunning.png`, `SWH_Aspects_Vigilance.png`, `SWH_Aspects_Heroism.png`, `SWH_Aspects_Villainy.png`.
 
 **Variant Circles (`VariantCircles` component):**
 A row of 12px circles, one per variant type that exists for a given base card. Solid fill for non-foil variants; transparent with a colored border for foil variants.
@@ -350,10 +356,17 @@ A row of 12px circles, one per variant type that exists for a given base card. S
 
 The Catalog view displays the complete card catalog across all sets. It is the primary read-only reference view — inventory interaction happens in the Inventory section.
 
+**Canonical ordering rules (applied consistently everywhere sets or aspects appear in the UI):**
+
+- **Sets** — release order: SOR, SHD, TWI, JTL, LOF, SEC, LAW
+- **Aspects** — canonical order: Vigilance, Command, Aggression, Cunning, Heroism, Villainy
+
+These orderings govern filter buttons, table columns, card-level aspect display, and any future views. A card with multiple aspects always displays them in canonical aspect order regardless of the order returned by the API.
+
 **Filter bar:**
 
-- **Set filter:** Seven `SWUButton` toggle buttons (SOR / TWI / SHD / JTL / LOF / SEC / LAW). All sets are active by default. Clicking a button deactivates it (grey) and removes cards from that set from the table results.
-- **Aspect filter:** Six `AspectIcon` circular toggle buttons. All aspects are active by default. Clicking an aspect deactivates it and removes cards that have that aspect from results. A card with multiple aspects is removed if *any* of its aspects is deactivated.
+- **Set filter:** Seven image toggle buttons in release order, one per set. Each button displays the official set logo PNG (`frontend/public/images/set_SOR.png` … `set_LAW.png`). All sets are active by default. Clicking a button deactivates it (0.3 opacity) and removes cards from that set from the table results.
+- **Aspect filter:** Six `AspectIcon` circular toggle buttons in canonical aspect order. All aspects are active by default. Clicking an aspect deactivates it (0.3 opacity) and removes cards that have that aspect from results. A card with multiple aspects is removed if *any* of its aspects is deactivated.
 
 **Card table:**
 
@@ -361,18 +374,27 @@ One row per **base card** (not per variant). Cards are grouped by `base_card_num
 
 | Column | Source | Notes |
 |--------|--------|-------|
-| Name | `cards.name` | |
+| Name | `cards.name` | See subtitle display rules below |
 | Rarity | `cards.rarity` | Displayed as full label: Common, Uncommon, Rare, Legendary, Starter |
-| Aspect | `card_aspects.aspect` | Rendered as `AspectIcon` diamonds |
+| Aspect | `card_aspects.aspect` | Rendered as `AspectIcon` images, in canonical aspect order |
 | Type | `cards.type` | |
 | Cost | `card_details.cost` | `—` if null |
 | Power | `card_details.power` | `—` if null |
 | HP | `card_details.hp` | `—` if null |
-| Trait | `card_traits.trait` | Semicolon-joined list; `—` if none |
+| Trait | `card_traits.trait` | Comma-joined list; `—` if none. Always `—` for Base cards (location name is shown as subtitle, not as a trait). |
 | Keyword | `card_keywords.keyword` | Semicolon-joined list; `—` if none (currently unpopulated) |
 | Arena | `card_details.arena` | `—` if null |
 | Variants | Derived | `VariantCircles` component |
 | Set | `cards.set_code` | |
+
+**Name column — subtitle display rules:**
+
+Two card types render a subtitle below the primary name in smaller italic muted text (`parseCardDisplay` utility in `frontend/src/utils/catalog.ts`):
+
+- **Base cards:** subtitle is `card_traits[0]` — the location name stored there by the backfill (e.g., "Tatooine"). No trait values are shown in the Trait column for base cards.
+- **Named cards with ` - ` in the name:** text before the separator is the display name; text after is the subtitle (e.g., "Director Krennic" / "Aspiring to Authority"). The full hyphenated string remains the stored `cards.name` value.
+
+**Layout:** The catalog table wrapper fills all remaining viewport height below the heading and filter bar (`flex: 1` in a flex column chain from `html` → `.app-layout` → `.app-main` → `.catalog-page` → `.catalog-table-wrapper`). `overflow: auto` on the wrapper provides both vertical and horizontal scrollbars within the visible screen area — the horizontal scrollbar is always visible at the bottom of the viewport, not the bottom of the table content.
 
 **API:** The catalog fetches all cards in a single call (`GET /api/cards` with no filters) and performs grouping and filtering entirely on the frontend. This avoids multiple round-trips and keeps the filter interaction instant.
 
@@ -408,12 +430,13 @@ Development proceeds in vertical slices. Each slice delivers a complete, working
 | Foundation | F2 | Database schema migration (sets, cards, and inventory tables from Section 4). Card attribute table SQLAlchemy models (card_aspects, card_keywords, card_traits, card_details) defined in code; database migration deferred — these tables were created in migration 0016 during the S1 UI session. |
 | Foundation | F3 | CSV ingestion pipeline with field mapping config. All 14 CSVs imported and validated. Schema refined (migration 0002): variant string column replaced with boolean flags (is_foil, is_hyperspace, is_prestige, is_showcase). SOP Organized Play CSV has no card numbers — sequential values assigned from 1; requires future correction when source data is available. |
 | Foundation | F4 | Excel inventory ingestion. Inventory data loaded and reconciled against card records. After F4 validation, a catalog seed file is generated from the current database state (see Section 5.4). |
-| Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints (initial). React set selector and basic card table. Extended in the UI session: full application design system, Catalog view with set/aspect filter toggles, one-row-per-base-card table, variant circles, aspect icons, SWU-style button component, Header and SectionSeparator components. CardResponse expanded to include aspects, traits, and detail fields. Card attribute tables migrated (migration 0016) and backfilled from CSV source data. |
+| Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints (initial). React set selector and basic card table. Extended in the UI session: full application design system, Catalog view with set/aspect filter toggles, one-row-per-base-card table, variant circles, aspect icons, SWU-style button component, Header and SectionSeparator components. CardResponse expanded to include aspects, traits, and detail fields. Card attribute tables migrated (migration 0016) and backfilled from CSV source data. Further extended in subsequent session: official aspect PNG images (SWU media kit) replacing SVG placeholders; official set logo PNG images replacing SWUButton text filters; canonical set and aspect ordering enforced throughout; card name subtitle display (hyphen-split for named cards, location name for base cards); base card trait backfill corrected (intersection + token-trait filter isolates location from token card traits; traits DELETE + re-insert for idempotency); catalog seed regenerated; viewport-height scrollable table layout with always-visible scrollbars. |
 | Slice 2 | S2 | GET /api/inventory and inventory columns in card list table. Playset status indicators. |
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
 | Slice 4 | S4 | Increment/decrement inventory. Trade/sell signal. Playset complete confirmation. |
 | Foundation | F5 | Inventory snapshot & F4 retirement. ⚠ **Precondition: S4 must be complete and the UI validated as the source of truth for inventory before executing this phase.** `generate_inventory_snapshot.py` exports inventory to `db/snapshots/inventory_snapshot.sql`. `apply_inventory_snapshot.py` restores it idempotently on a fresh database. F4 ON CONFLICT changed from DO UPDATE to DO NOTHING. Excel file mount removed from docker-compose. See Section 5.5. |
 | Slice 5 | S5 | Filter bar (Type, Rarity, Variant). Missing cards view (/api/inventory/missing). |
+| Slice 6 | S6 | Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
 ### 8.3 Testing Requirements
 
@@ -443,6 +466,68 @@ The following enhancements are explicitly acknowledged and should inform archite
 | Figma / MCP UI design workflow | No V1 impact. Design tooling is external to the codebase. |
 | Serialized card variants | Serialized cards (individually-numbered collector cards) are excluded from V1. When in scope, add is_serialized BOOLEAN flag — no other schema changes needed due to the flags model design. |
 | Mobile-optimized UI | React component structure should avoid fixed-width layouts. Use responsive CSS from the start. |
+| Official card images (FFG CDN via swuapi.com) | Add `front_image_url` and `back_image_url` columns to the `cards` table when S6 is implemented (new migration — no V1 schema impact). Extend `CardResponse` to include both fields as nullable strings. See Section 9.1 for full implementation specification. |
+
+### 9.1 Official Card Images — S6 Specification
+
+**Goal:** Display official FFG card artwork sourced from `cdn.starwarsunlimited.com` via the swuapi.com community API.
+
+#### Data Source
+
+- **Endpoint:** `GET https://api.swuapi.com/export/all` — public, no authentication required
+- Returns all cards across all sets with `front_image_url` and `back_image_url` fields
+- Images are served from the official FFG CDN: `cdn.starwarsunlimited.com`
+- URL example: `https://cdn.starwarsunlimited.com/card_SWH_01_001_Director_Krennic_Leader_62eaa20dc2.png`
+- URLs contain a content hash and **cannot be constructed** from local data — the API response is the only source
+
+#### Schema Changes
+
+New Alembic migration adds two nullable columns to the `cards` table:
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| front_image_url | VARCHAR(500) | NULLABLE | Front face of the card. Populated by backfill script. |
+| back_image_url | VARCHAR(500) | NULLABLE | Back face (leaders only). NULL for all non-leader cards. |
+
+#### Backfill Script
+
+`backend/app/ingestion/backfill_image_urls.py` — one-time run, idempotent:
+
+1. Fetch full card catalog from `GET https://api.swuapi.com/export/all`
+2. For each API record, match to database records by `set_code` + `base_card_number`
+3. Write `front_image_url` and `back_image_url` to all matched records (Standard, Foil, Hyperspace, and other local variants for that base card all share the same image URL)
+4. Log any unmatched API records (cards not yet in the local DB — likely a new set)
+5. After a successful run, regenerate `db/seeds/catalog_seed.sql` to capture the URLs
+
+> ⚠ Variant handling: swuapi.com returns one record per unique card face, not one per local variant. The same `front_image_url` should be written to all local variant rows (Standard, Foil, Hyperspace Foil, etc.) that share a `base_card_number`. Match on `base_card_number`, not `card_number`.
+
+#### API Endpoint Change
+
+Extend `CardResponse` schema:
+
+```python
+front_image_url: Optional[str] = None
+back_image_url: Optional[str] = None
+```
+
+Both fields are nullable — cards without populated URLs render gracefully without an image.
+
+#### Frontend Changes
+
+- **Catalog view:** Card image thumbnail or expandable image panel (exact design TBD at implementation time)
+- **Card lookup panel (S3):** Display card image alongside variant/inventory data
+- **Graceful fallback:** If `front_image_url` is null, render a dark placeholder panel with the card name
+
+#### Seed Regeneration
+
+After the backfill script runs successfully, regenerate `db/seeds/catalog_seed.sql`. This makes image URLs part of the standard fresh-install sequence — no external API dependency at runtime.
+
+#### Ongoing Maintenance
+
+When a new set releases:
+1. Run ingestion pipeline for new set CSVs (existing process)
+2. Run `backfill_image_urls.py` to populate image URLs for new cards
+3. Regenerate catalog seed
 
 ---
 

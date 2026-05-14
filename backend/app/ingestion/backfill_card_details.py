@@ -1,7 +1,25 @@
 """Backfill card_aspects, card_traits, and card_details from the CSV source files.
 
 Reads the 7 standard-set (non-OP) CSVs and matches each row to all DB cards
-sharing the same base_card_number. Idempotent: uses ON CONFLICT DO NOTHING.
+sharing the same base_card_number. Idempotent: aspects and details use ON CONFLICT
+DO NOTHING; traits are deleted and re-inserted each run to allow corrections.
+
+Base card trait handling
+------------------------
+TCGPlayer repurposes the extTraits field for base cards: it mixes the card's
+location name (a subtitle, not a gameplay trait) with traits from the token card
+printed on the back of double-sided bases (e.g. "Armor", "Learned", "Official").
+
+Two-step isolation of the location name:
+  1. Intersection: collect extTraits across all rows sharing a card_number. Traits
+     that vary between token variants (Armor vs Learned vs Fighter) are eliminated;
+     only traits common to every variant survive. Works for JTL (4 variants) and
+     LOF (3 variants).
+  2. Token-trait filter: remove known token card traits from whatever remains.
+     Handles SEC and LAW, which each have only one token variant so intersection
+     alone cannot distinguish the location from the token trait.
+
+_TOKEN_TRAITS must be updated whenever a new set introduces a new token type.
 
 Usage (inside the backend container):
     python -m app.ingestion.backfill_card_details
@@ -32,6 +50,19 @@ STANDARD_FILES = [
     ("LAW", "ALawlessTimeProductsAndPrices.csv"),
 ]
 
+# Traits that belong to token card backs, not to the base card itself.
+# These are filtered out when extracting the location name from base card extTraits.
+# Update this set when a new set introduces a new token type.
+_TOKEN_TRAITS: frozenset[str] = frozenset({
+    "Armor",    # Shield token (JTL, LOF)
+    "Learned",  # Experience token (JTL, LOF)
+    "Fighter",  # Unit token — X-Wing / TIE Fighter (JTL)
+    "Vehicle",  # Unit token — X-Wing / TIE Fighter (JTL)
+    "Force",    # Force token (LOF)
+    "Official", # Spy token (SEC)
+    "Supply",   # Credit token (LAW)
+})
+
 
 def _parse_list(raw: str) -> list[str]:
     return [s.strip() for s in raw.split(";") if s.strip()]
@@ -42,6 +73,56 @@ def _parse_int(raw: str) -> int | None:
         return int(raw.split("/")[0].strip())
     except (ValueError, AttributeError):
         return None
+
+
+def _build_enrichment(filepath: Path) -> dict[str, dict]:
+    """Parse one CSV file into a per-card enrichment dict.
+
+    Phase 1 — collect every row for each card_number.
+    Phase 2 — compute canonical enrichment data:
+      - Base cards: location = intersection of all trait sets, minus token traits.
+      - All other cards: first row wins for all fields.
+    """
+    rows_by_number: dict[str, list[dict]] = {}
+
+    with open(filepath, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            raw_number = row.get("extNumber", "").strip()
+            if not raw_number:
+                continue
+            try:
+                card_number = parse_card_number(raw_number)
+            except Exception:
+                continue
+            rows_by_number.setdefault(card_number, []).append(row)
+
+    enrichment: dict[str, dict] = {}
+
+    for card_number, rows in rows_by_number.items():
+        first = rows[0]
+        card_type = first.get("extCardType", "").strip()
+
+        if card_type == "Base":
+            trait_sets = [set(_parse_list(r.get("extTraits", ""))) for r in rows]
+            non_empty = [s for s in trait_sets if s]
+            if non_empty:
+                candidates = set.intersection(*non_empty) - _TOKEN_TRAITS
+            else:
+                candidates = set()
+            traits = sorted(candidates)
+        else:
+            traits = _parse_list(first.get("extTraits", ""))
+
+        enrichment[card_number] = {
+            "aspects": _parse_list(first.get("extAspect", "")),
+            "traits": traits,
+            "cost": _parse_int(first.get("extCost", "")),
+            "power": _parse_int(first.get("extPower", "")),
+            "hp": _parse_int(first.get("extHP", "")),
+            "arena": first.get("extArenaType", "").strip() or None,
+        }
+
+    return enrichment
 
 
 def run(db) -> None:
@@ -61,41 +142,9 @@ def run(db) -> None:
             logger.warning("CSV not found: %s — skipping", filepath)
             continue
 
-        # Build map: base_card_number (str) -> enrichment data
-        # Use the first non-empty record for each card_number as canonical data.
-        enrichment: dict[str, dict] = {}
+        enrichment = _build_enrichment(filepath)
 
-        with open(filepath, newline="", encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                raw_number = row.get("extNumber", "").strip()
-                if not raw_number:
-                    continue
-                try:
-                    card_number = parse_card_number(raw_number)
-                except Exception:
-                    continue
-
-                if card_number in enrichment:
-                    continue  # already captured canonical data from first row
-
-                aspects = _parse_list(row.get("extAspect", ""))
-                traits = _parse_list(row.get("extTraits", ""))
-                cost = _parse_int(row.get("extCost", ""))
-                power = _parse_int(row.get("extPower", ""))
-                hp = _parse_int(row.get("extHP", ""))
-                arena = row.get("extArenaType", "").strip() or None
-
-                enrichment[card_number] = {
-                    "aspects": aspects,
-                    "traits": traits,
-                    "cost": cost,
-                    "power": power,
-                    "hp": hp,
-                    "arena": arena,
-                }
-
-        # Fetch all cards for this set, grouped by base_card_number
-        rows = db.execute(
+        card_rows = db.execute(
             text("SELECT id, base_card_number FROM cards WHERE set_id = :sid"),
             {"sid": set_id},
         ).fetchall()
@@ -104,7 +153,7 @@ def run(db) -> None:
         trait_rows = []
         detail_rows = []
 
-        for card_id, base_num in rows:
+        for card_id, base_num in card_rows:
             data = enrichment.get(base_num)
             if data is None:
                 continue
@@ -123,11 +172,20 @@ def run(db) -> None:
                 "arena": data["arena"],
             })
 
+        # Traits are deleted and re-inserted to ensure corrections take effect.
+        db.execute(
+            text(
+                "DELETE FROM card_traits WHERE card_id IN "
+                "(SELECT id FROM cards WHERE set_id = :sid)"
+            ),
+            {"sid": set_id},
+        )
+
         if aspect_rows:
             db.execute(
                 text(
-                    "INSERT INTO card_aspects (card_id, aspect) VALUES (:card_id, :aspect) "
-                    "ON CONFLICT DO NOTHING"
+                    "INSERT INTO card_aspects (card_id, aspect) "
+                    "VALUES (:card_id, :aspect) ON CONFLICT DO NOTHING"
                 ),
                 aspect_rows,
             )
@@ -135,8 +193,8 @@ def run(db) -> None:
         if trait_rows:
             db.execute(
                 text(
-                    "INSERT INTO card_traits (card_id, trait) VALUES (:card_id, :trait) "
-                    "ON CONFLICT DO NOTHING"
+                    "INSERT INTO card_traits (card_id, trait) "
+                    "VALUES (:card_id, :trait) ON CONFLICT DO NOTHING"
                 ),
                 trait_rows,
             )

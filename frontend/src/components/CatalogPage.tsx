@@ -29,8 +29,6 @@ export function CatalogPage() {
 
   return (
     <div className="catalog-page">
-      <h2 className="catalog-heading">Catalog</h2>
-
       <FilterPanel filters={filters} setFilters={setFilters} cards={baseCards} />
 
       {loading ? (
@@ -40,6 +38,7 @@ export function CatalogPage() {
           <table className="catalog-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>Name</th>
                 <th>Rarity</th>
                 <th>Aspect</th>
@@ -60,6 +59,7 @@ export function CatalogPage() {
                 const isBase = card.type === 'Base';
                 return (
                   <tr key={`${card.set_code}-${card.base_card_number}`}>
+                    <td className="cell-muted td-cardnum">{card.base_card_number}</td>
                     <td>
                       {displayName}
                       {subtitle && <span className="card-subtitle">{subtitle}</span>}

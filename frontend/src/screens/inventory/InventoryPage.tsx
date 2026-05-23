@@ -4,6 +4,7 @@ import { groupWithInventory, isPlaysetComplete } from '../../utils/inventory';
 import { InventorySummary } from './InventorySummary';
 import { InventoryTable } from './InventoryTable';
 import { FilterPanel, applyFilters, DEFAULT_FILTERS } from '../../components/FilterPanel';
+import { SWUButton } from '../../components/SWUButton';
 import type { InventoryCard } from '../../utils/inventory';
 import type { FilterState } from '../../components/FilterPanel';
 import type { BaseCard } from '../../utils/catalog';
@@ -68,12 +69,13 @@ export function InventoryPage() {
 
   return (
     <div className="screen">
-      <h2 className="screen-heading">Inventory</h2>
       {loading ? (
         <p className="loading-text">Loading inventory…</p>
       ) : (
         <>
-          <InventorySummary cards={cards} />
+          <InventorySummary cards={cards}>
+            <SWUButton size="sm">Add Cards</SWUButton>
+          </InventorySummary>
           <FilterPanel filters={filters} setFilters={setFilters} cards={cards as BaseCard[]}>
             <div className="ifp-toggle-row">
               <button

@@ -1,5 +1,3 @@
-import { SWUButton } from './SWUButton';
-
 type Section = 'inventory' | 'catalog' | 'decks';
 
 interface Props {
@@ -30,12 +28,6 @@ export function Header({ activeSection, onSectionChange }: Props) {
         ))}
       </nav>
 
-      {activeSection === 'inventory' && (
-        <div className="app-header__subnav">
-          <SWUButton size="sm">Add Cards</SWUButton>
-          <SWUButton size="sm">Card Search</SWUButton>
-        </div>
-      )}
     </header>
   );
 }

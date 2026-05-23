@@ -4,9 +4,10 @@ import type { InventoryCard } from '../../utils/inventory';
 
 interface Props {
   cards: InventoryCard[];
+  children?: React.ReactNode;
 }
 
-export function InventorySummary({ cards }: Props) {
+export function InventorySummary({ cards, children }: Props) {
   const total = cards.length;
   const playsetCount = cards.filter(c => isPlaysetComplete(c.inventory, c.type)).length;
   const ownedCount = cards.filter(c => isOwned(c.inventory)).length;
@@ -32,6 +33,7 @@ export function InventorySummary({ cards }: Props) {
         <span className="inv-summary__label">cards</span>
         <span className="inv-summary__sub">({ownedCount.toLocaleString()} unique)</span>
       </span>
+      {children && <span className="inv-summary__actions">{children}</span>}
     </div>
   );
 }

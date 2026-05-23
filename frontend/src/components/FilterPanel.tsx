@@ -82,10 +82,7 @@ export function applyFilters(cards: BaseCard[], filters: FilterState): BaseCard[
   return cards.filter(card => {
     if (q) {
       const { displayName, subtitle } = parseCardDisplay(card);
-      const hay = [
-        displayName, subtitle ?? '',
-        ...card.traits, ...card.keywords, card.type,
-      ].join(' ').toLowerCase();
+      const hay = `${displayName} ${subtitle ?? ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
 
@@ -390,7 +387,7 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({ filters, setFilters, cards, children }: FilterPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const update = (patch: Partial<FilterState>) =>
     setFilters(prev => ({ ...prev, ...patch }));
@@ -434,28 +431,32 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
 
       {!collapsed && (
         <div className="ifp__body">
-          <div className="ifp-search">
-            <svg className="ifp-search__icon" width="16" height="16" viewBox="0 0 16 16">
-              <circle cx="7" cy="7" r="5" stroke="currentColor" fill="none" strokeWidth="1.5" />
-              <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search cards…"
-              value={filters.search}
-              onChange={e => update({ search: e.target.value })}
-            />
-            {filters.search && (
-              <button
-                type="button"
-                className="ifp-search__clear"
-                onClick={() => update({ search: '' })}
-                aria-label="Clear search"
-              >×</button>
-            )}
-          </div>
+          <div className="ifp-top-row">
+            <div className="ifp-search">
+              <svg className="ifp-search__icon" width="16" height="16" viewBox="0 0 16 16">
+                <circle cx="7" cy="7" r="5" stroke="currentColor" fill="none" strokeWidth="1.5" />
+                <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search cards…"
+                value={filters.search}
+                onChange={e => update({ search: e.target.value })}
+              />
+              {filters.search && (
+                <button
+                  type="button"
+                  className="ifp-search__clear"
+                  onClick={() => update({ search: '' })}
+                  aria-label="Clear search"
+                >×</button>
+              )}
+            </div>
 
-          <AspectPicker selected={filters.aspects} onToggle={toggleAspect} />
+            <AspectPicker selected={filters.aspects} onToggle={toggleAspect} />
+
+            {children && <div className="ifp-top-row__end">{children}</div>}
+          </div>
 
           <div className="ifp-grid ifp-grid--4">
             <MultiSelect label="Set"     values={filters.set}     onChange={v => update({ set: v })}     options={setOptions}     placeholder="All sets" />
@@ -475,8 +476,6 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
             <RangeSlider label="Power" max={POWER_MAX} value={filters.powerRange} onChange={v => update({ powerRange: v })} />
             <RangeSlider label="HP"    max={HP_MAX}    value={filters.hpRange}    onChange={v => update({ hpRange: v })} />
           </div>
-
-          {children}
         </div>
       )}
     </div>

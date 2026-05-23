@@ -41,6 +41,29 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* ── Top row (search + aspects + optional slot) ─────────── */
+
+.ifp-top-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.ifp-top-row .ifp-search {
+  flex: 1;
+  min-width: 180px;
+}
+
+.ifp-top-row .ifp-aspects {
+  justify-content: flex-start;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.ifp-top-row__end {
+  flex-shrink: 0;
+}
+
 /* ── Search ─────────────────────────────────────────────── */
 
 .ifp-search { position: relative; }

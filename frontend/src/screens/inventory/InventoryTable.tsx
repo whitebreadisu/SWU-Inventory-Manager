@@ -24,6 +24,7 @@ export function InventoryTable({ cards, onIncrement, onDecrement }: Props) {
       <table className="data-table data-table--inventory">
         <thead>
           <tr>
+            <th>#</th>
             <th>Name</th>
             <th className="th-inventory">Inventory</th>
             <th>Playset</th>
@@ -45,6 +46,7 @@ export function InventoryTable({ cards, onIncrement, onDecrement }: Props) {
             const isBase = card.type === 'Base';
             return (
               <tr key={`${card.set_code}-${card.base_card_number}`}>
+                <td className="cell-muted td-cardnum">{card.base_card_number}</td>
                 <td className="td-name">
                   {displayName}
                   {subtitle && <span className="card-subtitle">{subtitle}</span>}

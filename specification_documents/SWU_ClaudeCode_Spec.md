@@ -383,7 +383,7 @@ These orderings govern filter buttons, table columns, card-level aspect display,
 
 A shared, collapsible filter panel used on both the Catalog and Inventory screens. All filter state is managed in the parent screen component. The panel collapses to a single header row via a chevron toggle.
 
-> ⚠ The Catalog initially shipped with simple set-logo image toggle buttons and aspect-icon toggle buttons (S1). `FilterPanel` replaces this bar in S5.
+> The Catalog initially shipped with simple set-logo image toggle buttons and aspect-icon toggle buttons (S1). `FilterPanel` replaced that bar in S5 (complete).
 
 | Control | Detail |
 |---------|--------|
@@ -554,7 +554,7 @@ The design archive is committed at `claude_design/SWU Inventory Manager Design S
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
 | Slice 4 | S4 | ~~Increment/decrement inventory. Trade/sell signal. Playset complete confirmation.~~ Delivered in S2. |
 | Foundation | F5 | Inventory snapshot & F4 retirement. ⚠ **Precondition: S4 must be complete and the UI validated as the source of truth for inventory before executing this phase.** `generate_inventory_snapshot.py` exports inventory to `db/snapshots/inventory_snapshot.sql`. `apply_inventory_snapshot.py` restores it idempotently on a fresh database. F4 ON CONFLICT changed from DO UPDATE to DO NOTHING. Excel file mount removed from docker-compose. See Section 5.5. |
-| Slice 5 | S5 | Port shared `FilterPanel` to TypeScript. Apply to Catalog (replacing the S1 set-logo/aspect-icon toggle bar) and Inventory screens. Implements: collapsible panel, free-text search, aspect picker, Set/Type/Rarity/Variant multi-select dropdowns, searchable Keywords/Traits/Arenas dropdowns, Cost/Power/HP dual-handle range sliders. The "Show only incomplete playsets" toggle on Inventory provides the UI surface for incomplete-playset filtering; `GET /api/inventory/missing` is retained as the backend data source. |
+| Slice 5 | S5 | Shared `FilterPanel` ported to TypeScript and applied to both screens. `FilterPanel.tsx` lives in `frontend/src/components/` with co-located `FilterPanel.css`. Exports: `FilterPanel`, `MultiSelect`, `RangeSlider`, `AspectPicker`, `applyFilters`, `DEFAULT_FILTERS`, `FilterState`. Catalog: S1 set-logo/aspect toggle bar removed; replaced with `FilterPanel` (no children). Inventory: `FilterPanel` added with the "Show only incomplete playsets" toggle slotted as a child; `InventorySummary` receives the full unfiltered card list so stats stay stable under filtering; `applyFilters` runs first, `incompleteOnly` predicate after. Implementation note: `applyFilters` calls `parseCardDisplay(card)` internally to derive `displayName`/`subtitle` for text search — avoids adding computed fields to `BaseCard`. `InventoryCard[]` is safely cast to `BaseCard[]` when passed to `FilterPanel` because `InventoryCard` extends `BaseCard`. |
 | Slice 6 | S6 | Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
 ### 8.3 Testing Requirements

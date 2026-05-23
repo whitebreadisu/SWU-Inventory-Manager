@@ -1,15 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getInventory, incrementCard, decrementCard } from '../../api/inventory';
-import { groupWithInventory } from '../../utils/inventory';
+import { groupWithInventory, isPlaysetComplete } from '../../utils/inventory';
 import { InventorySummary } from './InventorySummary';
 import { InventoryTable } from './InventoryTable';
+import { FilterPanel, applyFilters, DEFAULT_FILTERS } from '../../components/FilterPanel';
 import type { InventoryCard } from '../../utils/inventory';
+import type { FilterState } from '../../components/FilterPanel';
+import type { BaseCard } from '../../utils/catalog';
 import './inventory.css';
 
 export function InventoryPage() {
   const [cards, setCards] = useState<InventoryCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [incompleteOnly, setIncompleteOnly] = useState(false);
 
   useEffect(() => {
     getInventory()
@@ -17,6 +22,12 @@ export function InventoryPage() {
       .catch(err => setError(String(err)))
       .finally(() => setLoading(false));
   }, []);
+
+  const filtered = useMemo(() => {
+    let result = applyFilters(cards as BaseCard[], filters) as InventoryCard[];
+    if (incompleteOnly) result = result.filter(c => !isPlaysetComplete(c.inventory, c.type));
+    return result;
+  }, [cards, filters, incompleteOnly]);
 
   async function handleIncrement(card: InventoryCard, invKey: string) {
     const cardId = card.cardIds[invKey];
@@ -63,8 +74,21 @@ export function InventoryPage() {
       ) : (
         <>
           <InventorySummary cards={cards} />
+          <FilterPanel filters={filters} setFilters={setFilters} cards={cards as BaseCard[]}>
+            <div className="ifp-toggle-row">
+              <button
+                type="button"
+                className={`pl-toggle${incompleteOnly ? ' pl-toggle--on' : ''}`}
+                onClick={() => setIncompleteOnly(v => !v)}
+                aria-pressed={incompleteOnly}
+              >
+                <span className="pl-toggle__box" />
+                <span className="pl-toggle__label">Show only incomplete playsets</span>
+              </button>
+            </div>
+          </FilterPanel>
           <InventoryTable
-            cards={cards}
+            cards={filtered}
             onIncrement={handleIncrement}
             onDecrement={handleDecrement}
           />

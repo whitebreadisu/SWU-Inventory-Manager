@@ -17,6 +17,8 @@
   --color-border:   #1e2748;
   --font-ui:        'Barlow Condensed', sans-serif;
   --font-body:      'Barlow', system-ui, sans-serif;
+  --font-mono:      ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  --aspect-command: #178a3a;
 }
 
 body {

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import sets as sets_router
 from app.routers import cards as cards_router
+from app.routers import inventory as inventory_router
 
 app = FastAPI(
     title="SWU Inventory Manager",
@@ -19,6 +20,7 @@ app.add_middleware(
 
 app.include_router(sets_router.router)
 app.include_router(cards_router.router)
+app.include_router(inventory_router.router)
 
 
 @app.get("/health")

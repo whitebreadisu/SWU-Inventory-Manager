@@ -1,0 +1,253 @@
+/* ── Inventory screen ───────────────────────────────────────────────────── */
+
+.screen {
+  max-width: 1600px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen-heading {
+  font-family: var(--font-ui);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin: 0 0 20px;
+}
+
+/* Summary strip */
+.inv-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.inv-summary__metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.inv-summary__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.inv-summary__value {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.inv-summary__sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.inv-summary__sep {
+  color: var(--color-text-muted);
+  font-size: 18px;
+  padding: 0 2px;
+}
+
+/* Data table (shared chrome for Inventory) */
+.data-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.data-table thead th {
+  background: var(--bg-surface);
+  padding: 10px 12px;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: var(--bg-surface-alt);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.07);
+}
+
+.data-table tbody td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.data-table .cell-muted {
+  color: var(--color-text-muted);
+}
+
+/* Inventory-specific column widths */
+.data-table--inventory .td-name      { min-width: 200px; white-space: normal; }
+.data-table--inventory .td-inventory { padding-right: 16px; }
+.data-table--inventory .th-inventory { min-width: 360px; }
+
+/* ── VariantInventory chips + steppers ──────────────────────────────────── */
+
+.variant-inv {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+}
+
+.variant-inv__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.variant-inv__chip--zero { color: var(--color-text-muted); }
+
+.variant-inv__label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.variant-inv__colon { margin-right: 4px; }
+
+.variant-inv__qty {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 14px;
+  text-align: center;
+  letter-spacing: 0;
+  color: inherit;
+}
+
+.variant-inv__step {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--color-text-muted);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.data-table--inventory tbody tr:hover .variant-inv__step,
+.variant-inv__chip:hover .variant-inv__step,
+.variant-inv__chip:focus-within .variant-inv__step { opacity: 1; }
+
+.variant-inv__step:hover {
+  background: var(--bg-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.variant-inv__step:active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.variant-inv__step:disabled { opacity: 0; pointer-events: none; }
+.data-table--inventory tbody tr:hover .variant-inv__step:disabled { opacity: 0.25; }
+
+/* Blocked state: + button for a completed playset */
+.variant-inv__step--blocked {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* ── Playset cell ────────────────────────────────────────────────────────── */
+
+.playset { display: inline-flex; align-items: center; gap: 8px; }
+.playset__pips { display: inline-flex; gap: 3px; align-items: center; }
+
+.playset__pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-text-muted);
+  background: transparent;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.playset__pip--filled {
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.playset--complete .playset__pip--filled {
+  background: var(--aspect-command);
+  border-color: var(--aspect-command);
+}
+
+.playset__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}
+
+.playset--complete .playset__label {
+  color: var(--aspect-command);
+  font-weight: 600;
+}
+
+.playset--empty .playset__pip { border-color: var(--color-border); }
+.playset--empty .playset__label { color: var(--color-text-muted); }

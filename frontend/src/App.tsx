@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header } from './components/Header';
 import { SectionSeparator } from './components/SectionSeparator';
 import { CatalogPage } from './components/CatalogPage';
+import { InventoryPage } from './screens/inventory/InventoryPage';
 
 type Section = 'inventory' | 'catalog' | 'decks';
 
@@ -14,7 +15,7 @@ function App() {
       <SectionSeparator />
       <main className="app-main">
         {activeSection === 'catalog'   && <CatalogPage />}
-        {activeSection === 'inventory' && <p className="placeholder">Inventory — coming soon</p>}
+        {activeSection === 'inventory' && <InventoryPage />}
         {activeSection === 'decks'     && <p className="placeholder">Decks — coming soon</p>}
       </main>
     </div>

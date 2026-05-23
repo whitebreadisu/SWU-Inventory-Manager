@@ -19,7 +19,7 @@ This application provides personal card inventory management for the Star Wars U
 
 ### 1.2 Domain Rules
 
-- **Playset:** Three copies of a card constitute a full playset. Visual variants do not count as different cards for gameplay purposes; a deck may hold three of a given card regardless of variant.
+- **Playset:** The number of copies that constitute a full playset depends on card type. For **Leader** and **Base** cards, one copy constitutes a full playset (only one leader and one base may be used in a deck at a time). For all other card types, three copies constitute a full playset. Visual variants do not count as different cards for gameplay purposes.
 - **Variants:** A card may exist in multiple visual variants. Not all sets contain all variant types. Not all cards within a set have all variants.
 - **Card numbering:** Numbering schemes differ by set. In some sets all variants of a card share the same card number; in others, each variant has a unique card number.
 - **Showcase variant rule:** The Showcase variant is only valid for cards where Type = Leader.
@@ -31,7 +31,6 @@ This application provides personal card inventory management for the Star Wars U
 - Adding new sets post-initial import
 - Cross-set filtering views
 - Cloud hosting and CI/CD pipeline to production
-- Figma/MCP UI design workflow
 
 ---
 
@@ -282,11 +281,26 @@ Once the UI owns the inventory, the Excel file is retired and a snapshot-based p
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | /api/inventory | List all inventory records with quantity > 0. Supports query param: set_code |
-| GET | /api/inventory/missing | List card+variant records with quantity < 3 (incomplete playset). Supports query param: set_code |
-| POST | /api/inventory/{card_id}/increment | Increment quantity by 1. Returns updated record and a flag if quantity has reached 3 (playset complete) or exceeds 3 (trade/sell signal). |
-| POST | /api/inventory/{card_id}/decrement | Decrement quantity by 1. Minimum quantity is 0. |
-| PUT | /api/inventory/{card_id} | Set an explicit quantity. Body: `{ quantity: int }` |
+| GET | /api/inventory | List every card variant record joined with its inventory quantity, including records with quantity 0. Response: `CardResponse` extended with `quantity: int`. |
+| GET | /api/inventory/missing | List card+variant records with an incomplete playset. Supports query param: set_code. |
+| POST | /api/inventory/{card_id}/increment | Increment the quantity for a specific variant by 1. See increment rules below. |
+| POST | /api/inventory/{card_id}/decrement | Decrement the quantity for a specific variant by 1. Floor: 0. Returns `{ card_id, quantity }`. |
+| PUT | /api/inventory/{card_id} | Set an explicit quantity. Body: `{ quantity: int }`. |
+
+**Increment rules (`POST /api/inventory/{card_id}/increment`):**
+
+The behaviour differs by card type because Leader and Base cards have a playset size of 1.
+
+*Leader and Base cards — per-variant cap of 1:*
+- If this variant's `quantity >= 1`: do NOT increment. Return `{ blocked: true, reason: "trade_sell" }` with HTTP 200.
+- Otherwise: increment to 1 and return `{ quantity: 1, playset_complete: true }`.
+
+*All other card types — shared cap of 3 across variants:*
+- Compute `total` = sum of quantities across all variants of the same base card.
+- If `total >= 3`: do NOT increment. Return `{ blocked: true, reason: "trade_sell" }` with HTTP 200.
+- Otherwise: increment and return `{ quantity, playset_complete: true }` when the new total equals exactly 3, or `{ quantity, playset_complete: false }` otherwise.
+
+All responses include `card_id`, `quantity`, `playset_complete` (bool), `blocked` (bool), and `reason` (string | null).
 
 ### 6.4 Card Lookup
 
@@ -323,7 +337,9 @@ The application visual design mirrors the official Star Wars: Unlimited website 
 | `--bg-surface` | `#0f1528` | Header, table header |
 | `--bg-surface-alt` | `#0b0f1f` | Alternating table rows |
 | `--color-primary` | `#2563eb` | Active buttons, underlines, borders |
+| `--color-primary-dim` | `#1d4ed8` | Hover/pressed state for primary buttons |
 | `--color-btn-off` | `#2d3748` | Inactive/greyed-out filter buttons |
+| `--color-border-strong` | `rgba(37,99,235,0.45)` | Section separator accent border |
 | `--color-text` | `#e6e6e6` | Primary text |
 | `--color-text-muted` | `#6b7a99` | Secondary text, column headers |
 | `--color-border` | `#1e2748` | Table borders, surface dividers |
@@ -363,10 +379,24 @@ The Catalog view displays the complete card catalog across all sets. It is the p
 
 These orderings govern filter buttons, table columns, card-level aspect display, and any future views. A card with multiple aspects always displays them in canonical aspect order regardless of the order returned by the API.
 
-**Filter bar:**
+**Filter panel (`FilterPanel` component):**
 
-- **Set filter:** Seven image toggle buttons in release order, one per set. Each button displays the official set logo PNG (`frontend/public/images/set_SOR.png` … `set_LAW.png`). All sets are active by default. Clicking a button deactivates it (0.3 opacity) and removes cards from that set from the table results.
-- **Aspect filter:** Six `AspectIcon` circular toggle buttons in canonical aspect order. All aspects are active by default. Clicking an aspect deactivates it (0.3 opacity) and removes cards that have that aspect from results. A card with multiple aspects is removed if *any* of its aspects is deactivated.
+A shared, collapsible filter panel used on both the Catalog and Inventory screens. All filter state is managed in the parent screen component. The panel collapses to a single header row via a chevron toggle.
+
+> ⚠ The Catalog initially shipped with simple set-logo image toggle buttons and aspect-icon toggle buttons (S1). `FilterPanel` replaces this bar in S5.
+
+| Control | Detail |
+|---------|--------|
+| Search | Free-text input. Matches name, subtitle, traits, keywords, and type. |
+| Aspect picker | Six `AspectIcon` hex-shield buttons in canonical order. All active by default. Clicking when all are active isolates to that aspect. Clicking an active aspect in a partial selection deactivates it; clearing to zero resets to all-active. |
+| Multi-select row 1 | **Set** (code + name), **Type**, **Rarity**, **Variant** — each a dropdown with select-all/clear controls. |
+| Multi-select row 2 | **Keywords** (searchable), **Traits** (searchable), **Arenas**. |
+| Range sliders | **Cost** (0–15), **Power** (0–12), **HP** (0–35) — dual-handle. Label reads "Any" when at full range. |
+| Children slot | Screen-specific controls rendered inside the panel border. Catalog passes no children. Inventory slots in the "Show only incomplete playsets" toggle (see Section 7.4). |
+
+*Filter logic:* Within each multi-select, logic is OR. Across controls, logic is AND. Cards with no aspects pass aspect filtering only when all six aspects are active.
+
+`applyFilters(cards, filters)` is a shared pure function exported from `FilterPanel` and applied identically on both screens. Screen-specific predicates are applied after `applyFilters` in the parent component.
 
 **Card table:**
 
@@ -398,19 +428,96 @@ Two card types render a subtitle below the primary name in smaller italic muted 
 
 **API:** The catalog fetches all cards in a single call (`GET /api/cards` with no filters) and performs grouping and filtering entirely on the frontend. This avoids multiple round-trips and keeps the filter interaction instant.
 
-### 7.4 Core Interaction: Card Number Lookup & Inventory Update
+### 7.4 Inventory View
+
+The Inventory view displays all cards in the catalog with the user's current owned counts overlaid per variant. It is the primary editing surface — all bulk inventory changes happen here; quick single-card entry happens in the card number lookup flow (Section 7.5).
+
+**Layout:**
+
+```
+InventoryPage
+├── INVENTORY heading
+├── InventorySummary
+├── FilterPanel (+ "Show only incomplete playsets" toggle as child slot)
+└── InventoryTable
+```
+
+**`InventorySummary` component:**
+
+A single-line stat strip rendered above the filter panel. Receives the **full unfiltered card list** so stats remain stable as filters change.
+
+Format: `Playset complete: NN%  —  Set complete: NN%  —  N cards (N unique)`
+
+| Stat | Definition |
+|------|------------|
+| Playset complete % | Cards where playset is complete ÷ total cards. Leader/Base: complete at ≥ 1 total copy. All others: complete at ≥ 3 total copies across variants. |
+| Set complete % | Cards where total owned > 0 ÷ total cards |
+| N cards | Total owned cards summed across all variants |
+| N unique | Distinct base cards with at least one copy owned |
+
+**Filter panel:**
+
+Uses the shared `FilterPanel` component (Section 7.3). The `incompleteOnly` toggle is a screen-specific extension slotted in as a `FilterPanel` child so it renders inside the same panel border. When active, applies a post-`applyFilters` predicate: `cards.filter(c => !isPlaysetComplete(c))`. Label: "Show only incomplete playsets". This is the UI surface for incomplete-playset filtering; `GET /api/inventory/missing` provides the equivalent data for programmatic/API access.
+
+**`InventoryTable` columns:**
+
+One row per **base card** (grouped by `base_card_number` on the frontend before rendering).
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| Name | `cards.name` | Same subtitle display rules as Catalog |
+| Inventory | Derived | `VariantInventory` component |
+| Playset | Derived | `PlaysetCell` component |
+| Rarity | `cards.rarity` | Full label |
+| Aspect | `card_aspects.aspect` | `AspectIcon` images, canonical order |
+| Type | `cards.type` | |
+| Cost | `card_details.cost` | `—` if null |
+| Power | `card_details.power` | `—` if null |
+| HP | `card_details.hp` | `—` if null |
+| Trait | `card_traits.trait` | Same rules as Catalog |
+| Keyword | `card_keywords.keyword` | Comma-joined; `—` if none |
+| Arena | `card_details.arena` | `—` if null |
+| Set | `cards.set_code` | |
+
+**`VariantInventory` component:**
+
+Renders one chip per variant the card has (only variants that exist for that base card). Each chip displays a short label, the current quantity, and `−`/`+` step buttons that appear on hover. `−` is disabled when quantity = 0. Zero-quantity chips are visually dimmed.
+
+| Short | Variant |
+|-------|---------|
+| S | Standard |
+| F | Foil |
+| HS | Hyperspace |
+| HSF | Hyperspace Foil |
+| P | Prestige |
+| PF | Prestige Foil |
+| OP | Organized Play |
+| OPF | OP Foil |
+
+The `+` button dispatches to `POST /api/inventory/{card_id}/increment`. The server applies the playset cap rules (Section 6.3) and returns the appropriate signal. The `+` button is disabled client-side when the cap is already reached: for Leader/Base this is checked per variant chip (disabled when that chip's quantity ≥ 1); for all other cards it is checked against the shared total (disabled when total across all variants ≥ 3).
+
+**`PlaysetCell` component:**
+
+Display differs by card type:
+
+*Leader and Base cards:* One pip. Filled and green when total owned ≥ 1. When total owned ≥ 2, the raw count appears beside the pip.
+
+*All other cards:* Three pips — one per copy toward the 3-copy playset. Each pip fills as copies are added. At 3/3 the component enters `playset--complete` (green). At 0 copies it enters `playset--empty`. When owned > 3, the raw count appears beside the pips as a row-level trade/sell visual signal.
+
+**API:** The Inventory view fetches `GET /api/inventory`, which returns every card variant record with its quantity. The frontend groups these by `base_card_number` (`groupWithInventory()`) to build one row per base card, deriving `hasStandard`/`hasFoil`/… flags and an `inventory` dict (invKey → quantity) and `cardIds` dict (invKey → card_id) for use by `VariantInventory`. Inventory mutations call `POST /api/inventory/{card_id}/increment` or `POST /api/inventory/{card_id}/decrement` per step-button click, then update local state with the returned quantity.
+
+### 7.5 Core Interaction: Card Number Lookup & Inventory Update
 
 This is the primary user flow for the Inventory section and must be fast and frictionless. It is designed for use while holding a physical card.
 
 - A persistent search/input field accepts a card number.
 - On entry of a valid card number (within the selected set), all variant records for that card are displayed immediately, with current inventory counts.
 - Each variant record has a single-click increment button (+1).
-- On increment:
-  - If resulting quantity < 3: update inventory count, show updated count.
-  - If resulting quantity = 3: update inventory count, display prominent 'Playset complete' confirmation.
-  - If resulting quantity > 3: do NOT increment. Display a prominent 'Trade/Sell' signal instead. The card is not added to inventory.
+- On increment, behaviour depends on card type (see Section 6.3 increment rules):
+  - *Leader/Base:* If this variant already has 1 copy, do NOT increment — display 'Trade/Sell' signal. Otherwise increment to 1 and display 'Playset complete'.
+  - *All other types:* If total owned across all variants is already 3, do NOT increment — display 'Trade/Sell' signal. If incrementing reaches exactly 3, display 'Playset complete'. Otherwise update count.
 
-### 7.5 Variant Display
+### 7.6 Variant Display
 
 Because different sets have different variant types, the UI must derive the available variant columns dynamically from the set's card data rather than hardcoding variant columns. This ensures the UI adapts correctly as sets with different variant compositions are selected.
 
@@ -422,6 +529,18 @@ Because different sets have different variant types, the UI must derive the avai
 
 Development proceeds in vertical slices. Each slice delivers a complete, working, tested feature from database to UI before the next slice begins. The database schema and ingestion pipeline are established first as a shared foundation.
 
+**Pre-implementation design tooling — Claude Design:**
+
+UI screens are designed in **Claude Design** before implementation begins. Claude Design produces browser-ready JSX components and CSS tokens that serve as the visual specification and are then ported to the TypeScript codebase.
+
+The design archive is committed at `claude_design/SWU Inventory Manager Design System.zip`. The extracted `SKILL.md` (`claude_design/extracted/SKILL.md`) can be loaded into Claude Code as a skill to preserve design-system context across future sessions.
+
+**Porting process for each Claude Design JSX component:**
+1. Rename `.jsx` → `.tsx`; add `import React, { … } from 'react'` at the top.
+2. Replace the trailing `Object.assign(window, { … })` with named `export` declarations.
+3. Type props against existing API types in `frontend/src/api/`.
+4. Wire data-fetching and mutation handlers to actual backend endpoints.
+
 ### 8.2 Development Phases
 
 | Phase | Slice | Deliverable |
@@ -431,11 +550,11 @@ Development proceeds in vertical slices. Each slice delivers a complete, working
 | Foundation | F3 | CSV ingestion pipeline with field mapping config. All 14 CSVs imported and validated. Schema refined (migration 0002): variant string column replaced with boolean flags (is_foil, is_hyperspace, is_prestige, is_showcase). SOP Organized Play CSV has no card numbers — sequential values assigned from 1; requires future correction when source data is available. |
 | Foundation | F4 | Excel inventory ingestion. Inventory data loaded and reconciled against card records. After F4 validation, a catalog seed file is generated from the current database state (see Section 5.4). |
 | Slice 1 | S1 | GET /api/sets and GET /api/cards endpoints (initial). React set selector and basic card table. Extended in the UI session: full application design system, Catalog view with set/aspect filter toggles, one-row-per-base-card table, variant circles, aspect icons, SWU-style button component, Header and SectionSeparator components. CardResponse expanded to include aspects, traits, and detail fields. Card attribute tables migrated (migration 0016) and backfilled from CSV source data. Further extended in subsequent session: official aspect PNG images (SWU media kit) replacing SVG placeholders; official set logo PNG images replacing SWUButton text filters; canonical set and aspect ordering enforced throughout; card name subtitle display (hyphen-split for named cards, location name for base cards); base card trait backfill corrected (intersection + token-trait filter isolates location from token card traits; traits DELETE + re-insert for idempotency); catalog seed regenerated; viewport-height scrollable table layout with always-visible scrollbars. |
-| Slice 2 | S2 | GET /api/inventory and inventory columns in card list table. Playset status indicators. |
+| Slice 2 | S2 | Inventory View fully wired. `GET /api/inventory`, `POST /api/inventory/{id}/increment`, `POST /api/inventory/{id}/decrement` endpoints. Frontend: `InventoryPage`, `InventoryTable`, `VariantInventory` chips with inline +/− steppers, `PlaysetCell`, `InventorySummary` stat strip. Inventory components live in `frontend/src/screens/inventory/`. `groupWithInventory()` in `utils/inventory.ts` groups per-variant API records into one-row-per-base-card objects with `inventory` and `cardIds` dicts. Singleton playset rule implemented: Leader/Base capped at 1 copy per variant with a single green pip; all other cards capped at 3 total copies with three pips. No FilterPanel yet (added in S5). |
 | Slice 3 | S3 | Card number lookup endpoint and UI input field. Display all variants for a looked-up card. |
-| Slice 4 | S4 | Increment/decrement inventory. Trade/sell signal. Playset complete confirmation. |
+| Slice 4 | S4 | ~~Increment/decrement inventory. Trade/sell signal. Playset complete confirmation.~~ Delivered in S2. |
 | Foundation | F5 | Inventory snapshot & F4 retirement. ⚠ **Precondition: S4 must be complete and the UI validated as the source of truth for inventory before executing this phase.** `generate_inventory_snapshot.py` exports inventory to `db/snapshots/inventory_snapshot.sql`. `apply_inventory_snapshot.py` restores it idempotently on a fresh database. F4 ON CONFLICT changed from DO UPDATE to DO NOTHING. Excel file mount removed from docker-compose. See Section 5.5. |
-| Slice 5 | S5 | Filter bar (Type, Rarity, Variant). Missing cards view (/api/inventory/missing). |
+| Slice 5 | S5 | Port shared `FilterPanel` to TypeScript. Apply to Catalog (replacing the S1 set-logo/aspect-icon toggle bar) and Inventory screens. Implements: collapsible panel, free-text search, aspect picker, Set/Type/Rarity/Variant multi-select dropdowns, searchable Keywords/Traits/Arenas dropdowns, Cost/Power/HP dual-handle range sliders. The "Show only incomplete playsets" toggle on Inventory provides the UI surface for incomplete-playset filtering; `GET /api/inventory/missing` is retained as the backend data source. |
 | Slice 6 | S6 | Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
 ### 8.3 Testing Requirements
@@ -463,7 +582,6 @@ The following enhancements are explicitly acknowledged and should inform archite
 | External API for card/set data | The ingestion module must be loosely coupled. The repository layer abstracts data source so a future API adapter can replace CSV processing without touching services or routes. |
 | Cloud hosting (AWS / GCP / Azure) | Docker Compose setup must use environment variables for all configuration (DB credentials, ports). No hardcoded local paths. |
 | CI/CD pipeline to production | GitHub Actions structure established in V1. Production deployment job added as a future workflow step. |
-| Figma / MCP UI design workflow | No V1 impact. Design tooling is external to the codebase. |
 | Serialized card variants | Serialized cards (individually-numbered collector cards) are excluded from V1. When in scope, add is_serialized BOOLEAN flag — no other schema changes needed due to the flags model design. |
 | Mobile-optimized UI | React component structure should avoid fixed-width layouts. Use responsive CSS from the start. |
 | Official card images (FFG CDN via swuapi.com) | Add `front_image_url` and `back_image_url` columns to the `cards` table when S6 is implemented (new migration — no V1 schema impact). Extend `CardResponse` to include both fields as nullable strings. See Section 9.1 for full implementation specification. |

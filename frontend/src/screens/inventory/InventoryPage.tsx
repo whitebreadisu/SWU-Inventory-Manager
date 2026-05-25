@@ -1,28 +1,37 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { getInventory, incrementCard, decrementCard } from '../../api/inventory';
 import { groupWithInventory, isPlaysetComplete } from '../../utils/inventory';
 import { InventorySummary } from './InventorySummary';
 import { InventoryTable } from './InventoryTable';
 import { FilterPanel, applyFilters, DEFAULT_FILTERS } from '../../components/FilterPanel';
 import { SWUButton } from '../../components/SWUButton';
+import { AddCardsModal } from './AddCardsModal';
 import type { InventoryCard } from '../../utils/inventory';
+import type { CardWithQty } from '../../api/inventory';
 import type { FilterState } from '../../components/FilterPanel';
 import type { BaseCard } from '../../utils/catalog';
 import './inventory.css';
 
 export function InventoryPage() {
+  const [rawCards, setRawCards] = useState<CardWithQty[]>([]);
   const [cards, setCards] = useState<InventoryCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [incompleteOnly, setIncompleteOnly] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const fetchInventory = useCallback(async () => {
+    const raw = await getInventory();
+    setRawCards(raw);
+    setCards(groupWithInventory(raw));
+  }, []);
 
   useEffect(() => {
-    getInventory()
-      .then(raw => setCards(groupWithInventory(raw)))
+    fetchInventory()
       .catch(err => setError(String(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [fetchInventory]);
 
   const filtered = useMemo(() => {
     let result = applyFilters(cards as BaseCard[], filters) as InventoryCard[];
@@ -74,8 +83,15 @@ export function InventoryPage() {
       ) : (
         <>
           <InventorySummary cards={cards}>
-            <SWUButton size="sm">Add Cards</SWUButton>
+            <SWUButton size="sm" onClick={() => setModalOpen(true)}>Add Cards</SWUButton>
           </InventorySummary>
+          {modalOpen && (
+            <AddCardsModal
+              catalog={rawCards}
+              onClose={() => setModalOpen(false)}
+              onCommitted={() => { fetchInventory().catch(console.error); }}
+            />
+          )}
           <FilterPanel filters={filters} setFilters={setFilters} cards={cards as BaseCard[]}>
             <div className="ifp-toggle-row">
               <button

@@ -1,0 +1,164 @@
+import type { CardWithQty } from '../api/inventory';
+import type { Card } from '../api/cards';
+
+export type RowId = string;
+
+export interface Row {
+  id: RowId;
+  cardNumber: string;
+  op: boolean;
+  variant: string | null;
+}
+
+export type ResolveResult =
+  | { status: 'empty' }
+  | { status: 'error'; message: string }
+  | { status: 'needs_variant'; name: string; subtitle: string | null; variants: string[]; hasOpOption: boolean }
+  | { status: 'resolved'; cardId: number; name: string; subtitle: string | null; type: string; variant: string; isOp: boolean; hasOpOption: boolean };
+
+export interface InventoryStatus {
+  color: 'green' | 'red';
+  owned: number;
+  max: number;
+}
+
+export interface VerificationItem {
+  row: Row;
+  resolved: Extract<ResolveResult, { status: 'resolved' }>;
+  inv: InventoryStatus;
+}
+
+export function variantLabelNoOp(card: Card): string {
+  const parts: string[] = [];
+  if (card.is_hyperspace) parts.push('Hyperspace');
+  if (card.is_prestige) parts.push('Prestige');
+  if (card.is_showcase) parts.push('Showcase');
+  if (card.is_foil) parts.push('Foil');
+  return parts.length > 0 ? parts.join(' ') : 'Standard';
+}
+
+export function maxCopies(type: string): number {
+  return type === 'Leader' || type === 'Base' ? 1 : 3;
+}
+
+function cardNameParts(card: CardWithQty): { displayName: string; subtitle: string | null } {
+  if (card.type === 'Base') {
+    return { displayName: card.name, subtitle: card.traits[0] ?? null };
+  }
+  const sep = card.name.indexOf(' - ');
+  if (sep !== -1) {
+    return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
+  }
+  return { displayName: card.name, subtitle: null };
+}
+
+export function resolveRow(
+  setCode: string,
+  row: Row,
+  catalog: CardWithQty[],
+  hasUniqueVariantNumbers: boolean,
+): ResolveResult {
+  if (!row.cardNumber) return { status: 'empty' };
+
+  const filtered = catalog.filter(
+    c => c.set_code === setCode && c.base_card_number === row.cardNumber,
+  );
+
+  if (filtered.length === 0) {
+    return { status: 'error', message: 'Card# is not valid for the selected set.' };
+  }
+
+  const opMatches = filtered.filter(c => c.is_organized_play);
+  const baseMatches = filtered.filter(c => !c.is_organized_play);
+  const hasOpOption = opMatches.length > 0;
+  const activeSet = row.op ? opMatches : baseMatches;
+
+  if (activeSet.length === 0) {
+    return { status: 'error', message: 'Card# is not valid for the selected set.' };
+  }
+
+  const { displayName: name, subtitle } = cardNameParts(activeSet[0]);
+
+  if (hasUniqueVariantNumbers || activeSet.length === 1) {
+    if (activeSet.length > 1) {
+      console.warn(`Multiple matches for ${setCode}:${row.cardNumber} on unique-variant-numbers set; using first.`);
+    }
+    const card = activeSet[0];
+    return {
+      status: 'resolved',
+      cardId: card.id,
+      name,
+      subtitle,
+      type: card.type,
+      variant: variantLabelNoOp(card),
+      isOp: !!row.op,
+      hasOpOption,
+    };
+  }
+
+  // Non-unique set, multiple matches: need variant pick
+  const variants = activeSet.map(c => variantLabelNoOp(c));
+
+  if (!row.variant || !variants.includes(row.variant)) {
+    return { status: 'needs_variant', name, subtitle, variants, hasOpOption };
+  }
+
+  const idx = variants.indexOf(row.variant);
+  const card = activeSet[idx];
+  return {
+    status: 'resolved',
+    cardId: card.id,
+    name,
+    subtitle,
+    type: card.type,
+    variant: row.variant,
+    isOp: !!row.op,
+    hasOpOption,
+  };
+}
+
+export function inventoryStatus(
+  setCode: string,
+  rows: Row[],
+  row: Row,
+  resolved: Extract<ResolveResult, { status: 'resolved' }>,
+  catalog: CardWithQty[],
+  hasUniqueVariantNumbers: boolean,
+): InventoryStatus {
+  const owned = catalog.find(c => c.id === resolved.cardId)?.quantity ?? 0;
+  const max = maxCopies(resolved.type);
+
+  const idx = rows.indexOf(row);
+  let pendingThroughThis = 0;
+  for (let i = 0; i <= idx; i++) {
+    const r = rows[i];
+    const rr = resolveRow(setCode, r, catalog, hasUniqueVariantNumbers);
+    if (rr.status === 'resolved' && rr.cardId === resolved.cardId) {
+      pendingThroughThis++;
+    }
+  }
+
+  const wouldBe = owned + pendingThroughThis;
+  return { color: wouldBe > max ? 'red' : 'green', owned, max };
+}
+
+export function splitForVerification(
+  setCode: string,
+  rows: Row[],
+  catalog: CardWithQty[],
+  hasUniqueVariantNumbers: boolean,
+): { willAdd: VerificationItem[]; willSkip: VerificationItem[] } {
+  const willAdd: VerificationItem[] = [];
+  const willSkip: VerificationItem[] = [];
+
+  rows.forEach(row => {
+    const res = resolveRow(setCode, row, catalog, hasUniqueVariantNumbers);
+    if (res.status !== 'resolved') return;
+    const inv = inventoryStatus(setCode, rows, row, res, catalog, hasUniqueVariantNumbers);
+    const item: VerificationItem = { row, resolved: res, inv };
+    if (inv.color === 'red') willSkip.push(item);
+    else willAdd.push(item);
+  });
+
+  return { willAdd, willSkip };
+}

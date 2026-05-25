@@ -1,0 +1,567 @@
+/* Add Cards modal — .ac-* styles.
+   Load after shell.css + inventory.css.
+   Table and Stacked layout styles intentionally omitted (rejected layouts). */
+
+/* Missing design tokens not yet in index.css */
+:root {
+  --aspect-aggression: #c0202e;
+  --variant-op: #dc2626;
+}
+
+/* ─── Modal overlay ─────────────────────────────────────── */
+.ac-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 9, 16, 0.74);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 64px 24px;
+  overflow-y: auto;
+}
+
+.ac-modal {
+  width: min(960px, 100%);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 32px 80px -16px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.ac-modal::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 3px;
+  background: var(--color-primary);
+}
+
+.ac-modal__head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 22px 28px 6px;
+}
+.ac-modal__title {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin: 0;
+}
+.ac-modal__subtitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.ac-modal__close {
+  margin-left: auto;
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.ac-modal__close:hover { color: var(--color-text); border-color: var(--color-border); }
+
+/* Set selector strip */
+.ac-setbar {
+  padding: 12px 24px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--bg-surface-alt);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.ac-setbar__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.ac-setbar__mark {
+  height: 28px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+.ac-setbar__mark--fallback {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--color-text);
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-page);
+}
+.ac-setbar__select { flex: 1; max-width: 360px; position: relative; }
+.ac-setbar__locked {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ac-setbar__locked-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+.ac-setbar__change {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.ac-setbar__change:hover { color: var(--color-text); border-color: rgba(255,255,255,0.25); }
+
+/* Body — scrollable area */
+.ac-modal__body {
+  padding: 18px 28px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+/* Footer */
+.ac-modal__foot {
+  padding: 12px 24px 16px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  flex-wrap: wrap;
+}
+.ac-modal__foot-hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.ac-modal__foot-spacer { flex: 1; }
+
+/* Shared field appearance */
+.ac-input,
+.ac-select {
+  background: var(--bg-page);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ac-input::placeholder { color: var(--color-text-muted); font-style: italic; }
+.ac-input:focus,
+.ac-select:focus { border-color: var(--color-primary); background: var(--bg-surface-alt); }
+.ac-input:disabled,
+.ac-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(0,0,0,0.18);
+}
+.ac-input--error { border-color: var(--aspect-aggression); }
+.ac-input--error:focus { border-color: #ef4444; }
+
+.ac-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 14px,
+    calc(100% - 10px) 14px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+.ac-select:disabled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(107,122,153,0.35) 50%),
+    linear-gradient(135deg, rgba(107,122,153,0.35) 50%, transparent 50%);
+}
+.ac-select option { background: var(--bg-surface); color: var(--color-text); }
+
+.ac-namefield {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text);
+}
+.ac-namefield--empty { color: var(--color-text-muted); font-style: italic; }
+.ac-namefield__name { color: var(--color-text); }
+.ac-namefield__subtitle {
+  margin-left: 8px;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* OP checkbox */
+.ac-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+.ac-op__box {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-text-muted);
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ac-op input { position: absolute; opacity: 0; pointer-events: none; }
+.ac-op input:checked + .ac-op__box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.ac-op input:checked + .ac-op__box::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.ac-op--disabled { color: var(--color-text-muted); cursor: not-allowed; opacity: 0.5; }
+.ac-op--disabled .ac-op__box { border-color: rgba(107,122,153,0.4); }
+
+/* Inventory indicator dot (keypad input area + verification table) */
+.ac-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid transparent;
+  position: relative;
+  display: inline-block;
+}
+.ac-dot--green { background: var(--aspect-command); box-shadow: 0 0 0 3px rgba(23,138,58,0.18); }
+.ac-dot--red   { background: var(--aspect-aggression); box-shadow: 0 0 0 3px rgba(192,32,46,0.18); }
+.ac-dot--empty { background: transparent; border: 1.5px dashed var(--color-border); }
+.ac-dot-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* Row-level error message */
+.ac-row-error {
+  color: #f87171;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  padding-left: 4px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ac-row-error::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--aspect-aggression);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ─── Keypad layout ─────────────────────────────────────── */
+.ac-pad {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 22px;
+}
+.ac-pad__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ac-pad__cardrow {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 12px;
+  align-items: end;
+}
+.ac-pad__big-input {
+  font-family: var(--font-mono) !important;
+  font-size: 32px !important;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 14px 16px !important;
+  background: var(--bg-page) !important;
+  height: auto;
+}
+.ac-pad__big-input::placeholder {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  font-style: normal;
+  color: rgba(107, 122, 153, 0.6);
+}
+.ac-pad__label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+.ac-pad__resolve {
+  padding: 14px 16px;
+  background: var(--bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ac-pad__resolve-name {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+}
+.ac-pad__resolve-name--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 400;
+}
+.ac-pad__resolve-sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+.ac-pad__resolve-controls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.ac-pad__resolve-variant { min-width: 160px; flex: 1; }
+.ac-pad__resolve-op { padding-bottom: 9px; }
+
+/* Chip list (right column) */
+.ac-pad__list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 12px;
+  min-height: 220px;
+}
+.ac-pad__list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ac-pad__list-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.ac-pad__list-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.ac-pad__list { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow-y: auto; }
+.ac-pad__list-empty {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  padding: 16px 4px;
+  text-align: center;
+}
+
+/* Chip (committed card entry) */
+.ac-chip {
+  display: grid;
+  grid-template-columns: 32px 1fr auto 12px 22px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-size: 13px;
+}
+.ac-chip__num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+.ac-chip__name {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ac-chip__var {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.ac-chip__var--op::before {
+  content: 'OP \B7';
+  color: var(--variant-op);
+  margin-right: 4px;
+}
+.ac-chip__del {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  padding: 0;
+}
+.ac-chip__del:hover { color: var(--aspect-aggression); background: var(--bg-page); }
+.ac-chip__ind {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1.5px dashed var(--color-border);
+}
+.ac-chip__ind--green { background: var(--aspect-command); border-color: var(--aspect-command); }
+.ac-chip__ind--red   { background: var(--aspect-aggression); border-color: var(--aspect-aggression); }
+
+/* ─── Verification screen ───────────────────────────────── */
+.ac-verify { display: flex; flex-direction: column; gap: 20px; }
+.ac-verify__section { display: flex; flex-direction: column; gap: 10px; }
+.ac-verify__section-title {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ac-verify__section--add .ac-verify__section-title { color: var(--aspect-command); }
+.ac-verify__section--skip .ac-verify__section-title { color: var(--aspect-aggression); }
+.ac-verify__section-rule { flex: 1; height: 1px; background: var(--color-border); }
+.ac-verify__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.ac-verify__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+.ac-verify__table thead th {
+  background: var(--bg-surface-alt);
+  padding: 8px 10px;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.ac-verify__table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  color: var(--color-text);
+}
+.ac-verify__table tbody td.ac-verify__name {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+.ac-verify__skip-reason {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--aspect-aggression);
+}

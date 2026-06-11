@@ -56,17 +56,12 @@ export function resolveRow(
   setCode: string,
   row: Row,
   catalog: CardWithQty[],
-  hasUniqueVariantNumbers: boolean,
 ): ResolveResult {
   if (!row.cardNumber) return { status: 'empty' };
 
   const filtered = catalog.filter(
-    c => c.set_code === setCode && c.base_card_number === row.cardNumber,
+    c => c.set_code === setCode && c.card_number === row.cardNumber,
   );
-
-  if (filtered.length === 0) {
-    return { status: 'error', message: 'Card# is not valid for the selected set.' };
-  }
 
   const opMatches = filtered.filter(c => c.is_organized_play);
   const baseMatches = filtered.filter(c => !c.is_organized_play);
@@ -79,10 +74,7 @@ export function resolveRow(
 
   const { displayName: name, subtitle } = cardNameParts(activeSet[0]);
 
-  if (hasUniqueVariantNumbers || activeSet.length === 1) {
-    if (activeSet.length > 1) {
-      console.warn(`Multiple matches for ${setCode}:${row.cardNumber} on unique-variant-numbers set; using first.`);
-    }
+  if (activeSet.length === 1) {
     const card = activeSet[0];
     return {
       status: 'resolved',
@@ -96,7 +88,7 @@ export function resolveRow(
     };
   }
 
-  // Non-unique set, multiple matches: need variant pick
+  // Multiple cards share this card_number in the same OP partition: need variant pick
   const variants = activeSet.map(c => variantLabelNoOp(c));
 
   if (!row.variant || !variants.includes(row.variant)) {
@@ -123,7 +115,6 @@ export function inventoryStatus(
   row: Row,
   resolved: Extract<ResolveResult, { status: 'resolved' }>,
   catalog: CardWithQty[],
-  hasUniqueVariantNumbers: boolean,
 ): InventoryStatus {
   const owned = catalog.find(c => c.id === resolved.cardId)?.quantity ?? 0;
   const max = maxCopies(resolved.type);
@@ -132,7 +123,7 @@ export function inventoryStatus(
   let pendingThroughThis = 0;
   for (let i = 0; i <= idx; i++) {
     const r = rows[i];
-    const rr = resolveRow(setCode, r, catalog, hasUniqueVariantNumbers);
+    const rr = resolveRow(setCode, r, catalog);
     if (rr.status === 'resolved' && rr.cardId === resolved.cardId) {
       pendingThroughThis++;
     }
@@ -146,15 +137,14 @@ export function splitForVerification(
   setCode: string,
   rows: Row[],
   catalog: CardWithQty[],
-  hasUniqueVariantNumbers: boolean,
 ): { willAdd: VerificationItem[]; willSkip: VerificationItem[] } {
   const willAdd: VerificationItem[] = [];
   const willSkip: VerificationItem[] = [];
 
   rows.forEach(row => {
-    const res = resolveRow(setCode, row, catalog, hasUniqueVariantNumbers);
+    const res = resolveRow(setCode, row, catalog);
     if (res.status !== 'resolved') return;
-    const inv = inventoryStatus(setCode, rows, row, res, catalog, hasUniqueVariantNumbers);
+    const inv = inventoryStatus(setCode, rows, row, res, catalog);
     const item: VerificationItem = { row, resolved: res, inv };
     if (inv.color === 'red') willSkip.push(item);
     else willAdd.push(item);

@@ -52,9 +52,6 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const activeSet = sets.find(s => s.code === state.setCode);
-  const hasUniqueVariantNumbers = activeSet?.has_unique_variant_numbers ?? false;
-
   const setSet = useCallback((code: string) => {
     setState(s => ({ ...s, setCode: code, rows: [emptyRow()], phase: 'editing' }));
   }, []);
@@ -93,7 +90,7 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
     }
 
     const resolutions = state.rows.map(r =>
-      resolveRow(state.setCode!, r, catalog, hasUniqueVariantNumbers),
+      resolveRow(state.setCode!, r, catalog),
     );
 
     const resolvedRows = resolutions.filter(r => r.status === 'resolved');
@@ -105,11 +102,10 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
       state.setCode!,
       state.rows,
       catalog,
-      hasUniqueVariantNumbers,
     );
 
     return { canSubmit, hasErrors, willAdd, willSkip };
-  }, [state, catalog, hasUniqueVariantNumbers]);
+  }, [state, catalog]);
 
   const hintText = useMemo((): string => {
     if (!state.setCode) return 'Select a set above to enable entry.';
@@ -178,7 +174,6 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
             <AddCardsKeypad
               setCode={state.setCode}
               rows={state.rows}
-              hasUniqueVariantNumbers={hasUniqueVariantNumbers}
               catalog={catalog}
               onAppendRow={appendRow}
               onDeleteRow={deleteRow}

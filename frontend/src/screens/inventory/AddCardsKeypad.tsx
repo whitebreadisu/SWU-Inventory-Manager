@@ -11,7 +11,6 @@ import type { CardWithQty } from '../../api/inventory';
 interface Props {
   setCode: string;
   rows: Row[];
-  hasUniqueVariantNumbers: boolean;
   catalog: CardWithQty[];
   onAppendRow: (rowData: Omit<Row, 'id'>) => void;
   onDeleteRow: (id: string) => void;
@@ -64,7 +63,6 @@ interface VariantControlProps {
   resolved: ResolveResult;
   variantOptions: string[];
   selectedVariant: string | null;
-  hasUniqueVariantNumbers: boolean;
   disabled: boolean;
   onChange: (variant: string | null) => void;
 }
@@ -73,17 +71,13 @@ function VariantControl({
   resolved,
   variantOptions,
   selectedVariant,
-  hasUniqueVariantNumbers,
   disabled,
   onChange,
 }: VariantControlProps) {
-  if (hasUniqueVariantNumbers) {
-    const value = resolved.status === 'resolved' ? resolved.variant : '';
+  if (resolved.status === 'resolved') {
     return (
       <div className="ac-namefield">
-        <span className={value ? 'ac-namefield__name' : 'ac-namefield--empty'}>
-          {value || '—'}
-        </span>
+        <span className="ac-namefield__name">{resolved.variant}</span>
       </div>
     );
   }
@@ -107,7 +101,6 @@ function VariantControl({
 export function AddCardsKeypad({
   setCode,
   rows,
-  hasUniqueVariantNumbers,
   catalog,
   onAppendRow,
   onDeleteRow,
@@ -128,7 +121,7 @@ export function AddCardsKeypad({
     [draft],
   );
 
-  const resolved = resolveRow(setCode, draftRow, catalog, hasUniqueVariantNumbers);
+  const resolved = resolveRow(setCode, draftRow, catalog);
 
   const isResolved = resolved.status === 'resolved';
   const needsVariant = resolved.status === 'needs_variant';
@@ -149,33 +142,14 @@ export function AddCardsKeypad({
       ? resolved.subtitle
       : null;
 
-  // Compute available variant options for the dropdown
   const variantOptions = useMemo((): string[] => {
     if (resolved.status === 'needs_variant') return resolved.variants;
-    if (resolved.status === 'resolved' && !hasUniqueVariantNumbers) {
-      // Show all variants so user can switch after picking
-      return catalog
-        .filter(
-          c =>
-            c.set_code === setCode &&
-            c.base_card_number === draft.cardNumber &&
-            c.is_organized_play === draft.op,
-        )
-        .map(c => variantLabelNoOp(c));
-    }
     return [];
-  }, [resolved, hasUniqueVariantNumbers, catalog, setCode, draft.cardNumber, draft.op]);
+  }, [resolved]);
 
   const draftInv =
     isResolved && resolved.status === 'resolved'
-      ? inventoryStatus(
-          setCode,
-          [...rows, draftRow],
-          draftRow,
-          resolved,
-          catalog,
-          hasUniqueVariantNumbers,
-        )
+      ? inventoryStatus(setCode, [...rows, draftRow], draftRow, resolved, catalog)
       : null;
 
   const canCommit = isResolved;
@@ -247,7 +221,6 @@ export function AddCardsKeypad({
                 resolved={resolved}
                 variantOptions={variantOptions}
                 selectedVariant={draft.variant}
-                hasUniqueVariantNumbers={hasUniqueVariantNumbers}
                 disabled={!isResolved && !needsVariant}
                 onChange={(v) => setDraft(d => ({ ...d, variant: v }))}
               />
@@ -299,10 +272,10 @@ export function AddCardsKeypad({
             </div>
           )}
           {committed.map((row) => {
-            const res = resolveRow(setCode, row, catalog, hasUniqueVariantNumbers);
+            const res = resolveRow(setCode, row, catalog);
             const inv =
               res.status === 'resolved'
-                ? inventoryStatus(setCode, rows, row, res, catalog, hasUniqueVariantNumbers)
+                ? inventoryStatus(setCode, rows, row, res, catalog)
                 : null;
             return (
               <div key={row.id} className="ac-chip">

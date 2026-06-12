@@ -82,7 +82,7 @@ export function InventoryPage() {
         <p className="loading-text">Loading inventory…</p>
       ) : (
         <>
-          <InventorySummary cards={cards}>
+          <InventorySummary cards={filtered}>
             <SWUButton size="sm" onClick={() => setModalOpen(true)}>Add Cards</SWUButton>
           </InventorySummary>
           {modalOpen && (

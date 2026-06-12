@@ -446,7 +446,7 @@ InventoryPage
 
 **`InventorySummary` component:**
 
-A single-line stat strip rendered above the filter panel. Receives the **full unfiltered card list** so stats remain stable as filters change.
+A single-line stat strip rendered above the filter panel. Receives the same filtered card list as `InventoryTable` (post-`applyFilters` and post-`incompleteOnly`) — all four stats update dynamically with the active filter selection, including the "Show only incomplete playsets" toggle. (Revised 2026-06-11: originally received the full unfiltered list so stats stayed stable across filter changes; changed so the summary reflects the currently visible slice of the catalog.)
 
 Format: `Playset complete: NN%  —  Set complete: NN%  —  N cards (N unique)`
 

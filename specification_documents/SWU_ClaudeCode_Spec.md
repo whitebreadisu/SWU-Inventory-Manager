@@ -553,6 +553,8 @@ Each Claude Design handoff is committed to `claude_design/<handoff-folder>/` and
 | Foundation | F5 | *Implemented 2026-06-11.* Inventory snapshot & F4 retirement. `generate_inventory_snapshot.py` exports the `inventory` table (card_id, quantity, updated_at) to `db/snapshots/inventory_snapshot.sql` (3,412 records, total quantity 6,439). `apply_inventory_snapshot.py` restores it idempotently on a fresh database, running automatically in the Docker startup chain immediately after `apply_seed`. F4 ON CONFLICT was already DO NOTHING (changed pre-emptively during the seed architecture session). The `personal_card_inventory` Excel volume mount was removed from `docker-compose.yml`; the F4 ingestion script remains in the repo as a retired/historical tool. New tests: `test_inventory_snapshot_integrity.py`, `test_inventory_snapshot_reconstruction.py`. See Section 5.5. |
 | Slice 5 | S5 | *Claude Design pre-step: required before implementation begins.* Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
+> **Note (2026-06-12):** S5 and all further application feature work (including the unscoped Decks section) are paused in favor of the **Platform Roadmap** — a P1–P7 track that transforms this application into a multi-tenant, production-grade platform on GCP. See `SWU_Platform_Roadmap.md` and its companion `SWU_Platform_Learning_Guide.md`. Feature work resumes after P7 completes.
+
 ### 8.3 Testing Requirements
 
 - Every API endpoint must have at least one happy-path and one error-path pytest test.

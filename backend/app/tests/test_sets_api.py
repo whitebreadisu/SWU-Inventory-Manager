@@ -32,6 +32,10 @@ class TestListSets:
         codes = {s["code"] for s in client.get("/api/sets").json()}
         assert {"SOR", "SHD", "TWI", "JTL", "LOF", "SEC", "LAW"} <= codes
 
+    def test_sets_returned_in_canonical_release_order(self, client):
+        codes = [s["code"] for s in client.get("/api/sets").json()]
+        assert codes == ["SOR", "SHD", "TWI", "JTL", "LOF", "SEC", "LAW"]
+
 
 class TestGetSetByCode:
     def test_returns_200_for_valid_code(self, client):

@@ -43,21 +43,9 @@ This builds and starts three services:
 
 First run takes a few minutes while Docker pulls images and installs dependencies. Subsequent starts are fast.
 
-On every startup the backend automatically runs database migrations and applies the card catalog seed file (`db/seeds/catalog_seed.sql`). The catalog (all sets and card variants) is populated without any manual steps.
+On every startup the backend automatically runs database migrations, applies the card catalog seed file (`db/seeds/catalog_seed.sql`), and applies the inventory snapshot (`db/snapshots/inventory_snapshot.sql`). Both the catalog (all sets and card variants) and personal inventory are populated without any manual steps. Both applies are idempotent — they skip if their table is already populated.
 
-### 4. Load personal inventory (first run only)
-
-The card catalog is seeded automatically, but personal inventory must be loaded from the source Excel file on a fresh database:
-
-```bash
-docker compose exec backend python -m app.ingestion.run_inventory_ingestion
-```
-
-This reads `personal_card_inventory/SWU Collection Tracker MASTER v2.1.xlsx` and populates the inventory table. Run this once after initial setup. It is safe to re-run on a fresh database — it skips records that already exist.
-
-> Once the application UI is in use, inventory is managed exclusively through the app. Do not re-run this command against a database that already has UI-managed inventory, as it will not overwrite existing records.
-
-### 5. Verify the setup
+### 4. Verify the setup
 
 | URL | What you should see |
 |-----|---------------------|
@@ -66,7 +54,7 @@ This reads `personal_card_inventory/SWU Collection Tracker MASTER v2.1.xlsx` and
 | http://localhost:8000/redoc | ReDoc (API reference) |
 | http://localhost:8000/health | `{"status": "ok"}` |
 
-### 6. Stop services
+### 5. Stop services
 
 ```bash
 docker compose down
@@ -78,7 +66,7 @@ To also wipe the database (full reset):
 docker compose down -v
 ```
 
-After a full reset, `docker compose up` automatically restores the card catalog from the seed file. Re-run the inventory ingestion command from step 4 to restore personal inventory.
+After a full reset, `docker compose up` automatically restores both the card catalog and personal inventory from the seed and snapshot files — no manual steps required.
 
 ## Development workflow
 
@@ -116,8 +104,10 @@ docker compose exec frontend npm test
 │   ├── pytest.ini
 │   └── requirements.txt
 ├── db/
-│   └── seeds/
-│       └── catalog_seed.sql  # Card catalog seed (auto-applied on startup)
+│   ├── seeds/
+│   │   └── catalog_seed.sql       # Card catalog seed (auto-applied on startup)
+│   └── snapshots/
+│       └── inventory_snapshot.sql # Personal inventory snapshot (auto-applied on startup)
 ├── frontend/
 │   ├── src/
 │   │   ├── test/           # Vitest setup

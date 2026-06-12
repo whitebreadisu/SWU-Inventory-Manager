@@ -225,15 +225,10 @@ After Foundation phase F4 is complete and catalog data is validated, a SQL seed 
 - **Catalog seed file** — A single SQL file generated from the validated database. Applied once after schema migrations, before any user inventory is loaded.
 - **Ingestion pipeline** — Retained for future set releases. After each new set is ingested and validated, the seed file is regenerated to incorporate it.
 
-**Fresh install sequence (post-F5):**
+**Fresh install sequence:**
 1. Run schema migrations (Alembic)
 2. Apply catalog seed file (includes sets, cards, card_aspects, card_traits, card_details)
 3. Apply inventory snapshot (see Section 5.5)
-
-**Fresh install sequence (F4-era, before F5 is executed):**
-1. Run schema migrations (Alembic)
-2. Apply catalog seed file
-3. Run Excel inventory ingestion (F4)
 
 **New set release sequence:**
 1. Run ingestion pipeline for new set CSVs
@@ -246,16 +241,14 @@ The CSV source files and ingestion pipeline are development tools used to produc
 
 ### 5.5 Inventory Snapshot
 
-> ⚠ This section describes the state of the system after Foundation phase F5 is complete. F5 has a hard precondition: it must not be executed until Slice S4 (increment/decrement inventory) is live and validated as the source of truth for your collection. See Section 8.2.
+The UI owns the inventory. The Excel file (F4) is retired and a snapshot-based pattern takes over — parallel to the catalog seed but with a different operational rhythm.
 
-Once the UI owns the inventory, the Excel file is retired and a snapshot-based pattern takes over — parallel to the catalog seed but with a different operational rhythm.
-
-- **`generate_inventory_snapshot.py`** — exports the `inventory` table to `db/snapshots/inventory_snapshot.sql`. Run after every significant update to your collection, and always before any destructive database operation.
-- **`apply_inventory_snapshot.py`** — restores inventory on a fresh database. Idempotent: skips if inventory is already populated.
+- **`generate_inventory_snapshot.py`** — exports the `inventory` table (card_id, quantity, updated_at) to `db/snapshots/inventory_snapshot.sql`. Run after every significant update to your collection, and always before any destructive database operation.
+- **`apply_inventory_snapshot.py`** — restores inventory on a fresh database. Idempotent: skips if inventory is already populated. Runs automatically on container startup, immediately after the catalog seed is applied.
 
 **Operational rhythm:** The catalog seed changes infrequently (only when a new set releases). The inventory snapshot should be updated regularly — it is a living record of your collection committed to version control.
 
-**F4 retirement:** When F5 is executed, F4's ON CONFLICT behavior is changed from DO UPDATE to DO NOTHING, and the Excel file mount is removed from docker-compose. This makes accidental F4 re-runs safe and signals clearly that the Excel file is no longer authoritative.
+**F4 retirement:** F4's ON CONFLICT behavior was changed from DO UPDATE to DO NOTHING, and the `personal_card_inventory` Excel volume mount was removed from `docker-compose.yml`. The F4 ingestion script remains in the repository as a retired/historical tool — it will not run inside the container without manually remounting the volume.
 
 **Snapshot file location:** `db/snapshots/inventory_snapshot.sql` — committed to version control.
 
@@ -557,7 +550,7 @@ Each Claude Design handoff is committed to `claude_design/<handoff-folder>/` and
 | Slice 2 | S2 | *Claude Design pre-step: complete.* Inventory View fully wired. `GET /api/inventory`, `POST /api/inventory/{id}/increment`, `POST /api/inventory/{id}/decrement` endpoints. Frontend: `InventoryPage`, `InventoryTable`, `VariantInventory` chips with inline +/− steppers, `PlaysetCell`, `InventorySummary` stat strip. Inventory components live in `frontend/src/screens/inventory/`. `groupWithInventory()` in `utils/inventory.ts` groups per-variant API records into one-row-per-base-card objects with `inventory` and `cardIds` dicts. Singleton playset rule implemented: Leader/Base capped at 1 copy per variant with a single green pip; all other cards capped at 3 total copies with three pips. No FilterPanel yet (added in S3). |
 | Slice 3 | S3 | *Claude Design pre-step: complete.* Shared `FilterPanel` ported to TypeScript and applied to both screens. `FilterPanel.tsx` lives in `frontend/src/components/` with co-located `FilterPanel.css`. Exports: `FilterPanel`, `MultiSelect`, `RangeSlider`, `AspectPicker`, `applyFilters`, `DEFAULT_FILTERS`, `FilterState`. Catalog: S1 set-logo/aspect toggle bar removed; replaced with `FilterPanel` (no children). Inventory: `FilterPanel` added with the "Show only incomplete playsets" toggle slotted as a child; `InventorySummary` receives the full unfiltered card list so stats stay stable under filtering; `applyFilters` runs first, `incompleteOnly` predicate after. Implementation note: `applyFilters` calls `parseCardDisplay(card)` internally to derive `displayName`/`subtitle` for text search — avoids adding computed fields to `BaseCard`. `InventoryCard[]` is safely cast to `BaseCard[]` when passed to `FilterPanel` because `InventoryCard` extends `BaseCard`. |
 | Slice 4 | S4 | *Claude Design pre-step: complete. Implementation complete 2026-05-25. Resolver corrected 2026-06-10.* Add Cards modal. A modal popup invoked from the "Add Cards" button in `InventorySummary`. Keyboard-driven batch entry: user picks a set once, then types card numbers one at a time — each resolves client-side against the already-loaded inventory data into a card name + variant, accumulates in a chip list, and commits on Enter. A verification phase splits the batch into "will be added" (green) vs. "at limit" (red) before committing. On commit, `POST /api/inventory/{id}/increment` is called once per green row; `InventoryPage` re-fetches inventory after modal close. Card resolution uses `GET /api/inventory` data already in memory — `GET /api/cards/lookup` backend endpoint deferred (see Section 6.4). **Resolver algorithm:** `resolveRow` always matches user input against `card_number` (the number printed on the physical card) — never `base_card_number`. The variant picker (`needs_variant`) appears when multiple records share the same `card_number` in the same OP partition (e.g., SOR foil/non-foil pairs at the same number, or OP foil/non-foil pairs). Auto-resolve occurs when exactly one record matches. `has_unique_variant_numbers` is NOT used by the resolver. The OP flag (`is_organized_play`) partitions the matched pool; `hasOpOption` is true when the entered `card_number` has at least one OP record. Components live in `frontend/src/screens/inventory/` (`AddCardsModal`, `AddCardsSetBar`, `AddCardsKeypad`, `AddCardsVerification`, `AddCardsModal.css`). Resolver pure functions in `frontend/src/utils/addCardsResolver.ts` (`resolveRow`, `inventoryStatus`, `splitForVerification`, `variantLabelNoOp`). `InventoryPage` now stores both `rawCards: CardWithQty[]` (passed to modal as `catalog`) and grouped `cards: InventoryCard[]`; sets are fetched inside the modal via `getSets()`. CSS tokens `--aspect-aggression` and `--variant-op` added to `:root` in `AddCardsModal.css`. |
-| Foundation | F5 | Inventory snapshot & F4 retirement. ⚠ **Precondition: S2 must be complete and the UI validated as the source of truth for inventory before executing this phase.** `generate_inventory_snapshot.py` exports inventory to `db/snapshots/inventory_snapshot.sql`. `apply_inventory_snapshot.py` restores it idempotently on a fresh database. F4 ON CONFLICT changed from DO UPDATE to DO NOTHING. Excel file mount removed from docker-compose. See Section 5.5. |
+| Foundation | F5 | *Implemented 2026-06-11.* Inventory snapshot & F4 retirement. `generate_inventory_snapshot.py` exports the `inventory` table (card_id, quantity, updated_at) to `db/snapshots/inventory_snapshot.sql` (3,412 records, total quantity 6,439). `apply_inventory_snapshot.py` restores it idempotently on a fresh database, running automatically in the Docker startup chain immediately after `apply_seed`. F4 ON CONFLICT was already DO NOTHING (changed pre-emptively during the seed architecture session). The `personal_card_inventory` Excel volume mount was removed from `docker-compose.yml`; the F4 ingestion script remains in the repo as a retired/historical tool. New tests: `test_inventory_snapshot_integrity.py`, `test_inventory_snapshot_reconstruction.py`. See Section 5.5. |
 | Slice 5 | S5 | *Claude Design pre-step: required before implementation begins.* Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
 ### 8.3 Testing Requirements

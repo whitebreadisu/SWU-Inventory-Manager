@@ -28,8 +28,8 @@ services:
     volumes:
       - ./backend:/app
       - ./tcgcsv_files:/tcgcsv_files:ro
-      - ./personal_card_inventory:/personal_card_inventory:ro
       - ./db/seeds:/db/seeds
+      - ./db/snapshots:/db/snapshots
     restart: unless-stopped
 
   frontend:

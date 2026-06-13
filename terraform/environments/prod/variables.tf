@@ -17,5 +17,5 @@ variable "backend_image_tag" {
   # The default only matters for a local `terraform apply` (e.g. an IAM grant)
   # run without that flag — keep it pointed at a recently-deployed SHA so a
   # local apply doesn't silently roll Cloud Run back to a stale image.
-  default = "46243cc97db55838e590f657517e16656d5e688b"
+  default = "d6b419776c467ab95feff643c9b3a084c9545b4a"
 }

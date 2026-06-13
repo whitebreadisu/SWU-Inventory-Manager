@@ -8,6 +8,9 @@ name: CI
 #
 # P3 stage 3: once the image is pushed, run `terraform apply` against
 # terraform/environments/prod, pointing Cloud Run at that SHA-tagged image.
+#
+# P3 stage 4: also rebuild the frontend and deploy frontend/dist to Firebase
+# Hosting, so a merge to main updates both backend and frontend.
 on:
   push:
   pull_request:
@@ -149,3 +152,40 @@ jobs:
       - name: Terraform apply
         working-directory: terraform/environments/prod
         run: terraform apply -auto-approve -var="backend_image_tag=${{ github.sha }}"
+
+  frontend-deploy:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: swu-prod
+          workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
+
+      - name: Deploy to Firebase Hosting
+        working-directory: frontend
+        run: npx firebase-tools@latest deploy --only hosting --project swu-prod --non-interactive

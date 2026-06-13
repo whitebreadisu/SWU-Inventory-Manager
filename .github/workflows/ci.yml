@@ -2,6 +2,10 @@ name: CI
 
 # P3 stage 1: run the existing pytest/Vitest suites on every push and pull
 # request. Pure CI — no GCP/Terraform involved yet (that's stages 2-3).
+#
+# P3 stage 2: on a push to main, once both test jobs pass, build the backend
+# image and push it to Artifact Registry tagged with the commit SHA. Stage 3
+# wires this image into a Terraform deploy.
 on:
   push:
   pull_request:
@@ -80,3 +84,37 @@ jobs:
       - name: Run vitest
         working-directory: frontend
         run: npx vitest run
+
+  build-and-push:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      IMAGE: us-central1-docker.pkg.dev/swu-prod/backend/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: swu-prod
+          workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build image
+        working-directory: backend
+        run: docker build -t ${{ env.IMAGE }}:${{ github.sha }} .
+
+      - name: Push image
+        run: docker push ${{ env.IMAGE }}:${{ github.sha }}

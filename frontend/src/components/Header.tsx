@@ -14,7 +14,7 @@ const NAV_ITEMS: { key: Section; label: string }[] = [
 export function Header({ activeSection, onSectionChange }: Props) {
   return (
     <header className="app-header">
-      <div className="app-header__brand">SWU Inventory Manager</div>
+      <div className="app-header__brand">Star Wars: Unlimited Inventory Manager</div>
 
       <nav className="app-header__nav">
         {NAV_ITEMS.map(({ key, label }) => (

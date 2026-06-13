@@ -24,6 +24,9 @@ locals {
     # even resources it isn't managing changes to.
     "roles/iam.workloadIdentityPoolViewer", # read wif.tf's pool (it's CI's own trust config)
     "roles/firebase.viewer",                # read firebase.tf's project resource
+    # P3 stage 4: the new frontend-deploy job runs `firebase deploy --only
+    # hosting` using this identity's credentials.
+    "roles/firebasehosting.admin", # deploy frontend/dist to Firebase Hosting
   ]
 }
 

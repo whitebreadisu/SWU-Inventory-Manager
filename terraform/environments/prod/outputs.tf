@@ -26,3 +26,16 @@ output "cloud_sql_connection_name" {
 output "backend_url" {
   value = google_cloud_run_v2_service.backend.uri
 }
+
+output "custom_domain_required_dns_updates" {
+  description = "DNS records Firebase needs for the swu.jeremybradenapps.com custom domain (TXT verification, A/AAAA hosting). Add these to jeremy-portfolio's dns.tf."
+  value       = google_firebase_hosting_custom_domain.swu_subdomain.required_dns_updates
+}
+
+output "custom_domain_state" {
+  description = "Ownership and hosting state of the swu.jeremybradenapps.com custom domain"
+  value = {
+    ownership_state = google_firebase_hosting_custom_domain.swu_subdomain.ownership_state
+    host_state      = google_firebase_hosting_custom_domain.swu_subdomain.host_state
+  }
+}

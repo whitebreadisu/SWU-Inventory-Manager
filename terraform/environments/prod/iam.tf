@@ -19,6 +19,11 @@ locals {
     "roles/iam.serviceAccountUser",          # attach the runtime service account to Cloud Run (P2)
     "roles/resourcemanager.projectIamAdmin", # grant IAM bindings the above need (e.g. Cloud Run SA -> Cloud SQL Client)
     "roles/secretmanager.admin",             # grant the runtime SA access to the database-url secret (P2 stage 3)
+    # P3 stage 3: `terraform apply` refreshes every resource in state, not
+    # just the ones changing — terraform-ci needs read access to all of it,
+    # even resources it isn't managing changes to.
+    "roles/iam.workloadIdentityPoolViewer", # read wif.tf's pool (it's CI's own trust config)
+    "roles/firebase.viewer",                # read firebase.tf's project resource
   ]
 }
 
@@ -34,8 +39,10 @@ resource "google_project_iam_member" "terraform_ci" {
 # (previously only Jeremy's own credentials did), so it needs access to the
 # state backend. swu-prod-tfstate was created by hand in P1, outside
 # Terraform, so this is bucket-scoped rather than part of terraform_ci_roles.
+# storage.admin (not objectUser): apply-time refresh of this very resource
+# calls bucket getIamPolicy/setIamPolicy, not just object reads/writes.
 resource "google_storage_bucket_iam_member" "terraform_ci_state" {
   bucket = "swu-prod-tfstate"
-  role   = "roles/storage.objectUser"
+  role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.terraform_ci.email}"
 }

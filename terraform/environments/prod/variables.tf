@@ -13,5 +13,9 @@ variable "region" {
 variable "backend_image_tag" {
   description = "Tag of the backend image (in the Artifact Registry repo) to deploy to Cloud Run."
   type        = string
-  default     = "v1"
+  # CI's `deploy` job always overrides this via `-var="backend_image_tag=${{ github.sha }}"`.
+  # The default only matters for a local `terraform apply` (e.g. an IAM grant)
+  # run without that flag — keep it pointed at a recently-deployed SHA so a
+  # local apply doesn't silently roll Cloud Run back to a stale image.
+  default = "033ea7fce655e706ffbd9e76cfa8e37fa0861f12"
 }

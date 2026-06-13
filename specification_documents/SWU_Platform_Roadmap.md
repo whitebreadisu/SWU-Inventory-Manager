@@ -62,4 +62,29 @@ Three experiential milestones anchor this roadmap — each is a concrete moment 
 
 ---
 
+## 6. Cross-Cutting: Custom Domain & Portfolio (`jeremybradenapps.com`)
+
+Decided 2026-06-13, ahead of P3. Jeremy plans to build 2-5 additional apps over the next 12 months, each reachable via its own subdomain of `jeremybradenapps.com`, alongside a landing page linking to all of them. This is a cross-cutting concern — it touches the P2 Firebase Hosting setup but does not block or belong to any single P-phase.
+
+**Decisions (locked):**
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Linking strategy | **Subdomains-as-primary** (e.g., `swu.jeremybradenapps.com`) | Maps directly onto Firebase Hosting's multi-site model; each app stays fully independent — no shared routing layer, no changes to an app's existing frontend base path. Path-based redirects (e.g., `jeremybradenapps.com/swu` → 302 to the subdomain) can be added later via Firebase Hosting `redirects`, at near-zero cost, if desired |
+| Domain registrar | **Namecheap** | A pure registrar — delegating nameservers to a different DNS provider is the default workflow, with no bundled DNS/CDN features pulling toward keeping DNS elsewhere (unlike Cloudflare Registrar, whose product is built around Cloudflare also being the DNS host) |
+| DNS | **Cloud DNS** (Terraform-managed) | One managed zone for `jeremybradenapps.com` becomes the single source of truth for every app's subdomain records — consistent with the "everything as code" theme of P1-P7 |
+| Project structure | **Dedicated `jeremy-portfolio` GCP project** (separate from `swu-prod`), owning the Cloud DNS zone and the portal's Firebase Hosting site (landing page, root domain as custom domain) | Keeps the root domain and landing page out of any single app's isolation boundary. Each app keeps its own `<app>-prod`/`<app>-sandbox` pair (the pattern P1 established) with its own Firebase Hosting site and subdomain custom domain; each app's DNS record(s) are added as `google_dns_record_set` resources in the portfolio project's zone |
+| Repo | **Separate repo**, [`whitebreadisu/jeremy-portfolio`](https://github.com/whitebreadisu/jeremy-portfolio) | The portfolio isn't part of the SWU Inventory Manager application; as more apps are built, each may get its own repo, with the portfolio repo as the natural shared home for the root domain and landing page |
+
+**Relationship to P3 and beyond:** The portfolio repo gets its own small, self-contained bootstrap — a "P1-style" setup (new GCP project, billing link, Terraform state bucket, Cloud DNS zone, Firebase project + landing page Hosting site) — independent of SWU's CI/CD work. The only point of contact with this repo: once the portfolio's Cloud DNS zone exists and `jeremybradenapps.com` is delegated to it, SWU gets one small, optional addition — a custom domain (`swu.jeremybradenapps.com`) on `swu-prod`'s existing Firebase Hosting site, plus the matching DNS record in the portfolio's zone. This can happen before, during, or after P3 — it does not touch CI/CD.
+
+**Status: COMPLETE (2026-06-13).** All five bootstrap stages (A-E) are done and live:
+- **A-C**: `jeremy-portfolio-prod` GCP project, Cloud DNS zone for `jeremybradenapps.com`, Firebase Hosting landing page
+- **D**: `jeremybradenapps.com` mapped as a custom domain on the portal's Hosting site — live at `https://jeremybradenapps.com`
+- **E**: `swu.jeremybradenapps.com` mapped as a custom domain on `swu-prod`'s Hosting site — live at `https://swu.jeremybradenapps.com`; the portal's landing page links here
+
+Nothing from this cross-cutting work blocks P3 or any later P-phase.
+
+---
+
 *— End of Platform Roadmap —*

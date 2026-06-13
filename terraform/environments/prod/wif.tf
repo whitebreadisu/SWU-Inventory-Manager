@@ -33,6 +33,6 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 # terraform-ci via its short-lived OIDC token (no key files).
 resource "google_service_account_iam_member" "terraform_ci_wif" {
   service_account_id = google_service_account.terraform_ci.name
-  role                = "roles/iam.workloadIdentityUser"
-  member              = "principalSet://iam.googleapis.com/projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.github.workload_identity_pool_id}/attribute.repository/whitebreadisu/SWU-Inventory-Manager"
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.github.workload_identity_pool_id}/attribute.repository/whitebreadisu/SWU-Inventory-Manager"
 }

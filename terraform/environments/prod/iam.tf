@@ -18,6 +18,7 @@ locals {
     "roles/iam.serviceAccountAdmin",         # create/manage the app's runtime service account (P2)
     "roles/iam.serviceAccountUser",          # attach the runtime service account to Cloud Run (P2)
     "roles/resourcemanager.projectIamAdmin", # grant IAM bindings the above need (e.g. Cloud Run SA -> Cloud SQL Client)
+    "roles/secretmanager.admin",             # grant the runtime SA access to the database-url secret (P2 stage 3)
   ]
 }
 

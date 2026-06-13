@@ -22,6 +22,10 @@ htmlcov/
 # Node
 node_modules/
 frontend/dist/
+*.tsbuildinfo
+
+# Firebase CLI local deploy cache
+.firebase/
 
 # OS
 .DS_Store

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CardSet } from '../../api/sets';
 
 interface Props {

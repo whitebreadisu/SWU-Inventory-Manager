@@ -1,4 +1,3 @@
-import React from 'react';
 import { VARIANT_DEFS, cardOwnedTotal, PLAYSET_SIZE } from '../../utils/inventory';
 import type { InventoryCard } from '../../utils/inventory';
 

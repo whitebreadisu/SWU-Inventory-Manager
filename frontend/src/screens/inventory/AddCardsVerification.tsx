@@ -1,4 +1,3 @@
-import React from 'react';
 import type { VerificationItem } from '../../utils/addCardsResolver';
 
 interface SectionProps {

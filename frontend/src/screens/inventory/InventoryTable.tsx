@@ -1,4 +1,3 @@
-import React from 'react';
 import { parseCardDisplay } from '../../utils/catalog';
 import { getRarityLabel } from '../../utils/variants';
 import { AspectIcon } from '../../components/AspectIcon';

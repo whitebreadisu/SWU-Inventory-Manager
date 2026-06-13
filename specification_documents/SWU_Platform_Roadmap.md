@@ -49,7 +49,7 @@ These decisions were made before phase work begins and shape every phase below.
 
 Three experiential milestones anchor this roadmap — each is a concrete moment where you'll *see* something work, not just read about it:
 
-1. **End of P2 — "It's alive."** The application, as it exists today, is reachable at a real URL, backed by a real managed database, for the first time.
+1. **End of P2 — "It's alive."** The application, as it exists today, is reachable at a real URL, backed by a real managed database, for the first time. **✅ Reached 2026-06-12** — backend at `https://backend-qsolsepaya-uc.a.run.app`, frontend (Firebase Hosting, `/api/**` rewritten to the backend) at `https://swu-prod.web.app`.
 2. **End of P3 — "I pushed, and production changed."** A `git push` to main results in an automatic, observable update to the live application — the core "push to prod" experience.
 3. **End of P5 — "Two people, two inventories."** A second account can log in, see only its own inventory, and that whole change (data model + auth + UI) arrived in production through the P3 pipeline.
 

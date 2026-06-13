@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { getSets } from '../../api/sets';
 import { incrementCard } from '../../api/inventory';
 import { SWUButton } from '../../components/SWUButton';
 import { AddCardsSetBar } from './AddCardsSetBar';
 import { AddCardsKeypad } from './AddCardsKeypad';
 import { AddCardsVerification } from './AddCardsVerification';
-import { resolveRow, inventoryStatus, splitForVerification } from '../../utils/addCardsResolver';
+import { resolveRow, splitForVerification } from '../../utils/addCardsResolver';
 import type { Row } from '../../utils/addCardsResolver';
 import type { CardWithQty } from '../../api/inventory';
 import type { CardSet } from '../../api/sets';

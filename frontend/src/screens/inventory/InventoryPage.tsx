@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { getInventory, incrementCard, decrementCard } from '../../api/inventory';
 import { groupWithInventory, isPlaysetComplete } from '../../utils/inventory';
 import { InventorySummary } from './InventorySummary';

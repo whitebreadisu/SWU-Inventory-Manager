@@ -3,7 +3,6 @@ import { SWUButton } from '../../components/SWUButton';
 import {
   resolveRow,
   inventoryStatus,
-  variantLabelNoOp,
 } from '../../utils/addCardsResolver';
 import type { Row, ResolveResult, InventoryStatus } from '../../utils/addCardsResolver';
 import type { CardWithQty } from '../../api/inventory';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { cardOwnedTotal, getPlaysetSize } from '../../utils/inventory';
 import type { InventoryCard } from '../../utils/inventory';
 

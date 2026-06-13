@@ -37,3 +37,21 @@ resource "google_project_service" "p2" {
 
   disable_on_destroy = false
 }
+
+locals {
+  # APIs needed for P2 stage 4 (static frontend hosting), a separate session
+  # from the other three P2 stages.
+  p2_stage4_apis = [
+    "firebase.googleapis.com",        # enables Firebase on this GCP project
+    "firebasehosting.googleapis.com", # Hosting-specific API
+  ]
+}
+
+resource "google_project_service" "p2_stage4" {
+  for_each = toset(local.p2_stage4_apis)
+
+  project = var.project_id
+  service = each.value
+
+  disable_on_destroy = false
+}

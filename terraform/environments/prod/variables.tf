@@ -9,3 +9,9 @@ variable "region" {
   type        = string
   default     = "us-central1"
 }
+
+variable "backend_image_tag" {
+  description = "Tag of the backend image (in the Artifact Registry repo) to deploy to Cloud Run."
+  type        = string
+  default     = "v1"
+}

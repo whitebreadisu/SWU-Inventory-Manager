@@ -29,3 +29,13 @@ resource "google_project_iam_member" "terraform_ci" {
   role    = each.value
   member  = "serviceAccount:${google_service_account.terraform_ci.email}"
 }
+
+# P3 stage 3: terraform-ci runs `terraform apply` itself for the first time
+# (previously only Jeremy's own credentials did), so it needs access to the
+# state backend. swu-prod-tfstate was created by hand in P1, outside
+# Terraform, so this is bucket-scoped rather than part of terraform_ci_roles.
+resource "google_storage_bucket_iam_member" "terraform_ci_state" {
+  bucket = "swu-prod-tfstate"
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.terraform_ci.email}"
+}

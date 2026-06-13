@@ -4,8 +4,10 @@ name: CI
 # request. Pure CI — no GCP/Terraform involved yet (that's stages 2-3).
 #
 # P3 stage 2: on a push to main, once both test jobs pass, build the backend
-# image and push it to Artifact Registry tagged with the commit SHA. Stage 3
-# wires this image into a Terraform deploy.
+# image and push it to Artifact Registry tagged with the commit SHA.
+#
+# P3 stage 3: once the image is pushed, run `terraform apply` against
+# terraform/environments/prod, pointing Cloud Run at that SHA-tagged image.
 on:
   push:
   pull_request:
@@ -118,3 +120,32 @@ jobs:
 
       - name: Push image
         run: docker push ${{ env.IMAGE }}:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: swu-prod
+          workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: terraform/environments/prod
+        run: terraform init
+
+      - name: Terraform apply
+        working-directory: terraform/environments/prod
+        run: terraform apply -auto-approve -var="backend_image_tag=${{ github.sha }}"

@@ -21,7 +21,7 @@ resource "google_cloud_run_v2_service" "backend" {
     service_account = google_service_account.backend_runtime.email
 
     containers {
-      image = "${google_artifact_registry_repository.backend.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.backend.repository_id}/api:v1"
+      image = "${google_artifact_registry_repository.backend.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.backend.repository_id}/api:${var.backend_image_tag}"
 
       ports {
         # Matches the Dockerfile's hardcoded `uvicorn --port 8000`.

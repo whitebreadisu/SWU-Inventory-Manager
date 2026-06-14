@@ -74,12 +74,16 @@ resource "google_project_service" "p5" {
 }
 
 locals {
-  # APIs needed for P6: Cloud Monitoring dashboards (stage 2) and, later,
-  # alerting (stage 3) and Error Reporting (stage 4). monitoring.googleapis.com
-  # is already enabled (a Cloud Run dependency) -- declaring it here brings it
+  # APIs needed for P6: Cloud Monitoring dashboards (stage 2), alerting
+  # (stage 3), and Error Reporting (stage 4). monitoring.googleapis.com is
+  # already enabled (a Cloud Run dependency) -- declaring it here brings it
   # under Terraform management, same reasoning as the other phases' API lists.
+  # clouderrorreporting.googleapis.com is the only stage 4 change -- error
+  # groups are derived from Stage 1's existing structured logs, no new
+  # resources to create.
   p6_apis = [
     "monitoring.googleapis.com",
+    "clouderrorreporting.googleapis.com",
   ]
 }
 

@@ -24,6 +24,9 @@ pytestmark = pytest.mark.skipif(
 
 SEEDED_QUANTITY = 2
 
+TENANT_TWO_UID = "test-tenant-two-user"
+TENANT_TWO_EMAIL = "tenant-two@example.com"
+
 
 @pytest.fixture(scope="module")
 def app_db():
@@ -53,6 +56,13 @@ def tenant_two(db):
     tenant_id = db.execute(
         text("INSERT INTO tenants (name) VALUES ('Tenant Two') RETURNING id")
     ).scalar()
+    db.execute(
+        text(
+            "INSERT INTO users (firebase_uid, tenant_id, email) "
+            "VALUES (:uid, :tenant_id, :email)"
+        ),
+        {"uid": TENANT_TWO_UID, "tenant_id": tenant_id, "email": TENANT_TWO_EMAIL},
+    )
     db.commit()
 
     try:
@@ -92,8 +102,20 @@ def tenant_two(db):
     finally:
         db.rollback()
         db.execute(text("DELETE FROM inventory WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": TENANT_TWO_UID})
         db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
         db.commit()
+
+
+@pytest.fixture
+def tenant_two_client(make_client, tenant_two):
+    """A TestClient authenticated as tenant #2's user. Function-scoped (via
+    conftest's make_client) so its dependency_overrides entry can't be
+    clobbered by another test's client/make_client teardown -- the override
+    dict is shared global state on the app singleton. Depending on
+    tenant_two ensures its users row exists before get_db() resolves this
+    identity."""
+    return make_client(TENANT_TWO_UID, TENANT_TWO_EMAIL)
 
 
 def test_naive_query_as_tenant_two_excludes_tenant_one_rows(app_db, tenant_two):
@@ -130,29 +152,27 @@ def test_naive_query_as_tenant_one_excludes_tenant_two_rows(app_db, tenant_two):
         assert quantity == tenant_two["tenant_one_quantities"][card_id]
 
 
-def test_api_tenant_two_sees_its_own_quantities(client, tenant_two):
-    headers = {"X-Tenant-Id": str(tenant_two["tenant_id"])}
-    records = client.get("/api/inventory", headers=headers).json()
+def test_api_tenant_two_sees_its_own_quantities(tenant_two_client, tenant_two):
+    records = tenant_two_client.get("/api/inventory").json()
     by_card_id = {r["id"]: r["quantity"] for r in records}
     for card_id in tenant_two["card_ids"]:
         assert by_card_id[card_id] == SEEDED_QUANTITY
 
 
 def test_api_tenant_one_unaffected_by_tenant_two_rows(client, tenant_two):
-    records = client.get("/api/inventory", headers={"X-Tenant-Id": "1"}).json()
+    records = client.get("/api/inventory").json()
     by_card_id = {r["id"]: r["quantity"] for r in records}
     for card_id, expected in tenant_two["tenant_one_quantities"].items():
         assert by_card_id[card_id] == expected
 
 
-def test_increment_for_tenant_two_does_not_affect_tenant_one(client, tenant_two, db):
+def test_increment_for_tenant_two_does_not_affect_tenant_one(tenant_two_client, tenant_two, db):
     """The 'two people, two inventories' proof: incrementing tenant #2's
     row for a card -- via the same naive repository code tenant #1 uses --
     leaves tenant #1's row for that same card_id untouched."""
     card_id = tenant_two["card_ids"][0]
-    headers = {"X-Tenant-Id": str(tenant_two["tenant_id"])}
 
-    response = client.post(f"/api/inventory/{card_id}/increment", headers=headers)
+    response = tenant_two_client.post(f"/api/inventory/{card_id}/increment")
     assert response.status_code == 200
     assert response.json()["quantity"] == SEEDED_QUANTITY + 1
 
@@ -163,5 +183,5 @@ def test_increment_for_tenant_two_does_not_affect_tenant_one(client, tenant_two,
     assert tenant_one_quantity == tenant_two["tenant_one_quantities"][card_id]
 
     # restore tenant #2's row to its fixture-seeded quantity
-    response = client.post(f"/api/inventory/{card_id}/decrement", headers=headers)
+    response = tenant_two_client.post(f"/api/inventory/{card_id}/decrement")
     assert response.json()["quantity"] == SEEDED_QUANTITY

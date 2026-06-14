@@ -8,15 +8,24 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from .conftest import DEFAULT_TEST_UID
+
 pytestmark = pytest.mark.skipif(
     "DATABASE_URL" not in os.environ,
     reason="requires DATABASE_URL -- run inside the backend container",
 )
 
 
-def test_users_table_empty(db):
-    count = db.execute(text("SELECT COUNT(*) FROM users")).scalar()
-    assert count == 0, "users table should be empty until P5 Stage 2 auto-provisions rows"
+def test_users_table_has_seeded_default_test_identity(db):
+    """P5 Stage 2: conftest's seed_default_test_user fixture maps
+    DEFAULT_TEST_UID to tenant #1, so the default `client` fixture acts as a
+    tenant #1 user."""
+    row = db.execute(
+        text("SELECT tenant_id FROM users WHERE firebase_uid = :uid"),
+        {"uid": DEFAULT_TEST_UID},
+    ).first()
+    assert row is not None
+    assert row.tenant_id == 1
 
 
 def test_users_firebase_uid_unique_constraint(db):

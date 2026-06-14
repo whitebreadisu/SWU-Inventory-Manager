@@ -26,6 +26,7 @@ frontend/dist/
 
 # Firebase CLI local deploy cache
 .firebase/
+firebase-debug.log
 
 # OS
 .DS_Store

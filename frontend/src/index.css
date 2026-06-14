@@ -51,6 +51,10 @@ body {
 .app-header {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .app-header__brand {
@@ -63,7 +67,42 @@ body {
   color: var(--color-text-muted);
 }
 
+.app-header__account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 32px 0;
+}
+
+.app-header__email {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.app-header__logout {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.app-header__logout:hover {
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
 .app-header__nav {
+  flex-basis: 100%;
   display: flex;
   gap: 0;
   padding: 0 24px;

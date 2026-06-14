@@ -24,9 +24,17 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
       APP_DATABASE_URL: postgresql://swu_app:${APP_DB_PASSWORD}@db:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      # P5 Stage 3 (dev only): firebase-admin checks FIREBASE_AUTH_EMULATOR_HOST
+      # itself and skips signature verification for emulator-issued tokens;
+      # GOOGLE_CLOUD_PROJECT supplies the project id verify_id_token checks
+      # the token's aud/iss claims against (no real GCP credentials needed).
+      FIREBASE_AUTH_EMULATOR_HOST: firebase-emulator:9099
+      GOOGLE_CLOUD_PROJECT: demo-swu
     depends_on:
       db:
         condition: service_healthy
+      firebase-emulator:
+        condition: service_started
     volumes:
       - ./backend:/app
       - ./tcgcsv_files:/tcgcsv_files:ro
@@ -46,6 +54,20 @@ services:
       VITE_API_URL: http://localhost:8000
     depends_on:
       - backend
+
+  # P5 Stage 3 (dev only): Firebase Auth Emulator. "demo-swu" is a reserved
+  # offline project id -- firebase-tools runs the emulator against it with
+  # no real GCP project or login required. Reuses the frontend image since
+  # firebase-tools is already a frontend devDependency.
+  firebase-emulator:
+    build:
+      context: ./frontend
+    command: npx firebase emulators:start --only auth --project demo-swu
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   postgres_data:

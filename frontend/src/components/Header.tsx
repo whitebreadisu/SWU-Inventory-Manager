@@ -3,6 +3,8 @@ type Section = 'inventory' | 'catalog' | 'decks';
 interface Props {
   activeSection: Section;
   onSectionChange: (s: Section) => void;
+  userEmail: string | null;
+  onLogout: () => void;
 }
 
 const NAV_ITEMS: { key: Section; label: string }[] = [
@@ -11,7 +13,7 @@ const NAV_ITEMS: { key: Section; label: string }[] = [
   { key: 'decks',     label: 'Decks'     },
 ];
 
-export function Header({ activeSection, onSectionChange }: Props) {
+export function Header({ activeSection, onSectionChange, userEmail, onLogout }: Props) {
   return (
     <header className="app-header">
       <div className="app-header__brand">Star Wars: Unlimited Inventory Manager</div>
@@ -27,6 +29,11 @@ export function Header({ activeSection, onSectionChange }: Props) {
           </button>
         ))}
       </nav>
+
+      <div className="app-header__account">
+        {userEmail && <span className="app-header__email">{userEmail}</span>}
+        <button className="app-header__logout" onClick={onLogout}>Log Out</button>
+      </div>
 
     </header>
   );

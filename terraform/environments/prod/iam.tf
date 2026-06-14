@@ -34,6 +34,10 @@ locals {
     # config (google_identity_platform_config) so `terraform apply` can
     # enable the Email/Password sign-in provider.
     "roles/firebaseauth.admin",
+    # P6 stage 2: create/update the google_monitoring_dashboard resource.
+    # Scoped to dashboards only -- roles/monitoring.editor would also grant
+    # alert policy and uptime check management, not needed until stage 3.
+    "roles/monitoring.dashboardEditor",
   ]
 }
 

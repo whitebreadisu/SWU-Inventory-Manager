@@ -72,3 +72,22 @@ resource "google_project_service" "p5" {
 
   disable_on_destroy = false
 }
+
+locals {
+  # APIs needed for P6: Cloud Monitoring dashboards (stage 2) and, later,
+  # alerting (stage 3) and Error Reporting (stage 4). monitoring.googleapis.com
+  # is already enabled (a Cloud Run dependency) -- declaring it here brings it
+  # under Terraform management, same reasoning as the other phases' API lists.
+  p6_apis = [
+    "monitoring.googleapis.com",
+  ]
+}
+
+resource "google_project_service" "p6" {
+  for_each = toset(local.p6_apis)
+
+  project = var.project_id
+  service = each.value
+
+  disable_on_destroy = false
+}

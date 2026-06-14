@@ -36,6 +36,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://swu_user:swu_pass@localhost:5432/swu_inventory
+      APP_DATABASE_URL: postgresql://swu_app:swu_app_pass@localhost:5432/swu_inventory
+      APP_DB_PASSWORD: swu_app_pass
       CATALOG_SEED_PATH: ${{ github.workspace }}/db/seeds/catalog_seed.sql
       INVENTORY_SNAPSHOT_PATH: ${{ github.workspace }}/db/snapshots/inventory_snapshot.sql
 

@@ -21,7 +21,7 @@ jobs:
           workload_identity_provider: projects/428226041551/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-sandbox.iam.gserviceaccount.com
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Verify identity (sandbox)
         run: gcloud projects describe swu-sandbox --format="value(projectId,name)"
@@ -36,7 +36,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Verify identity (prod)
         run: gcloud projects describe swu-prod --format="value(projectId,name)"

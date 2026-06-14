@@ -42,7 +42,7 @@ jobs:
       INVENTORY_SNAPSHOT_PATH: ${{ github.workspace }}/db/snapshots/inventory_snapshot.sql
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v5
         with:
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -105,7 +105,7 @@ jobs:
       IMAGE: us-central1-docker.pkg.dev/swu-prod/backend/api
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -136,7 +136,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -165,7 +165,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:

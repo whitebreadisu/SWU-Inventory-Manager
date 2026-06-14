@@ -3,6 +3,7 @@ from app.models.set_model import CardSet
 from app.models.card import Card
 from app.models.inventory import Inventory
 from app.models.tenant import Tenant
+from app.models.user import User
 
 # Phase 2 models — defined for structural reference, not yet migrated
 from app.models.card_aspect import CardAspect
@@ -16,6 +17,7 @@ __all__ = [
     "Card",
     "Inventory",
     "Tenant",
+    "User",
     "CardAspect",
     "CardKeyword",
     "CardTrait",

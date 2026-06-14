@@ -14,3 +14,4 @@ class Tenant(Base):
     )
 
     inventory: Mapped[list["Inventory"]] = relationship("Inventory", back_populates="tenant")
+    users: Mapped[list["User"]] = relationship("User", back_populates="tenant")

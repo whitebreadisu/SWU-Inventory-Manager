@@ -27,6 +27,10 @@ locals {
     # P3 stage 4: the new frontend-deploy job runs `firebase deploy --only
     # hosting` using this identity's credentials.
     "roles/firebasehosting.admin", # deploy frontend/dist to Firebase Hosting
+    # P5 stage 1: manage the Identity Platform / Firebase Authentication
+    # config (google_identity_platform_config) so `terraform apply` can
+    # enable the Email/Password sign-in provider.
+    "roles/firebaseauth.admin",
   ]
 }
 

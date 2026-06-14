@@ -55,3 +55,20 @@ resource "google_project_service" "p2_stage4" {
 
   disable_on_destroy = false
 }
+
+locals {
+  # APIs needed for P5 stage 1: Firebase Authentication is backed by the
+  # Identity Platform / Identity Toolkit API.
+  p5_apis = [
+    "identitytoolkit.googleapis.com",
+  ]
+}
+
+resource "google_project_service" "p5" {
+  for_each = toset(local.p5_apis)
+
+  project = var.project_id
+  service = each.value
+
+  disable_on_destroy = false
+}

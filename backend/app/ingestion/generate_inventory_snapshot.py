@@ -52,11 +52,11 @@ def generate_inventory_snapshot(output_path: Path = SNAPSHOT_PATH) -> Path:
     db = SessionLocal()
     try:
         inventory_rows = db.execute(
-            text("SELECT card_id, quantity, updated_at FROM inventory ORDER BY card_id")
+            text("SELECT tenant_id, card_id, quantity, updated_at FROM inventory ORDER BY card_id")
         ).fetchall()
 
         record_count = len(inventory_rows)
-        total_quantity = sum(r[1] for r in inventory_rows)
+        total_quantity = sum(r[2] for r in inventory_rows)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -66,8 +66,8 @@ def generate_inventory_snapshot(output_path: Path = SNAPSHOT_PATH) -> Path:
             f.write(f"-- Records: {record_count} | Total quantity: {total_quantity}\n")
             f.write("\n")
 
-            _write_batched(f, "inventory", "card_id, quantity, updated_at", inventory_rows, lambda r: (
-                f"({_q(r[0])}, {_q(r[1])}, {_q(str(r[2]))})"
+            _write_batched(f, "inventory", "tenant_id, card_id, quantity, updated_at", inventory_rows, lambda r: (
+                f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(str(r[3]))})"
             ))
 
         msg = f"Snapshot written: {output_path} ({record_count} records, total quantity {total_quantity})"

@@ -10,11 +10,14 @@ from app.models.base import Base
 class Inventory(Base):
     __tablename__ = "inventory"
     __table_args__ = (
-        UniqueConstraint("card_id", name="uq_inventory_card_id"),
+        UniqueConstraint("tenant_id", "card_id", name="uq_inventory_tenant_id_card_id"),
         CheckConstraint("quantity >= 0", name="ck_inventory_quantity_non_negative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tenants.id"), nullable=False, server_default="1"
+    )
     card_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("cards.id"), nullable=False, index=True
     )
@@ -26,3 +29,4 @@ class Inventory(Base):
     )
 
     card: Mapped["Card"] = relationship("Card", back_populates="inventory")
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="inventory")

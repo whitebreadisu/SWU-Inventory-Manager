@@ -50,14 +50,14 @@ These decisions were made before phase work begins and shape every phase below.
 Three experiential milestones anchor this roadmap — each is a concrete moment where you'll *see* something work, not just read about it:
 
 1. **End of P2 — "It's alive."** The application, as it exists today, is reachable at a real URL, backed by a real managed database, for the first time. **✅ Reached 2026-06-12** — backend at `https://backend-qsolsepaya-uc.a.run.app`, frontend (Firebase Hosting, `/api/**` rewritten to the backend) at `https://swu-prod.web.app`.
-2. **End of P3 — "I pushed, and production changed."** A `git push` to main results in an automatic, observable update to the live application — the core "push to prod" experience.
+2. **End of P3 — "I pushed, and production changed."** A `git push` to main results in an automatic, observable update to the live application — the core "push to prod" experience. **✅ Reached 2026-06-13** — branch protection on `main` requires the `backend`/`frontend` CI checks to pass before merge (PR #5 was the first PR gated by it); a rollback procedure (Cloud Run traffic shift between revisions) was written and demonstrated, then reverted; and a merge to `main` now automatically redeploys *both* halves of the app — the backend (Cloud Run, via Terraform) and the frontend (Firebase Hosting) — confirmed live at `https://swu-prod.web.app` and `https://swu.jeremybradenapps.com`.
 3. **End of P5 — "Two people, two inventories."** A second account can log in, see only its own inventory, and that whole change (data model + auth + UI) arrived in production through the P3 pipeline.
 
 ---
 
 ## 5. Open Decisions (Deferred to Specific Phases)
 
-- **P4 — Tenant #1 migration mechanics.** The exact mechanism for converting the existing single-tenant inventory snapshot into "tenant #1's" data (e.g., a one-time backfill migration vs. seed-time assignment) will be decided when P4 begins.
+- **P4 — Tenant #1 migration mechanics. ✅ Resolved 2026-06-13.** Both, sequenced — not an either/or. A single Alembic migration adds `inventory.tenant_id` via relax → backfill → constrain, backfilling `swu-prod`'s real inventory rows to a newly-created tenant #1; because `alembic upgrade head` runs on every Cloud Run container start, this is the actual production backfill, not a rehearsal. `db/snapshots/inventory_snapshot.sql` is then regenerated to include `tenant_id`, keeping CI and fresh local databases in sync. A `users` table is deferred to P5, where real auth gives its rows a purpose. See `SWU_Platform_Learning_Guide.md`'s P4 chapter for the full reasoning.
 - **P5 — Auth provider selection.** GCP Identity Platform vs. a third-party provider (Auth0, Clerk, Supabase Auth) requires its own focused discussion, weighing cost (most have generous free tiers at hobby scale), GCP-native integration vs. portability, and frontend developer experience. Deferred to the start of P5.
 
 ---

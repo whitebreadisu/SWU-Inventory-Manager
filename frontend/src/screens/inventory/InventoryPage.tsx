@@ -20,6 +20,7 @@ export function InventoryPage() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pendingCardIds, setPendingCardIds] = useState<Set<number>>(new Set());
 
   const fetchInventory = useCallback(async () => {
     const raw = await getInventory();
@@ -41,7 +42,8 @@ export function InventoryPage() {
 
   async function handleIncrement(card: InventoryCard, invKey: string) {
     const cardId = card.cardIds[invKey];
-    if (cardId == null) return;
+    if (cardId == null || pendingCardIds.has(cardId)) return;
+    setPendingCardIds(prev => new Set(prev).add(cardId));
     try {
       const result = await incrementCard(cardId);
       if (result.blocked) return;
@@ -54,12 +56,19 @@ export function InventoryPage() {
       );
     } catch (err) {
       console.error('Increment failed:', err);
+    } finally {
+      setPendingCardIds(prev => {
+        const next = new Set(prev);
+        next.delete(cardId);
+        return next;
+      });
     }
   }
 
   async function handleDecrement(card: InventoryCard, invKey: string) {
     const cardId = card.cardIds[invKey];
-    if (cardId == null) return;
+    if (cardId == null || pendingCardIds.has(cardId)) return;
+    setPendingCardIds(prev => new Set(prev).add(cardId));
     try {
       const result = await decrementCard(cardId);
       setCards(prev =>
@@ -71,6 +80,12 @@ export function InventoryPage() {
       );
     } catch (err) {
       console.error('Decrement failed:', err);
+    } finally {
+      setPendingCardIds(prev => {
+        const next = new Set(prev);
+        next.delete(cardId);
+        return next;
+      });
     }
   }
 
@@ -109,6 +124,7 @@ export function InventoryPage() {
             cards={filtered}
             onIncrement={handleIncrement}
             onDecrement={handleDecrement}
+            pendingCardIds={pendingCardIds}
           />
         </>
       )}

@@ -1,4 +1,5 @@
 from sqlalchemy import func, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 from app.models.card import Card
 from app.models.inventory import Inventory
@@ -52,34 +53,39 @@ def get_base_card_total(db: Session, set_id: int, base_card_number: str) -> int:
 
 
 def upsert_increment(db: Session, card_id: int) -> Inventory:
+    """Atomically insert-or-increment the (tenant_id, card_id) row in a
+    single statement, relying on uq_inventory_tenant_id_card_id so
+    concurrent increments for the same card can't lose an update."""
     tenant_id = _current_tenant_id(db)
-    inv = (
-        db.query(Inventory)
-        .filter(Inventory.tenant_id == tenant_id, Inventory.card_id == card_id)
-        .first()
+    table = Inventory.__table__
+    stmt = (
+        pg_insert(table)
+        .values(tenant_id=tenant_id, card_id=card_id, quantity=1)
+        .on_conflict_do_update(
+            index_elements=["tenant_id", "card_id"],
+            set_={"quantity": table.c.quantity + 1, "updated_at": func.now()},
+        )
+        .returning(table)
     )
-    if inv is None:
-        inv = Inventory(tenant_id=tenant_id, card_id=card_id, quantity=1)
-        db.add(inv)
-    else:
-        inv.quantity += 1
+    row = db.execute(stmt).one()
     db.commit()
-    db.refresh(inv)
-    return inv
+    return Inventory(**row._mapping)
 
 
 def upsert_decrement(db: Session, card_id: int) -> Inventory:
+    """Atomically insert-or-decrement (clamped at 0) the (tenant_id, card_id)
+    row in a single statement, mirroring upsert_increment."""
     tenant_id = _current_tenant_id(db)
-    inv = (
-        db.query(Inventory)
-        .filter(Inventory.tenant_id == tenant_id, Inventory.card_id == card_id)
-        .first()
+    table = Inventory.__table__
+    stmt = (
+        pg_insert(table)
+        .values(tenant_id=tenant_id, card_id=card_id, quantity=0)
+        .on_conflict_do_update(
+            index_elements=["tenant_id", "card_id"],
+            set_={"quantity": func.greatest(table.c.quantity - 1, 0), "updated_at": func.now()},
+        )
+        .returning(table)
     )
-    if inv is None:
-        inv = Inventory(tenant_id=tenant_id, card_id=card_id, quantity=0)
-        db.add(inv)
-    else:
-        inv.quantity = max(0, inv.quantity - 1)
+    row = db.execute(stmt).one()
     db.commit()
-    db.refresh(inv)
-    return inv
+    return Inventory(**row._mapping)

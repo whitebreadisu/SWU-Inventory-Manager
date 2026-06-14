@@ -158,6 +158,7 @@
 }
 
 .variant-inv__chip--zero { color: var(--color-text-muted); }
+.variant-inv__chip--pending { opacity: 0.5; }
 
 .variant-inv__label {
   text-transform: uppercase;

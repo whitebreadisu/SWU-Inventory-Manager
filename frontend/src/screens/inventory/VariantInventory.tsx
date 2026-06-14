@@ -7,9 +7,10 @@ interface Props {
   card: InventoryCard;
   onIncrement: (card: InventoryCard, invKey: string) => void;
   onDecrement: (card: InventoryCard, invKey: string) => void;
+  pendingCardIds: Set<number>;
 }
 
-export function VariantInventory({ card, onIncrement, onDecrement }: Props) {
+export function VariantInventory({ card, onIncrement, onDecrement, pendingCardIds }: Props) {
   const variants = VARIANT_DEFS.filter(v => card[v.key]);
   const inv = card.inventory;
   const isSingleton = SINGLETON_TYPES.has(card.type);
@@ -23,10 +24,12 @@ export function VariantInventory({ card, onIncrement, onDecrement }: Props) {
         // Leader/Base: each variant is independently capped at 1.
         // Other cards: all variants share the 3-copy cap.
         const chipBlocked = isSingleton ? qty >= 1 : totalOwned >= PLAYSET_SIZE;
+        const cardId = card.cardIds[v.invKey];
+        const pending = cardId != null && pendingCardIds.has(cardId);
         return (
           <span
             key={v.invKey}
-            className={`variant-inv__chip${zero ? ' variant-inv__chip--zero' : ''}`}
+            className={`variant-inv__chip${zero ? ' variant-inv__chip--zero' : ''}${pending ? ' variant-inv__chip--pending' : ''}`}
             title={`${v.label}: ${qty}`}
           >
             <span className="variant-inv__label">{v.short}</span>
@@ -36,7 +39,7 @@ export function VariantInventory({ card, onIncrement, onDecrement }: Props) {
               className="variant-inv__step variant-inv__step--dec"
               onClick={e => { e.stopPropagation(); onDecrement(card, v.invKey); }}
               aria-label={`Decrement ${v.label}`}
-              disabled={qty === 0}
+              disabled={qty === 0 || pending}
             >
               −
             </button>
@@ -46,7 +49,7 @@ export function VariantInventory({ card, onIncrement, onDecrement }: Props) {
               className={`variant-inv__step variant-inv__step--inc${chipBlocked ? ' variant-inv__step--blocked' : ''}`}
               onClick={e => { e.stopPropagation(); if (!chipBlocked) onIncrement(card, v.invKey); }}
               aria-label={`Increment ${v.label}`}
-              disabled={chipBlocked}
+              disabled={chipBlocked || pending}
             >
               +
             </button>

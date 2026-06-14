@@ -11,9 +11,10 @@ interface Props {
   cards: InventoryCard[];
   onIncrement: (card: InventoryCard, invKey: string) => void;
   onDecrement: (card: InventoryCard, invKey: string) => void;
+  pendingCardIds: Set<number>;
 }
 
-export function InventoryTable({ cards, onIncrement, onDecrement }: Props) {
+export function InventoryTable({ cards, onIncrement, onDecrement, pendingCardIds }: Props) {
   if (cards.length === 0) {
     return <p className="placeholder">No cards match the current filters.</p>;
   }
@@ -55,6 +56,7 @@ export function InventoryTable({ cards, onIncrement, onDecrement }: Props) {
                     card={card}
                     onIncrement={onIncrement}
                     onDecrement={onDecrement}
+                    pendingCardIds={pendingCardIds}
                   />
                 </td>
                 <td className="td-playset">

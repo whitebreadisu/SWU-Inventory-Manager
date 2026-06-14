@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, within, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InventoryPage } from './InventoryPage';
 import type { CardWithQty } from '../../api/inventory';
@@ -8,10 +8,12 @@ vi.mock('../../api/sets', () => ({
 }));
 
 const mockGetInventory = vi.fn();
+const mockIncrementCard = vi.fn();
+const mockDecrementCard = vi.fn();
 vi.mock('../../api/inventory', () => ({
   getInventory: () => mockGetInventory(),
-  incrementCard: vi.fn(),
-  decrementCard: vi.fn(),
+  incrementCard: (cardId: number) => mockIncrementCard(cardId),
+  decrementCard: (cardId: number) => mockDecrementCard(cardId),
 }));
 
 function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
@@ -85,5 +87,64 @@ describe('InventoryPage summary stats', () => {
 
     expect(summaryValues(container)).toEqual(['0%', '33%', '1']);
     expect(summarySub(container)).toBe('(1 unique)');
+  });
+});
+
+describe('InventoryPage in-flight guard (P7 stage 2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetInventory.mockResolvedValue(mockInventory);
+  });
+
+  it('disables the + button while an increment request is in flight and ignores a second click', async () => {
+    let resolveIncrement!: (value: {
+      card_id: number; quantity: number; playset_complete: boolean; blocked: boolean; reason: string | null;
+    }) => void;
+    mockIncrementCard.mockImplementation(
+      () => new Promise(resolve => { resolveIncrement = resolve; }),
+    );
+
+    await renderPage();
+
+    const row = screen.getByText('SOR Card Two').closest('tr')!;
+    const incButton = within(row).getByRole('button', { name: /increment standard/i });
+
+    fireEvent.click(incButton);
+    expect(incButton).toBeDisabled();
+
+    fireEvent.click(incButton);
+    expect(mockIncrementCard).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveIncrement({ card_id: 2, quantity: 1, playset_complete: false, blocked: false, reason: null });
+    });
+
+    expect(incButton).not.toBeDisabled();
+    expect(row.querySelector('.variant-inv__qty')?.textContent).toBe('1');
+  });
+
+  it('disables the - button while a decrement request is in flight and ignores a second click', async () => {
+    let resolveDecrement!: (value: { card_id: number; quantity: number }) => void;
+    mockDecrementCard.mockImplementation(
+      () => new Promise(resolve => { resolveDecrement = resolve; }),
+    );
+
+    await renderPage();
+
+    const row = screen.getByText('SOR Card One').closest('tr')!;
+    const decButton = within(row).getByRole('button', { name: /decrement standard/i });
+
+    fireEvent.click(decButton);
+    expect(decButton).toBeDisabled();
+
+    fireEvent.click(decButton);
+    expect(mockDecrementCard).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveDecrement({ card_id: 1, quantity: 2 });
+    });
+
+    expect(decButton).not.toBeDisabled();
+    expect(row.querySelector('.variant-inv__qty')?.textContent).toBe('2');
   });
 });

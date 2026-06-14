@@ -35,6 +35,7 @@ describe('InventoryTable', () => {
         cards={[mockCard]}
         onIncrement={vi.fn()}
         onDecrement={vi.fn()}
+        pendingCardIds={new Set()}
       />,
     );
     const chips = container.querySelectorAll('.variant-inv__chip');

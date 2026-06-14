@@ -23,7 +23,10 @@ locals {
     # just the ones changing — terraform-ci needs read access to all of it,
     # even resources it isn't managing changes to.
     "roles/iam.workloadIdentityPoolViewer", # read wif.tf's pool (it's CI's own trust config)
-    "roles/firebase.viewer",                # read firebase.tf's project resource
+    # P5 stage 4 prerequisite: firebase.viewer (read-only) is replaced by
+    # firebase.admin (a superset) so terraform-ci can also create/manage
+    # the google_firebase_web_app resource in firebase.tf.
+    "roles/firebase.admin",
     # P3 stage 4: the new frontend-deploy job runs `firebase deploy --only
     # hosting` using this identity's credentials.
     "roles/firebasehosting.admin", # deploy frontend/dist to Firebase Hosting

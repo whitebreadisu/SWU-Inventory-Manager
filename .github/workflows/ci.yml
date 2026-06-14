@@ -177,16 +177,37 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build
-
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           project_id: swu-prod
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: terraform/environments/prod
+        run: terraform init
+
+      # P5 stage 4 prerequisite: by this point `deploy` has already applied
+      # firebase.tf's google_firebase_web_app, so its real SDK config is in
+      # state -- read it here and inject it into the frontend build below.
+      - name: Read Firebase web app config
+        id: firebase_config
+        working-directory: terraform/environments/prod
+        run: |
+          echo "api_key=$(terraform output -raw firebase_web_app_api_key)" >> "$GITHUB_OUTPUT"
+          echo "auth_domain=$(terraform output -raw firebase_web_app_auth_domain)" >> "$GITHUB_OUTPUT"
+          echo "project_id=$(terraform output -raw project_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ steps.firebase_config.outputs.api_key }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ steps.firebase_config.outputs.auth_domain }}
+          VITE_FIREBASE_PROJECT_ID: ${{ steps.firebase_config.outputs.project_id }}
+        run: npm run build
 
       - name: Deploy to Firebase Hosting
         working-directory: frontend

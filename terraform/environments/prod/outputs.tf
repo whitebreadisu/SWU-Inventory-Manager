@@ -39,3 +39,13 @@ output "custom_domain_state" {
     host_state      = google_firebase_hosting_custom_domain.swu_subdomain.host_state
   }
 }
+
+output "firebase_web_app_api_key" {
+  description = "Firebase Web App API key (P5 stage 4 prerequisite), passed to the frontend build as VITE_FIREBASE_API_KEY."
+  value       = data.google_firebase_web_app_config.default.api_key
+}
+
+output "firebase_web_app_auth_domain" {
+  description = "Firebase Web App auth domain (P5 stage 4 prerequisite), passed to the frontend build as VITE_FIREBASE_AUTH_DOMAIN."
+  value       = data.google_firebase_web_app_config.default.auth_domain
+}

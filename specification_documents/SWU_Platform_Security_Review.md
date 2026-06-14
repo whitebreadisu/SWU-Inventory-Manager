@@ -50,10 +50,11 @@ This is the "wrap-up audit" for P7 — a deliberate, point-in-time pass over the
 ### A06:2021 – Vulnerable and Outdated Components — Addressed (scanning); triage deferred
 
 - Dependabot alerts + version updates enabled (P7 Stage 1): `.github/dependabot.yml` covers `pip` (`/backend`), `npm` (`/frontend`), and `github-actions` (`/`) on a weekly schedule.
-- **7 open Dependabot alerts**, all in dev/test tooling, none in production request-handling libraries:
-  - npm devDependencies: `esbuild` (×2), `vitest`, `uuid`, `vite`
-  - pip: `python-dotenv`, `pytest`
+- **7 open Dependabot alerts** (GitHub reports these as 1 critical, 1 high, 5 moderate), all in dev/test tooling, none in production request-handling libraries:
+  - npm devDependencies: `esbuild` ×2 (1 high — dev-server CORS/registry issue), `vitest` (1 critical — `vitest --ui`'s file-read/execute vulnerability; this project never runs `--ui`, in CI or anywhere else), `uuid` (moderate), `vite` (moderate)
+  - pip: `python-dotenv` (moderate), `pytest` (moderate)
   - `fastapi`, `sqlalchemy`, `psycopg2-binary`, `firebase-admin` — the libraries actually in the runtime request path — have no open alerts.
+  - The "critical" and "high" ratings both require a dev-only feature (Vite's dev server / Vitest's UI server) that the deployed Cloud Run container never runs — it serves the built `frontend/dist` via Firebase Hosting and the FastAPI app directly, no Vite/Vitest process. Severity-in-isolation overstates the production risk here; ecosystem (dev vs. runtime) is the more relevant signal.
 - **18 open Dependabot version-update PRs** (#8, #9, #11–#27) — more than the single TypeScript PR anticipated when this stage was planned. 13 pass CI as-is; 5 fail (#9, #19, #21, #22, #24 — major-version bumps to `pytest`, `pytest-asyncio`, `vitest`, and `@vitejs/plugin-react`).
   - **Decision (2026-06-14):** document the current state and defer triage to a dedicated future session, rather than fold an 18-PR merge/investigation pass into Stage 4. None of the 18 PRs touch a library with an open security alert — this is routine version-update backlog, not an unaddressed CVE.
   - **Notes for that session:** the two "multi" PRs (#11, #12 — bumping `vite`/`@vitejs/plugin-react`/`vitest` together) likely overlap with the single-package PRs for the same libraries (#21, #24); check for redundancy before merging both. The 5 failing PRs are all major-version bumps and will need their CI failures investigated individually (likely breaking API changes in `pytest` 9, `vitest` 4, `@vitejs/plugin-react` 6), not just re-run.

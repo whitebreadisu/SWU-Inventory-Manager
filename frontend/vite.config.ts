@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, coverageConfigDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -21,5 +21,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary'],
+      exclude: [...coverageConfigDefaults.exclude, 'src/main.tsx'],
+      thresholds: {
+        lines: 75,
+        statements: 75,
+      },
+    },
   },
 })

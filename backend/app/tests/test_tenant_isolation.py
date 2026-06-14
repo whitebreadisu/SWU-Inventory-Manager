@@ -252,3 +252,21 @@ def test_increment_for_tenant_two_does_not_affect_tenant_one(tenant_two_client, 
     # restore tenant #2's row to its fixture-seeded quantity
     response = tenant_two_client.post(f"/api/inventory/{card_id}/decrement")
     assert response.json()["quantity"] == SEEDED_QUANTITY
+
+
+def test_cards_catalog_is_identical_across_tenants(client, tenant_two_client):
+    """cards has no tenant_id column and no RLS policy -- /api/cards is
+    shared catalog data, not per-tenant. Guards against a future change
+    (e.g. an over-eager join with inventory) accidentally scoping it."""
+    tenant_one_cards = client.get("/api/cards").json()
+    tenant_two_cards = tenant_two_client.get("/api/cards").json()
+    assert tenant_one_cards == tenant_two_cards
+    assert len(tenant_one_cards) > 0
+
+
+def test_sets_catalog_is_identical_across_tenants(client, tenant_two_client):
+    """Same guarantee as above, for /api/sets."""
+    tenant_one_sets = client.get("/api/sets").json()
+    tenant_two_sets = tenant_two_client.get("/api/sets").json()
+    assert tenant_one_sets == tenant_two_sets
+    assert len(tenant_one_sets) > 0

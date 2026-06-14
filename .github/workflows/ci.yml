@@ -145,7 +145,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         working-directory: terraform/environments/prod
@@ -184,7 +184,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         working-directory: terraform/environments/prod

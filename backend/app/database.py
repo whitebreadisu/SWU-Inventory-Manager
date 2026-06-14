@@ -1,5 +1,5 @@
 import os
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -19,7 +19,10 @@ app_engine = create_engine(APP_DATABASE_URL)
 AppSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=app_engine)
 
 
-def get_db(identity: tuple[str, str] = Depends(get_current_identity)):
+def get_db(
+    request: Request,
+    identity: tuple[str, str] = Depends(get_current_identity),
+):
     """FastAPI dependency: a swu_app session scoped to the caller's tenant.
 
     P5 stage 2: tenant_id is resolved from the verified Firebase identity,
@@ -31,6 +34,10 @@ def get_db(identity: tuple[str, str] = Depends(get_current_identity)):
     session variables for the life of this connection checkout, so they
     survive the commit()+refresh() pattern in upsert_increment/
     upsert_decrement (a plain SET LOCAL would revert after the first commit).
+
+    P6 stage 1: tenant_id is also stashed on request.state so the request
+    logging middleware (app/middleware.py) can include it in the structured
+    log line for this request.
     """
     firebase_uid, email = identity
     db = AppSessionLocal()
@@ -76,6 +83,7 @@ def get_db(identity: tuple[str, str] = Depends(get_current_identity)):
             text("SELECT set_config('app.current_tenant_id', :tenant_id, false)"),
             {"tenant_id": str(tenant_id)},
         )
+        request.state.tenant_id = tenant_id
         yield db
     finally:
         db.close()

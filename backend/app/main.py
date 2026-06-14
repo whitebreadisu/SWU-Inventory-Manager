@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.logging_config import configure_logging
+from app.middleware import log_requests
 from app.routers import sets as sets_router
 from app.routers import cards as cards_router
 from app.routers import inventory as inventory_router
+
+configure_logging()
 
 app = FastAPI(
     title="SWU Inventory Manager",
@@ -17,6 +21,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.middleware("http")(log_requests)
 
 app.include_router(sets_router.router)
 app.include_router(cards_router.router)

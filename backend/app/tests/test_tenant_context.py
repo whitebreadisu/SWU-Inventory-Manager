@@ -7,6 +7,7 @@ inside the backend container).
 import os
 
 import pytest
+from fastapi import Request
 from sqlalchemy import text
 
 from app.database import get_db
@@ -19,10 +20,17 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _make_request() -> Request:
+    """A bare Request for driving get_db() directly -- only its .state is
+    used (P6 stage 1: get_db() stashes tenant_id there for the request
+    logging middleware)."""
+    return Request(scope={"type": "http", "headers": []})
+
+
 def _current_tenant_setting(identity: tuple[str, str]) -> str | None:
     """Drive get_db() directly with an explicit identity and read back
     app.current_tenant_id from the session it produced."""
-    gen = get_db(identity=identity)
+    gen = get_db(request=_make_request(), identity=identity)
     db = next(gen)
     try:
         return db.execute(
@@ -41,7 +49,7 @@ def test_session_variable_survives_commit():
     """set_config(..., false) is session-scoped, unlike SET LOCAL -- it must
     still be set after a commit() so upsert_increment/upsert_decrement's
     commit() + refresh() pattern sees the right tenant on the refresh."""
-    gen = get_db(identity=(DEFAULT_TEST_UID, DEFAULT_TEST_EMAIL))
+    gen = get_db(request=_make_request(), identity=(DEFAULT_TEST_UID, DEFAULT_TEST_EMAIL))
     db = next(gen)
     try:
         db.commit()
@@ -57,7 +65,7 @@ def test_new_identity_auto_provisions_tenant(db):
     """A firebase_uid seen for the first time gets its own brand-new tenant,
     named after its email -- the "one user, one tenant" model."""
     uid, email = "test-new-identity-1", "newuser1@example.com"
-    gen = get_db(identity=(uid, email))
+    gen = get_db(request=_make_request(), identity=(uid, email))
     app_db = next(gen)
     try:
         tenant_id = app_db.execute(

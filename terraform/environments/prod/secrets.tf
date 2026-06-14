@@ -44,8 +44,8 @@ resource "google_secret_manager_secret_iam_member" "backend_runtime_database_url
 
 # P4 Stage 2: password for the swu_app role created by migration 0019.
 # alembic upgrade head (run on every Cloud Run start) reads this so it can
-# CREATE ROLE swu_app. The running app still connects as swu_user via
-# DATABASE_URL above -- switching it to swu_app is Stage 3.
+# CREATE ROLE swu_app. Also used below (Stage 3) to build APP_DATABASE_URL,
+# the request-serving connection string.
 resource "random_password" "app_db_password" {
   length  = 32
   special = false
@@ -68,6 +68,31 @@ resource "google_secret_manager_secret_version" "app_db_password" {
 
 resource "google_secret_manager_secret_iam_member" "backend_runtime_app_db_password" {
   secret_id = google_secret_manager_secret.app_db_password.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend_runtime.email}"
+}
+
+# P4 Stage 3: connection string for swu_app, the RLS-aware role migration
+# 0019 creates. app/database.py reads APP_DATABASE_URL to build the
+# request-serving (Depends(get_db)) connection -- swu_user/DATABASE_URL
+# above remains the migration-running admin connection.
+resource "google_secret_manager_secret" "app_database_url" {
+  secret_id = "app-database-url"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.p2]
+}
+
+resource "google_secret_manager_secret_version" "app_database_url" {
+  secret      = google_secret_manager_secret.app_database_url.id
+  secret_data = "postgresql://swu_app:${random_password.app_db_password.result}@/${google_sql_database.inventory.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_runtime_app_database_url" {
+  secret_id = google_secret_manager_secret.app_database_url.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend_runtime.email}"
 }

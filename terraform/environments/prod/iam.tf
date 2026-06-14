@@ -38,6 +38,11 @@ locals {
     # Scoped to dashboards only -- roles/monitoring.editor would also grant
     # alert policy and uptime check management, not needed until stage 3.
     "roles/monitoring.dashboardEditor",
+    # P6 stage 3: create/update the alert policy and email notification
+    # channel. Two narrowly-scoped roles, same reasoning as dashboardEditor
+    # above -- monitoring.editor remains broader than needed.
+    "roles/monitoring.alertPolicyEditor",
+    "roles/monitoring.notificationChannelEditor",
   ]
 }
 

@@ -1,7 +1,11 @@
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session, selectinload
 from app.models.card import Card
 from app.models.inventory import Inventory
+
+
+def _current_tenant_id(db: Session) -> int:
+    return db.execute(text("SELECT current_setting('app.current_tenant_id')::integer")).scalar()
 
 
 def get_cards_with_inventory(db: Session) -> list[Card]:
@@ -48,9 +52,14 @@ def get_base_card_total(db: Session, set_id: int, base_card_number: str) -> int:
 
 
 def upsert_increment(db: Session, card_id: int) -> Inventory:
-    inv = db.query(Inventory).filter(Inventory.card_id == card_id).first()
+    tenant_id = _current_tenant_id(db)
+    inv = (
+        db.query(Inventory)
+        .filter(Inventory.tenant_id == tenant_id, Inventory.card_id == card_id)
+        .first()
+    )
     if inv is None:
-        inv = Inventory(card_id=card_id, quantity=1)
+        inv = Inventory(tenant_id=tenant_id, card_id=card_id, quantity=1)
         db.add(inv)
     else:
         inv.quantity += 1
@@ -60,9 +69,14 @@ def upsert_increment(db: Session, card_id: int) -> Inventory:
 
 
 def upsert_decrement(db: Session, card_id: int) -> Inventory:
-    inv = db.query(Inventory).filter(Inventory.card_id == card_id).first()
+    tenant_id = _current_tenant_id(db)
+    inv = (
+        db.query(Inventory)
+        .filter(Inventory.tenant_id == tenant_id, Inventory.card_id == card_id)
+        .first()
+    )
     if inv is None:
-        inv = Inventory(card_id=card_id, quantity=0)
+        inv = Inventory(tenant_id=tenant_id, card_id=card_id, quantity=0)
         db.add(inv)
     else:
         inv.quantity = max(0, inv.quantity - 1)

@@ -166,6 +166,73 @@ def test_api_tenant_one_unaffected_by_tenant_two_rows(client, tenant_two):
         assert by_card_id[card_id] == expected
 
 
+TENANT_THREE_UID = "test-tenant-three-user"
+TENANT_THREE_EMAIL = "tenant-three@example.com"
+
+
+@pytest.fixture
+def tenant_three(db):
+    """A brand-new tenant with zero inventory rows -- the exact state of a
+    freshly auto-provisioned account. Regression coverage for
+    upsert_increment/upsert_decrement's INSERT path: a fresh tenant's first
+    increment for any card has no existing row to UPDATE, so it must INSERT
+    with tenant_id set explicitly rather than relying on inventory.tenant_id's
+    server_default of 1 (which the tenant_isolation policy's implicit WITH
+    CHECK rejects for any tenant other than #1)."""
+    tenant_id = db.execute(
+        text("INSERT INTO tenants (name) VALUES ('Tenant Three') RETURNING id")
+    ).scalar()
+    db.execute(
+        text(
+            "INSERT INTO users (firebase_uid, tenant_id, email) "
+            "VALUES (:uid, :tenant_id, :email)"
+        ),
+        {"uid": TENANT_THREE_UID, "tenant_id": tenant_id, "email": TENANT_THREE_EMAIL},
+    )
+    db.commit()
+
+    try:
+        yield {"tenant_id": tenant_id}
+    finally:
+        db.rollback()
+        db.execute(text("DELETE FROM inventory WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": TENANT_THREE_UID})
+        db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
+        db.commit()
+
+
+@pytest.fixture
+def tenant_three_client(make_client, tenant_three):
+    return make_client(TENANT_THREE_UID, TENANT_THREE_EMAIL)
+
+
+def test_increment_for_brand_new_tenant_creates_own_row(tenant_three_client, tenant_three, db):
+    """Reproduces the P5 stage 4 bug: a freshly auto-provisioned tenant
+    (zero inventory rows) increments a card for the first time."""
+    card_id = db.execute(
+        text(
+            """
+            SELECT c.id FROM cards c
+            WHERE c.type NOT IN ('Leader', 'Base')
+            ORDER BY c.id
+            LIMIT 1
+            """
+        )
+    ).scalar()
+
+    response = tenant_three_client.post(f"/api/inventory/{card_id}/increment")
+    assert response.status_code == 200
+    assert response.json()["quantity"] == 1
+
+    row = db.execute(
+        text("SELECT tenant_id, quantity FROM inventory WHERE tenant_id = :tenant_id AND card_id = :card_id"),
+        {"tenant_id": tenant_three["tenant_id"], "card_id": card_id},
+    ).first()
+    assert row is not None
+    assert row.tenant_id == tenant_three["tenant_id"]
+    assert row.quantity == 1
+
+
 def test_increment_for_tenant_two_does_not_affect_tenant_one(tenant_two_client, tenant_two, db):
     """The 'two people, two inventories' proof: incrementing tenant #2's
     row for a card -- via the same naive repository code tenant #1 uses --

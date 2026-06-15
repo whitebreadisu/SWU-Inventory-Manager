@@ -2,6 +2,23 @@
 
 Personal card inventory management for the Star Wars Unlimited collectible trading card game. Replaces an Excel-based workflow with a low-friction web application.
 
+**Live app:** [swu.jeremybradenapps.com](https://swu.jeremybradenapps.com)
+
+## Architecture
+
+| Layer | Technology | Details |
+|-------|-----------|---------|
+| Frontend | React + Vite | Firebase Hosting (prod); Vite dev server (local) |
+| Backend | FastAPI (Python) | Cloud Run (prod); Docker (local) |
+| Database | PostgreSQL 16 | Cloud SQL (prod); Docker (local) |
+| Auth | Firebase Authentication | Bearer token required on all `/api/*` routes |
+| Infrastructure | GCP + Terraform | Cloud Run, Cloud SQL, Artifact Registry, Secret Manager, Cloud DNS |
+| CI/CD | GitHub Actions | test → build/push → deploy on every push to `main` |
+
+**Multi-tenancy:** every Firebase user gets their own isolated inventory, auto-provisioned on first login via Postgres Row-Level Security. See `specification_documents/SWU_Platform_Spec.md` Section 1 for the auth/tenancy architecture.
+
+**Note on API docs:** Swagger UI (`/docs`) and ReDoc (`/redoc`) are disabled in production (`ENVIRONMENT=production`) and available only in local development.
+
 ## Prerequisites
 
 The following tools must already be installed:
@@ -33,25 +50,28 @@ The defaults in `.env.example` work for local development without modification.
 docker compose up --build
 ```
 
-This builds and starts three services:
+This builds and starts four services:
 
 | Service | Port | Description |
 |---------|------|-------------|
 | PostgreSQL | 5432 | Database |
 | FastAPI backend | 8000 | REST API |
 | React frontend | 5173 | Dev server |
+| Firebase Auth Emulator | 9099 | Local auth (no real Firebase credentials needed) |
+
+The Firebase Auth Emulator runs against the reserved offline project id `demo-swu` — no GCP account or login required locally. The backend detects `FIREBASE_AUTH_EMULATOR_HOST` and skips real token signature verification automatically.
 
 First run takes a few minutes while Docker pulls images and installs dependencies. Subsequent starts are fast.
 
-On every startup the backend automatically runs database migrations, applies the card catalog seed file (`db/seeds/catalog_seed.sql`), and applies the inventory snapshot (`db/snapshots/inventory_snapshot.sql`). Both the catalog (all sets and card variants) and personal inventory are populated without any manual steps. Both applies are idempotent — they skip if their table is already populated.
+On every startup the backend automatically runs database migrations, applies the card catalog seed file (`db/seeds/catalog_seed.sql`), and applies the inventory snapshot (`db/snapshots/inventory_snapshot.sql`). Both applies are idempotent — they skip if their table is already populated.
 
 ### 4. Verify the setup
 
 | URL | What you should see |
 |-----|---------------------|
-| http://localhost:5173 | React app |
-| http://localhost:8000/docs | Swagger UI (interactive API docs) |
-| http://localhost:8000/redoc | ReDoc (API reference) |
+| http://localhost:5173 | React app (sign in via the auth emulator) |
+| http://localhost:8000/docs | Swagger UI (interactive API docs — local only) |
+| http://localhost:8000/redoc | ReDoc (API reference — local only) |
 | http://localhost:8000/health | `{"status": "ok"}` |
 
 ### 5. Stop services
@@ -93,41 +113,67 @@ docker compose exec frontend npm test
 ├── backend/
 │   ├── alembic/            # Database schema migrations
 │   ├── app/
-│   │   ├── ingestion/      # CSV, Excel, seed import pipeline
+│   │   ├── ingestion/      # Seed and snapshot import pipeline
 │   │   ├── models/         # SQLAlchemy ORM models
 │   │   ├── repositories/   # Database query logic
-│   │   ├── services/       # Business logic
 │   │   ├── routers/        # FastAPI route handlers
 │   │   ├── tests/          # pytest test suite
+│   │   ├── auth.py         # Firebase token verification
+│   │   ├── database.py     # get_db() — auth + RLS tenant-context wiring
+│   │   ├── middleware.py   # Structured request logging
 │   │   └── main.py         # Application entry point
 │   ├── Dockerfile
-│   ├── pytest.ini
 │   └── requirements.txt
 ├── db/
 │   ├── seeds/
-│   │   └── catalog_seed.sql       # Card catalog seed (auto-applied on startup)
+│   │   └── catalog_seed.sql        # Card catalog seed (auto-applied on startup)
 │   └── snapshots/
-│       └── inventory_snapshot.sql # Personal inventory snapshot (auto-applied on startup)
+│       └── inventory_snapshot.sql  # Personal inventory snapshot (auto-applied on startup)
 ├── frontend/
 │   ├── src/
-│   │   ├── test/           # Vitest setup
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile
+│   │   ├── api/            # authedFetch (attaches Firebase Bearer token)
+│   │   ├── screens/        # Auth, Catalog, Inventory UI screens
+│   │   └── components/     # FilterPanel, AddCardsModal, etc.
+│   ├── firebase.json       # Hosting rewrites (/api/** → Cloud Run)
 │   ├── package.json
 │   └── vite.config.ts
+├── terraform/
+│   └── environments/
+│       ├── prod/           # swu-prod: Cloud Run, Cloud SQL, Firebase, Monitoring
+│       └── sandbox/        # swu-sandbox: P1 bootstrap only (ephemeral exploration)
+├── specification_documents/  # See Documentation Map below
+├── learning_guide/           # Teaching companion (Key Concepts, decision comparisons)
+├── learning_journal/         # Session-by-session development notes
+├── claude_design/            # UI design assets and component handoff files
 ├── docker-compose.yml
-├── .env.example            # Commit this — no secrets
-├── .env                    # Never commit — in .gitignore
-└── README.md
+├── .env.example              # Commit this — no secrets
+└── .env                      # Never commit — in .gitignore
 ```
 
 ## Environment variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+Local development uses `.env` (copied from `.env.example`). Production values are stored in GCP Secret Manager and injected into Cloud Run at runtime — never committed.
+
+| Variable | Local default | Description |
+|----------|--------------|-------------|
 | `POSTGRES_DB` | `swu_inventory` | Database name |
-| `POSTGRES_USER` | `swu_user` | Database user |
-| `POSTGRES_PASSWORD` | `changeme` | Database password |
+| `POSTGRES_USER` | `swu_user` | Admin/migration role |
+| `POSTGRES_PASSWORD` | `changeme` | Admin role password |
 | `POSTGRES_PORT` | `5432` | Host-side port for PostgreSQL |
-| `DATABASE_URL` | *(derived)* | Full connection string — set by docker-compose.yml |
+| `APP_DB_PASSWORD` | `changeme_app` | Password for `swu_app` (RLS-aware role, created by migration 0019) |
+| `DATABASE_URL` | *(derived)* | Admin DSN used by Alembic and ingestion scripts |
+| `APP_DATABASE_URL` | *(derived)* | App DSN used by `get_db()` — RLS enforced on this connection |
+| `ENVIRONMENT` | *(unset)* | Set to `"production"` on Cloud Run; disables `/docs`/`/redoc` |
+
+## Documentation Map
+
+| Document | Purpose |
+|----------|---------|
+| `specification_documents/SWU_ClaudeCode_Spec.md` | App spec — data model, API endpoints, frontend UI (V1) |
+| `specification_documents/SWU_Platform_Spec.md` | As-built platform reference — auth/tenancy chain, CI/CD pipeline, Terraform module map, observability, security posture |
+| `specification_documents/SWU_Platform_Roadmap.md` | P1-P7 phase history and status — read for *when and why* each platform decision was made |
+| `specification_documents/SWU_Platform_Security_Review.md` | Full OWASP Top 10 + secrets/network walkthrough (P7 Stage 4) |
+| `specification_documents/SWU_Backlog.md` | Open tech-debt, refactoring, and follow-up items with narrative context |
+| `learning_guide/SWU_Platform_Learning_Guide.md` | Teaching companion — Key Concepts, decision comparisons, external resources (P1-P7) |
+| `learning_journal/` | Session-by-session development notes |
+| `claude_design/` | UI design assets and component handoff files |

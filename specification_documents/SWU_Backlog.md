@@ -79,7 +79,7 @@ These come first because they fix the "two specs at different detail levels" pro
 
 **Definition of done:** README accurately describes the current architecture and links to every major doc with a one-line description of its scope.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — README rewritten: added live app URL, Architecture table (React/FastAPI/Cloud SQL/Firebase Auth/GCP+Terraform/CI-CD), multi-tenancy note with spec cross-reference, API-docs-disabled-in-prod note, updated Local Setup to 4 services (added Firebase Auth Emulator row + explanation), updated Project Structure (added `terraform/`, `specification_documents/`, `learning_guide/`, `learning_journal/`, `claude_design/`, auth.py/database.py/middleware.py callouts), updated Environment Variables table (added `APP_DB_PASSWORD`, `APP_DATABASE_URL`, `ENVIRONMENT` with prod Secret Manager note), added Documentation Map section (8 rows, one-line each).
 
 ---
 

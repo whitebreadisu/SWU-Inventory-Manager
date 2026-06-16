@@ -105,7 +105,7 @@ These come first because they fix the "two specs at different detail levels" pro
 
 **Definition of done:** Sections 6.4 and 7.5 reconciled with what S3/S4 actually built — either updated in place, or explicitly marked "superseded by [component] — see [file]" with a pointer. Any other mismatches found during the pass are each either fixed in place or recorded as their own backlog item.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — Seven fixes across Sections 6-9: (1) Section 6.4 opening callout rewritten from "this endpoint powers the core UX" to "Not implemented" with correct S4 pointer; (2) removed the stale "(S3)" implementation-decision note (decision was S4); (3) Section 7.4 intro updated from "card number lookup flow" to "Add Cards modal (Section 7.5)"; (4) Section 7.5 renamed from "Core Interaction: Card Number Lookup & Inventory Update" to "Add Cards Modal (S4)" and rewritten to describe the actual modal flow (button → modal → set bar → keypad → chip list → verification → commit) rather than a "persistent search/input field"; (5) Section 8.2 note updated `SWU_Platform_Learning_Guide.md` → `SWU_Learning_Guide.md`; (6) Section 9 table and (7) Section 9.1 header: "S6" → "S5" (pre-recount artifact).
 
 ---
 

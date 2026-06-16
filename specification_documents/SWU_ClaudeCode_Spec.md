@@ -297,13 +297,11 @@ All responses include `card_id`, `quantity`, `playset_complete` (bool), `blocked
 
 ### 6.4 Card Lookup
 
-> ⚠ This endpoint powers the core low-friction UX: the user types a card number, the UI calls this endpoint, and displays all variants with current inventory counts and trade/sell signals.
+> ⚠ **Not implemented.** This endpoint was originally planned as the backend for the card number entry flow but was never built. The `AddCardsModal` (S4, Section 7.5) resolves card numbers client-side against `GET /api/inventory` data already in memory — a dedicated lookup endpoint adds latency with no benefit given that the full inventory is already loaded. `GET /api/cards/lookup` remains deferred until a consumer requires server-side lookup (e.g., a future mobile client or API integration).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | /api/cards/lookup | Look up cards by card number within a set. Query params: set_code (required), card_number (required). Returns all variant records for that base card number, with inventory quantities attached. |
-
-> **Implementation decision (S3):** The Add Cards modal resolves card numbers client-side against the inventory data already loaded by `InventoryPage` (`GET /api/inventory` returns every card+variant record). Because all required data is already in memory, calling this endpoint per keystroke adds latency with no benefit. `GET /api/cards/lookup` is deferred — it will be implemented when a consumer requires server-side lookup (e.g., a future mobile client or API integration).
+| GET | /api/cards/lookup | *(Deferred — not implemented.)* Look up cards by card number within a set. Query params: set_code (required), card_number (required). Returns all variant records for that base card number, with inventory quantities attached. |
 
 ---
 
@@ -425,7 +423,7 @@ Two card types render a subtitle below the primary name in smaller italic muted 
 
 ### 7.4 Inventory View
 
-The Inventory view displays all cards in the catalog with the user's current owned counts overlaid per variant. It is the primary editing surface — all bulk inventory changes happen here; quick single-card entry happens in the card number lookup flow (Section 7.5).
+The Inventory view displays all cards in the catalog with the user's current owned counts overlaid per variant. It is the primary editing surface — all bulk inventory changes happen here; batch card entry happens via the Add Cards modal (Section 7.5).
 
 **Layout:**
 
@@ -501,16 +499,22 @@ Display differs by card type:
 
 **API:** The Inventory view fetches `GET /api/inventory`, which returns every card variant record with its quantity. The frontend groups these by `base_card_number` (`groupWithInventory()`) to build one row per base card, deriving `hasStandard`/`hasFoil`/… flags and an `inventory` dict (invKey → quantity) and `cardIds` dict (invKey → card_id) for use by `VariantInventory`. Inventory mutations call `POST /api/inventory/{card_id}/increment` or `POST /api/inventory/{card_id}/decrement` per step-button click, then update local state with the returned quantity.
 
-### 7.5 Core Interaction: Card Number Lookup & Inventory Update
+### 7.5 Add Cards Modal (S4)
 
-This is the primary user flow for the Inventory section and must be fast and frictionless. It is designed for use while holding a physical card.
+The `AddCardsModal` (`frontend/src/screens/inventory/`) is the primary flow for batch card entry — designed for use while holding physical cards. Invoked via the "Add Cards" button in `InventorySummary`.
 
-- A persistent search/input field accepts a card number.
-- On entry of a valid card number (within the selected set), all variant records for that card are displayed immediately, with current inventory counts.
-- Each variant record has a single-click increment button (+1).
-- On increment, behaviour depends on card type (see Section 6.3 increment rules):
-  - *Leader/Base:* If this variant already has 1 copy, do NOT increment — display 'Trade/Sell' signal. Otherwise increment to 1 and display 'Playset complete'.
-  - *All other types:* If total owned across all variants is already 3, do NOT increment — display 'Trade/Sell' signal. If incrementing reaches exactly 3, display 'Playset complete'. Otherwise update count.
+**Interaction:**
+
+1. User picks a set once from the set bar (`AddCardsSetBar`).
+2. User types card numbers one at a time in the keypad input (`AddCardsKeypad`). Each number resolves client-side against the already-loaded `GET /api/inventory` data — no server call per keystroke. Resolves to a card name + variant chip; a variant picker appears when multiple variants share the same card number (e.g., foil/non-foil pairs at the same number).
+3. The chip list accumulates. A verification phase (`AddCardsVerification`) splits the batch into "will be added" (green, under the playset cap) vs. "at limit" (red, already at cap) before committing.
+4. On confirm, `POST /api/inventory/{id}/increment` is called once per green chip. `InventoryPage` re-fetches `GET /api/inventory` after the modal closes.
+
+On increment, behaviour follows the same cap rules as the inline InventoryTable steppers (Section 6.3):
+- *Leader/Base:* If this variant already has 1 copy, flag 'at limit'. Otherwise increment to 1.
+- *All other types:* If total owned across all variants is already 3, flag 'at limit'. If incrementing reaches exactly 3, display 'Playset complete'. Otherwise increment.
+
+> **Client-side resolution:** `GET /api/cards/lookup` (Section 6.4) was deferred as unnecessary — `GET /api/inventory` already provides all the data the resolver needs.
 
 ### 7.6 Variant Display
 
@@ -553,7 +557,7 @@ Each Claude Design handoff is committed to `claude_design/<handoff-folder>/` and
 | Foundation | F5 | *Implemented 2026-06-11.* Inventory snapshot & F4 retirement. `generate_inventory_snapshot.py` exports the `inventory` table (card_id, quantity, updated_at) to `db/snapshots/inventory_snapshot.sql` (3,412 records, total quantity 6,439). `apply_inventory_snapshot.py` restores it idempotently on a fresh database, running automatically in the Docker startup chain immediately after `apply_seed`. F4 ON CONFLICT was already DO NOTHING (changed pre-emptively during the seed architecture session). The `personal_card_inventory` Excel volume mount was removed from `docker-compose.yml`; the F4 ingestion script remains in the repo as a retired/historical tool. New tests: `test_inventory_snapshot_integrity.py`, `test_inventory_snapshot_reconstruction.py`. See Section 5.5. |
 | Slice 5 | S5 | *Claude Design pre-step: required before implementation begins.* Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
 
-> **Note (2026-06-12):** S5 and all further application feature work (including the unscoped Decks section) are paused in favor of the **Platform Roadmap** — a P1–P7 track that transforms this application into a multi-tenant, production-grade platform on GCP. See `SWU_Platform_Roadmap.md` and its companion `SWU_Platform_Learning_Guide.md`. Feature work resumes after P7 completes.
+> **Note (2026-06-12):** S5 and all further application feature work (including the unscoped Decks section) are paused in favor of the **Platform Roadmap** — a P1–P7 track that transforms this application into a multi-tenant, production-grade platform on GCP. See `SWU_Platform_Roadmap.md` and its companion `SWU_Learning_Guide.md`. Feature work resumes after P7 completes.
 
 ### 8.3 Testing Requirements
 
@@ -582,9 +586,9 @@ The following enhancements are explicitly acknowledged and should inform archite
 | CI/CD pipeline to production | GitHub Actions structure established in V1. Production deployment job added as a future workflow step. |
 | Serialized card variants | Serialized cards (individually-numbered collector cards) are excluded from V1. When in scope, add is_serialized BOOLEAN flag — no other schema changes needed due to the flags model design. |
 | Mobile-optimized UI | React component structure should avoid fixed-width layouts. Use responsive CSS from the start. |
-| Official card images (FFG CDN via swuapi.com) | Add `front_image_url` and `back_image_url` columns to the `cards` table when S6 is implemented (new migration — no V1 schema impact). Extend `CardResponse` to include both fields as nullable strings. See Section 9.1 for full implementation specification. |
+| Official card images (FFG CDN via swuapi.com) | Add `front_image_url` and `back_image_url` columns to the `cards` table when S5 is implemented (new migration — no V1 schema impact). Extend `CardResponse` to include both fields as nullable strings. See Section 9.1 for full implementation specification. |
 
-### 9.1 Official Card Images — S6 Specification
+### 9.1 Official Card Images — S5 Specification
 
 **Goal:** Display official FFG card artwork sourced from `cdn.starwarsunlimited.com` via the swuapi.com community API.
 
@@ -631,7 +635,7 @@ Both fields are nullable — cards without populated URLs render gracefully with
 #### Frontend Changes
 
 - **Catalog view:** Card image thumbnail or expandable image panel (exact design TBD at implementation time)
-- **Card lookup panel (S3):** Display card image alongside variant/inventory data
+- **Add Cards modal (S4):** Display card image alongside variant/inventory data during card entry
 - **Graceful fallback:** If `front_image_url` is null, render a dark placeholder panel with the card name
 
 #### Seed Regeneration

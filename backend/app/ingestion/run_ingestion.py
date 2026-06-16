@@ -7,6 +7,7 @@ Run inside the backend container after migrations have applied:
 The CSV files directory defaults to /tcgcsv_files (mounted via docker-compose
 volume). Override with the INGESTION_CSV_DIR environment variable if needed.
 """
+
 import logging
 import os
 import sys
@@ -44,13 +45,19 @@ def main() -> None:
     print("\n=== Ingestion Complete ===")
     print(f"Sets seeded:    {result.sets_seeded}")
     print(f"Cards inserted: {result.cards_inserted}")
-    print(f"Cards skipped:  {result.cards_skipped}  (ON CONFLICT — duplicates or SEC promo placeholder collision)")
-    print(f"Rows filtered:  {result.rows_filtered}  (non-card products + Serialized cards)")
+    print(
+        f"Cards skipped:  {result.cards_skipped}  (ON CONFLICT — duplicates or SEC promo placeholder collision)"
+    )
+    print(
+        f"Rows filtered:  {result.rows_filtered}  (non-card products + Serialized cards)"
+    )
     print()
     print(f"{'Set':<6} {'Inserted':>9} {'Skipped':>8} {'Filtered':>9}")
     print("-" * 36)
     for s in result.file_summaries:
-        print(f"{s['set_code']:<6} {s['inserted']:>9} {s['skipped']:>8} {s['filtered']:>9}")
+        print(
+            f"{s['set_code']:<6} {s['inserted']:>9} {s['skipped']:>8} {s['filtered']:>9}"
+        )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { auth } from '../firebase';
+import { createContext, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { auth } from "../firebase";
 
 interface AuthContextValue {
   user: User | null;
@@ -26,15 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signOut(auth);
   }
 
-  return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }

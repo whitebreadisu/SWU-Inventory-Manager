@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
+
+from app.models.card import Card
 from app.repositories import cards as card_repo
 from app.schemas.card_schema import CardResponse
-from app.models.card import Card
 
 
 def _to_response(card: Card) -> CardResponse:
@@ -36,7 +37,9 @@ def get_cards(
     type: str | None = None,
     rarity: str | None = None,
 ) -> list[CardResponse]:
-    cards = card_repo.get_cards(db, set_code=set_code, variant=variant, type=type, rarity=rarity)
+    cards = card_repo.get_cards(
+        db, set_code=set_code, variant=variant, type=type, rarity=rarity
+    )
     return [_to_response(c) for c in cards]
 
 

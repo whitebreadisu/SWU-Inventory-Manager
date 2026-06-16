@@ -9,6 +9,7 @@ Usage (inside container):
 
 Output: /db/snapshots/inventory_snapshot.sql (mounted from ./db/snapshots at repo root)
 """
+
 import logging
 import os
 from datetime import datetime, timezone
@@ -20,7 +21,9 @@ from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_PATH = Path(os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql"))
+SNAPSHOT_PATH = Path(
+    os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql")
+)
 _BATCH_SIZE = 500
 
 
@@ -52,7 +55,9 @@ def generate_inventory_snapshot(output_path: Path = SNAPSHOT_PATH) -> Path:
     db = SessionLocal()
     try:
         inventory_rows = db.execute(
-            text("SELECT tenant_id, card_id, quantity, updated_at FROM inventory ORDER BY card_id")
+            text(
+                "SELECT tenant_id, card_id, quantity, updated_at FROM inventory ORDER BY card_id"
+            )
         ).fetchall()
 
         record_count = len(inventory_rows)
@@ -62,13 +67,19 @@ def generate_inventory_snapshot(output_path: Path = SNAPSHOT_PATH) -> Path:
 
         with output_path.open("w", encoding="utf-8") as f:
             f.write("-- SWU Inventory Snapshot\n")
-            f.write(f"-- Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n")
+            f.write(
+                f"-- Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n"
+            )
             f.write(f"-- Records: {record_count} | Total quantity: {total_quantity}\n")
             f.write("\n")
 
-            _write_batched(f, "inventory", "tenant_id, card_id, quantity, updated_at", inventory_rows, lambda r: (
-                f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(str(r[3]))})"
-            ))
+            _write_batched(
+                f,
+                "inventory",
+                "tenant_id, card_id, quantity, updated_at",
+                inventory_rows,
+                lambda r: f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(str(r[3]))})",
+            )
 
         msg = f"Snapshot written: {output_path} ({record_count} records, total quantity {total_quantity})"
         logger.info(msg)

@@ -1,4 +1,4 @@
-import type { Card } from '../api/cards';
+import type { Card } from "../api/cards";
 
 export interface BaseCard {
   set_code: string;
@@ -24,10 +24,10 @@ export interface BaseCard {
 }
 
 export function parseCardDisplay(card: BaseCard): { displayName: string; subtitle: string | null } {
-  if (card.type === 'Base') {
+  if (card.type === "Base") {
     return { displayName: card.name, subtitle: card.traits[0] ?? null };
   }
-  const sep = card.name.indexOf(' - ');
+  const sep = card.name.indexOf(" - ");
   if (sep !== -1) {
     return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
   }

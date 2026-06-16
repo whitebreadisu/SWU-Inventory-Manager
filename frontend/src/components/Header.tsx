@@ -1,4 +1,4 @@
-type Section = 'inventory' | 'catalog' | 'decks';
+type Section = "inventory" | "catalog" | "decks";
 
 interface Props {
   activeSection: Section;
@@ -8,9 +8,9 @@ interface Props {
 }
 
 const NAV_ITEMS: { key: Section; label: string }[] = [
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'catalog',   label: 'Catalog'   },
-  { key: 'decks',     label: 'Decks'     },
+  { key: "inventory", label: "Inventory" },
+  { key: "catalog", label: "Catalog" },
+  { key: "decks", label: "Decks" },
 ];
 
 export function Header({ activeSection, onSectionChange, userEmail, onLogout }: Props) {
@@ -22,7 +22,7 @@ export function Header({ activeSection, onSectionChange, userEmail, onLogout }: 
         {NAV_ITEMS.map(({ key, label }) => (
           <button
             key={key}
-            className={`nav-tab${activeSection === key ? ' nav-tab--active' : ''}`}
+            className={`nav-tab${activeSection === key ? " nav-tab--active" : ""}`}
             onClick={() => onSectionChange(key)}
           >
             {label}
@@ -32,9 +32,10 @@ export function Header({ activeSection, onSectionChange, userEmail, onLogout }: 
 
       <div className="app-header__account">
         {userEmail && <span className="app-header__email">{userEmail}</span>}
-        <button className="app-header__logout" onClick={onLogout}>Log Out</button>
+        <button className="app-header__logout" onClick={onLogout}>
+          Log Out
+        </button>
       </div>
-
     </header>
   );
 }

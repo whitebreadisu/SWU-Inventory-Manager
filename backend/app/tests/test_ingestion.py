@@ -4,6 +4,7 @@ Covers: field normalization, variant flag handling, base_card_number resolution,
 and the is_card_row / is_serialized_name filters.
 All tests are pure (no database required).
 """
+
 import pytest
 
 from app.ingestion.csv_ingestor import _assign_base_card_numbers
@@ -68,7 +69,9 @@ class TestNormalizeRarity:
 
 class TestParseVariantFlags:
     def test_hyperspace_foil_compound(self):
-        name, foil, hyp, pres, show = parse_variant_flags("Death Star (Hyperspace Foil)", "")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Death Star (Hyperspace Foil)", ""
+        )
         assert name == "Death Star"
         assert foil is True
         assert hyp is True
@@ -76,7 +79,9 @@ class TestParseVariantFlags:
         assert show is False
 
     def test_prestige_foil_compound(self):
-        name, foil, hyp, pres, show = parse_variant_flags("Darth Vader (Prestige Foil)", "")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Darth Vader (Prestige Foil)", ""
+        )
         assert name == "Darth Vader"
         assert foil is True
         assert pres is True
@@ -84,7 +89,9 @@ class TestParseVariantFlags:
         assert show is False
 
     def test_hyperspace_simple(self):
-        name, foil, hyp, pres, show = parse_variant_flags("Death Trooper (Hyperspace)", "")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Death Trooper (Hyperspace)", ""
+        )
         assert name == "Death Trooper"
         assert hyp is True
         assert foil is False
@@ -92,7 +99,9 @@ class TestParseVariantFlags:
         assert show is False
 
     def test_prestige_simple(self):
-        name, foil, hyp, pres, show = parse_variant_flags("Luke Skywalker (Prestige)", "")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Luke Skywalker (Prestige)", ""
+        )
         assert name == "Luke Skywalker"
         assert pres is True
         assert foil is False
@@ -166,19 +175,25 @@ class TestParseVariantFlags:
     def test_hyperspace_foil_via_subtype_early_sets(self):
         # SOR/SHD/TWI: Hyperspace Foil uses "(Hyperspace)" name + subTypeName="Foil"
         # rather than "(Hyperspace Foil)" in the name. subTypeName must set is_foil.
-        name, foil, hyp, pres, show = parse_variant_flags("Death Trooper (Hyperspace)", "Foil")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Death Trooper (Hyperspace)", "Foil"
+        )
         assert name == "Death Trooper"
         assert hyp is True
         assert foil is True
 
     def test_hyperspace_normal_subtype_does_not_set_foil(self):
-        name, foil, hyp, pres, show = parse_variant_flags("Death Trooper (Hyperspace)", "Normal")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Death Trooper (Hyperspace)", "Normal"
+        )
         assert hyp is True
         assert foil is False
 
     def test_hyperspace_foil_name_suffix_takes_precedence_over_normal_subtype(self):
         # "(Hyperspace Foil)" in name → is_foil=True regardless of subTypeName
-        name, foil, hyp, pres, show = parse_variant_flags("Death Star (Hyperspace Foil)", "Normal")
+        name, foil, hyp, pres, show = parse_variant_flags(
+            "Death Star (Hyperspace Foil)", "Normal"
+        )
         assert foil is True
         assert hyp is True
 
@@ -191,10 +206,15 @@ class TestStripTokenBack:
         assert strip_token_back("Sundari // Battle Droid") == "Sundari"
 
     def test_different_token_backs_produce_same_name(self):
-        assert strip_token_back("Sundari // Battle Droid") == strip_token_back("Sundari // Clone Trooper")
+        assert strip_token_back("Sundari // Battle Droid") == strip_token_back(
+            "Sundari // Clone Trooper"
+        )
 
     def test_hyperspace_suffix_preserved(self):
-        assert strip_token_back("Sundari // Battle Droid (Hyperspace)") == "Sundari (Hyperspace)"
+        assert (
+            strip_token_back("Sundari // Battle Droid (Hyperspace)")
+            == "Sundari (Hyperspace)"
+        )
 
     def test_hyperspace_different_token_backs_produce_same_name(self):
         a = strip_token_back("Sundari // Battle Droid (Hyperspace)")
@@ -202,16 +222,24 @@ class TestStripTokenBack:
         assert a == b == "Sundari (Hyperspace)"
 
     def test_hyperspace_foil_suffix_preserved(self):
-        assert strip_token_back("Sundari // Battle Droid (Hyperspace Foil)") == "Sundari (Hyperspace Foil)"
+        assert (
+            strip_token_back("Sundari // Battle Droid (Hyperspace Foil)")
+            == "Sundari (Hyperspace Foil)"
+        )
 
     def test_regular_card_name_unchanged(self):
-        assert strip_token_back("Darth Vader - Dark Lord of the Sith") == "Darth Vader - Dark Lord of the Sith"
+        assert (
+            strip_token_back("Darth Vader - Dark Lord of the Sith")
+            == "Darth Vader - Dark Lord of the Sith"
+        )
 
     def test_round_trip_with_parse_variant_flags(self):
         # Stripping then parsing must yield the base name with correct flags
         stripped = strip_token_back("Level 1313 // Battle Droid (Hyperspace)")
         assert stripped == "Level 1313 (Hyperspace)"
-        name, is_foil, is_hyperspace, is_prestige, is_showcase = parse_variant_flags(stripped, "Normal")
+        name, is_foil, is_hyperspace, is_prestige, is_showcase = parse_variant_flags(
+            stripped, "Normal"
+        )
         assert name == "Level 1313"
         assert is_hyperspace is True
         assert is_foil is False
@@ -341,7 +369,7 @@ class TestAssignBaseCardNumbers:
         # OP Standard card must not pollute the name→number lookup
         rows = [
             self._row("Vader", "99", is_organized_play=True),  # OP Standard — excluded
-            self._row("Vader", "200", is_foil=True),           # no base Standard → fallback
+            self._row("Vader", "200", is_foil=True),  # no base Standard → fallback
         ]
         _assign_base_card_numbers(rows)
         assert rows[1]["base_card_number"] == "200"  # fallback, not "99"

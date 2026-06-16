@@ -3,7 +3,9 @@ P5 Stage 1: users table.
 
 Integration tests -- require DATABASE_URL (standard inside the backend container).
 """
+
 import os
+
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError

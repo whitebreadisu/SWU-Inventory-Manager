@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+import { auth } from "../firebase";
 
 /** fetch() that attaches the current Firebase user's ID token as a Bearer
  * token, if signed in. All /api/* calls go through this -- the backend
@@ -7,7 +7,7 @@ export async function authedFetch(url: string, init: RequestInit = {}): Promise<
   const token = await auth.currentUser?.getIdToken();
 
   const headers = new Headers(init.headers);
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
   return fetch(url, { ...init, headers });
 }

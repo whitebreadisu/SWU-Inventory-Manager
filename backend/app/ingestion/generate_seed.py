@@ -9,6 +9,7 @@ Usage (inside container):
 
 Output: /db/seeds/catalog_seed.sql (mounted from ./db/seeds at repo root)
 """
+
 import logging
 import os
 from datetime import datetime, timezone
@@ -52,7 +53,9 @@ def generate_seed(output_path: Path = SEED_PATH) -> Path:
     db = SessionLocal()
     try:
         sets_rows = db.execute(
-            text("SELECT id, code, name, has_unique_variant_numbers, created_at FROM sets ORDER BY id")
+            text(
+                "SELECT id, code, name, has_unique_variant_numbers, created_at FROM sets ORDER BY id"
+            )
         ).fetchall()
 
         cards_rows = db.execute(
@@ -88,7 +91,9 @@ def generate_seed(output_path: Path = SEED_PATH) -> Path:
 
         with output_path.open("w", encoding="utf-8") as f:
             f.write("-- SWU Card Catalog Seed\n")
-            f.write(f"-- Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n")
+            f.write(
+                f"-- Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n"
+            )
             f.write(
                 f"-- Sets: {set_count} | Cards: {card_count} | "
                 f"Aspects: {len(aspects_rows)} | Traits: {len(traits_rows)} | "
@@ -112,31 +117,59 @@ def generate_seed(output_path: Path = SEED_PATH) -> Path:
                 "id, set_id, card_number, base_card_number, name, rarity, type, "
                 "is_foil, is_hyperspace, is_prestige, is_showcase, is_organized_play, created_at"
             )
-            _write_batched(f, "cards", card_cols, cards_rows, lambda r: (
-                f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(r[3])}, {_q(r[4])}, "
-                f"{_q(r[5])}, {_q(r[6])}, {_q(r[7])}, {_q(r[8])}, {_q(r[9])}, "
-                f"{_q(r[10])}, {_q(r[11])}, {_q(str(r[12]))})"
-            ))
+            _write_batched(
+                f,
+                "cards",
+                card_cols,
+                cards_rows,
+                lambda r: (
+                    f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(r[3])}, {_q(r[4])}, "
+                    f"{_q(r[5])}, {_q(r[6])}, {_q(r[7])}, {_q(r[8])}, {_q(r[9])}, "
+                    f"{_q(r[10])}, {_q(r[11])}, {_q(str(r[12]))})"
+                ),
+            )
             f.write("SELECT setval('cards_id_seq', (SELECT MAX(id) FROM cards));\n\n")
 
             # Card aspects
-            _write_batched(f, "card_aspects", "card_id, aspect", aspects_rows,
-                           lambda r: f"({_q(r[0])}, {_q(r[1])})")
+            _write_batched(
+                f,
+                "card_aspects",
+                "card_id, aspect",
+                aspects_rows,
+                lambda r: f"({_q(r[0])}, {_q(r[1])})",
+            )
             f.write("\n")
 
             # Card traits
-            _write_batched(f, "card_traits", "card_id, trait", traits_rows,
-                           lambda r: f"({_q(r[0])}, {_q(r[1])})")
+            _write_batched(
+                f,
+                "card_traits",
+                "card_id, trait",
+                traits_rows,
+                lambda r: f"({_q(r[0])}, {_q(r[1])})",
+            )
             f.write("\n")
 
             # Card details
-            _write_batched(f, "card_details", "card_id, cost, power, hp, arena", details_rows,
-                           lambda r: f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(r[3])}, {_q(r[4])})")
+            _write_batched(
+                f,
+                "card_details",
+                "card_id, cost, power, hp, arena",
+                details_rows,
+                lambda r: (
+                    f"({_q(r[0])}, {_q(r[1])}, {_q(r[2])}, {_q(r[3])}, {_q(r[4])})"
+                ),
+            )
             f.write("\n")
 
             # Card keywords (currently empty — included for completeness)
-            _write_batched(f, "card_keywords", "card_id, keyword", keywords_rows,
-                           lambda r: f"({_q(r[0])}, {_q(r[1])})")
+            _write_batched(
+                f,
+                "card_keywords",
+                "card_id, keyword",
+                keywords_rows,
+                lambda r: f"({_q(r[0])}, {_q(r[1])})",
+            )
 
         msg = (
             f"Seed written: {output_path} "

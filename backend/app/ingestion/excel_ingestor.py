@@ -11,6 +11,7 @@ never aborts on a lookup failure.
 Run inside the backend container after CSV ingestion has completed:
     docker compose exec backend python -m app.ingestion.run_inventory_ingestion
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,15 +35,69 @@ _KNOWN_SET_CODES = frozenset({"SOR", "SHD", "TWI", "JTL", "LOF", "SEC", "LAW"})
 # Case-insensitive matching is applied in identify_inventory_columns().
 # "standard" (LAW) maps identically to "non-foil".
 VARIANT_COLUMN_FLAGS: dict[str, dict[str, bool]] = {
-    "non-foil":      dict(is_foil=False, is_hyperspace=False, is_prestige=False, is_showcase=False, is_organized_play=False),
-    "standard":      dict(is_foil=False, is_hyperspace=False, is_prestige=False, is_showcase=False, is_organized_play=False),
-    "foil":          dict(is_foil=True,  is_hyperspace=False, is_prestige=False, is_showcase=False, is_organized_play=False),
-    "hyperspace":    dict(is_foil=False, is_hyperspace=True,  is_prestige=False, is_showcase=False, is_organized_play=False),
-    "f-hyperspace":  dict(is_foil=True,  is_hyperspace=True,  is_prestige=False, is_showcase=False, is_organized_play=False),
-    "prestige":      dict(is_foil=False, is_hyperspace=False, is_prestige=True,  is_showcase=False, is_organized_play=False),
-    "prestige foil": dict(is_foil=True,  is_hyperspace=False, is_prestige=True,  is_showcase=False, is_organized_play=False),
-    "promo":         dict(is_foil=False, is_hyperspace=False, is_prestige=False, is_showcase=False, is_organized_play=True),
-    "promo foil":    dict(is_foil=True,  is_hyperspace=False, is_prestige=False, is_showcase=False, is_organized_play=True),
+    "non-foil": dict(
+        is_foil=False,
+        is_hyperspace=False,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "standard": dict(
+        is_foil=False,
+        is_hyperspace=False,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "foil": dict(
+        is_foil=True,
+        is_hyperspace=False,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "hyperspace": dict(
+        is_foil=False,
+        is_hyperspace=True,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "f-hyperspace": dict(
+        is_foil=True,
+        is_hyperspace=True,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "prestige": dict(
+        is_foil=False,
+        is_hyperspace=False,
+        is_prestige=True,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "prestige foil": dict(
+        is_foil=True,
+        is_hyperspace=False,
+        is_prestige=True,
+        is_showcase=False,
+        is_organized_play=False,
+    ),
+    "promo": dict(
+        is_foil=False,
+        is_hyperspace=False,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=True,
+    ),
+    "promo foil": dict(
+        is_foil=True,
+        is_hyperspace=False,
+        is_prestige=False,
+        is_showcase=False,
+        is_organized_play=True,
+    ),
 }
 
 
@@ -69,7 +124,9 @@ def run_excel_ingestion(db: Session, excel_path: Path) -> ExcelIngestionResult:
 
         card_set = set_map.get(sheet_name)
         if card_set is None:
-            logger.warning("Sheet %r: no matching set in database — skipping", sheet_name)
+            logger.warning(
+                "Sheet %r: no matching set in database — skipping", sheet_name
+            )
             continue
 
         ws = wb[sheet_name]
@@ -80,15 +137,20 @@ def run_excel_ingestion(db: Session, excel_path: Path) -> ExcelIngestionResult:
         result.inventory_upserted += upserted
         result.rows_skipped += skipped
         result.lookup_failures.extend(failures)
-        result.sheet_summaries.append({
-            "set_code": sheet_name,
-            "upserted": upserted,
-            "skipped": skipped,
-            "failed_lookups": len(failures),
-        })
+        result.sheet_summaries.append(
+            {
+                "set_code": sheet_name,
+                "upserted": upserted,
+                "skipped": skipped,
+                "failed_lookups": len(failures),
+            }
+        )
         logger.info(
             "Sheet %s: %d upserted, %d skipped, %d lookup failures",
-            sheet_name, upserted, skipped, len(failures),
+            sheet_name,
+            upserted,
+            skipped,
+            len(failures),
         )
 
     return result
@@ -114,7 +176,7 @@ def _process_sheet(
     skipped = 0
     failures: list[dict] = []
 
-    for row in rows[header_idx + 1:]:
+    for row in rows[header_idx + 1 :]:
         raw_num = row[0]
         if raw_num is None:
             continue
@@ -133,16 +195,20 @@ def _process_sheet(
             card = _lookup_card(db, set_id, card_number, flags)
 
             if card is None:
-                failures.append({
-                    "set_code": set_code,
-                    "card_number": card_number,
-                    "column": str(header[col_idx]),
-                    "quantity": quantity,
-                    "flags": flags,
-                })
+                failures.append(
+                    {
+                        "set_code": set_code,
+                        "card_number": card_number,
+                        "column": str(header[col_idx]),
+                        "quantity": quantity,
+                        "flags": flags,
+                    }
+                )
                 logger.warning(
                     "Lookup failure: set=%s card=%s col=%r",
-                    set_code, card_number, header[col_idx],
+                    set_code,
+                    card_number,
+                    header[col_idx],
                 )
                 continue
 

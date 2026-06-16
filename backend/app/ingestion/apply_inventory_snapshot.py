@@ -7,6 +7,7 @@ Idempotent: skips if the inventory table is already populated.
 Usage (called in Docker entrypoint):
     python -m app.ingestion.apply_inventory_snapshot
 """
+
 import logging
 import os
 from pathlib import Path
@@ -17,7 +18,9 @@ from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_PATH = Path(os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql"))
+SNAPSHOT_PATH = Path(
+    os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql")
+)
 
 
 def apply_inventory_snapshot(snapshot_path: Path = SNAPSHOT_PATH) -> None:
@@ -25,15 +28,23 @@ def apply_inventory_snapshot(snapshot_path: Path = SNAPSHOT_PATH) -> None:
     try:
         inventory_count = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
         if inventory_count > 0:
-            logger.info("Inventory already populated (%d records). Skipping snapshot.", inventory_count)
-            print(f"Inventory already populated ({inventory_count} records). Skipping snapshot.")
+            logger.info(
+                "Inventory already populated (%d records). Skipping snapshot.",
+                inventory_count,
+            )
+            print(
+                f"Inventory already populated ({inventory_count} records). Skipping snapshot."
+            )
             return
 
         if not snapshot_path.exists():
             logger.warning(
-                "Snapshot file not found at %s. Inventory table will be empty.", snapshot_path
+                "Snapshot file not found at %s. Inventory table will be empty.",
+                snapshot_path,
             )
-            print(f"WARNING: Snapshot file not found at {snapshot_path}. Inventory table will be empty.")
+            print(
+                f"WARNING: Snapshot file not found at {snapshot_path}. Inventory table will be empty."
+            )
             return
 
         logger.info("Applying inventory snapshot from %s ...", snapshot_path)

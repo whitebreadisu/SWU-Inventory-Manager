@@ -4,6 +4,7 @@ Processes all 14 source files (7 standard sets + 7 Organized Play) and populates
 the sets and cards tables. Idempotent: uses ON CONFLICT DO NOTHING throughout,
 so running twice on the same database produces no errors and no duplicate rows.
 """
+
 from __future__ import annotations
 
 import csv
@@ -30,8 +31,16 @@ logger = logging.getLogger(__name__)
 
 _SETS_SEED = [
     {"code": "SOR", "name": "Spark of Rebellion", "has_unique_variant_numbers": False},
-    {"code": "SHD", "name": "Shadows of the Galaxy", "has_unique_variant_numbers": False},
-    {"code": "TWI", "name": "Twilight of the Republic", "has_unique_variant_numbers": False},
+    {
+        "code": "SHD",
+        "name": "Shadows of the Galaxy",
+        "has_unique_variant_numbers": False,
+    },
+    {
+        "code": "TWI",
+        "name": "Twilight of the Republic",
+        "has_unique_variant_numbers": False,
+    },
     {"code": "JTL", "name": "Jump to Lightspeed", "has_unique_variant_numbers": True},
     {"code": "LOF", "name": "Legends of the Force", "has_unique_variant_numbers": True},
     {"code": "SEC", "name": "Secrets of Power", "has_unique_variant_numbers": True},
@@ -69,7 +78,6 @@ def run_ingestion(db: Session, csv_dir: Path, mappings_file: Path) -> IngestionR
 
     for set_code, file_entries in files_by_set.items():
         set_id = set_id_map[set_code]
-        has_unique = file_entries[0]["has_unique_variant_numbers"]
 
         all_rows: list[dict] = []
         total_filtered = 0
@@ -123,9 +131,7 @@ def _seed_sets(db: Session) -> int:
     return result.rowcount
 
 
-def _parse_file(
-    entry: dict, csv_dir: Path, set_id: int
-) -> tuple[list[dict], int]:
+def _parse_file(entry: dict, csv_dir: Path, set_id: int) -> tuple[list[dict], int]:
     """Parse one CSV file into a list of card row dicts.
 
     Returns (rows, filtered_count). filtered_count covers non-card product rows

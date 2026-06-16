@@ -2,11 +2,12 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.logging_config import configure_logging
 from app.middleware import log_requests
-from app.routers import sets as sets_router
 from app.routers import cards as cards_router
 from app.routers import inventory as inventory_router
+from app.routers import sets as sets_router
 
 configure_logging()
 

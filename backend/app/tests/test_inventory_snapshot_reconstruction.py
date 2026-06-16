@@ -14,12 +14,15 @@ Process:
 
 PostgreSQL TRUNCATE is transactional and fully reversed by a savepoint rollback.
 """
+
 import os
 from pathlib import Path
 
 from sqlalchemy import text
 
-SNAPSHOT_PATH = Path(os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql"))
+SNAPSHOT_PATH = Path(
+    os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql")
+)
 
 
 def _snapshot_lines():
@@ -34,23 +37,33 @@ def test_reconstruct_inventory_from_snapshot(db):
     assert SNAPSHOT_PATH.exists(), f"Snapshot file not found: {SNAPSHOT_PATH}"
 
     pre_count = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
-    pre_sum   = db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar()
+    pre_sum = db.execute(
+        text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")
+    ).scalar()
 
-    assert pre_count > 0, "Database has no inventory records — run ingestion before this test"
+    assert pre_count > 0, (
+        "Database has no inventory records — run ingestion before this test"
+    )
 
     savepoint = db.begin_nested()
     db.execute(text("TRUNCATE inventory RESTART IDENTITY"))
     for stmt in _snapshot_lines():
         db.execute(text(stmt))
 
-    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_count, \
+    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_count, (
         "Record count mismatch after reconstruction"
-    assert db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar() == pre_sum, \
-        "Total quantity mismatch after reconstruction"
+    )
+    assert (
+        db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar()
+        == pre_sum
+    ), "Total quantity mismatch after reconstruction"
 
     savepoint.rollback()
 
-    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_count, \
+    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_count, (
         "Savepoint rollback did not restore inventory count"
-    assert db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar() == pre_sum, \
-        "Savepoint rollback did not restore inventory total quantity"
+    )
+    assert (
+        db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar()
+        == pre_sum
+    ), "Savepoint rollback did not restore inventory total quantity"

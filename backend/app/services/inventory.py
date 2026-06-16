@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
+
+from app.models.card import Card
 from app.repositories import inventory as inventory_repo
-from app.schemas.card_schema import CardResponse
 from app.schemas.inventory_schema import (
     CardWithInventoryResponse,
     DecrementResponse,
     IncrementResponse,
 )
-from app.models.card import Card
 
 PLAYSET_SIZE = 3
 SINGLETON_TYPES = frozenset({"Leader", "Base"})
@@ -67,7 +67,9 @@ def increment_card(db: Session, card_id: int) -> IncrementResponse | None:
             playset_complete=True,
         )
 
-    current_total = inventory_repo.get_base_card_total(db, card.set_id, card.base_card_number)
+    current_total = inventory_repo.get_base_card_total(
+        db, card.set_id, card.base_card_number
+    )
 
     if current_total >= PLAYSET_SIZE:
         return IncrementResponse(

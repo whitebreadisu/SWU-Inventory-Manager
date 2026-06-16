@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.services import inventory as inventory_service
 from app.schemas.inventory_schema import (
     CardWithInventoryResponse,
     DecrementResponse,
     IncrementResponse,
 )
+from app.services import inventory as inventory_service
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 

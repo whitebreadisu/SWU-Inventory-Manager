@@ -1,4 +1,4 @@
-import { authedFetch } from './authedFetch';
+import { authedFetch } from "./authedFetch";
 
 export interface CardSet {
   id: number;
@@ -8,7 +8,7 @@ export interface CardSet {
 }
 
 export async function getSets(): Promise<CardSet[]> {
-  const res = await authedFetch('/api/sets');
+  const res = await authedFetch("/api/sets");
   if (!res.ok) throw new Error(`Failed to fetch sets: ${res.status}`);
   return res.json();
 }

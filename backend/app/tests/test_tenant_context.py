@@ -4,6 +4,7 @@ P5 Stage 2: identity-based tenant resolution.
 Integration tests -- require DATABASE_URL and APP_DATABASE_URL (standard
 inside the backend container).
 """
+
 import os
 
 import pytest
@@ -49,7 +50,9 @@ def test_session_variable_survives_commit():
     """set_config(..., false) is session-scoped, unlike SET LOCAL -- it must
     still be set after a commit() so upsert_increment/upsert_decrement's
     commit() + refresh() pattern sees the right tenant on the refresh."""
-    gen = get_db(request=_make_request(), identity=(DEFAULT_TEST_UID, DEFAULT_TEST_EMAIL))
+    gen = get_db(
+        request=_make_request(), identity=(DEFAULT_TEST_UID, DEFAULT_TEST_EMAIL)
+    )
     db = next(gen)
     try:
         db.commit()

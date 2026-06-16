@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { Header } from './components/Header';
-import { SectionSeparator } from './components/SectionSeparator';
-import { CatalogPage } from './components/CatalogPage';
-import { InventoryPage } from './screens/inventory/InventoryPage';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { AuthScreen } from './screens/auth/AuthScreen';
+import { useState } from "react";
+import { Header } from "./components/Header";
+import { SectionSeparator } from "./components/SectionSeparator";
+import { CatalogPage } from "./components/CatalogPage";
+import { InventoryPage } from "./screens/inventory/InventoryPage";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthScreen } from "./screens/auth/AuthScreen";
 
-type Section = 'inventory' | 'catalog' | 'decks';
+type Section = "inventory" | "catalog" | "decks";
 
 function AppContent() {
-  const [activeSection, setActiveSection] = useState<Section>('catalog');
+  const [activeSection, setActiveSection] = useState<Section>("catalog");
   const { user, loading, logout } = useAuth();
 
   if (loading) {
@@ -30,9 +30,9 @@ function AppContent() {
       />
       <SectionSeparator />
       <main className="app-main">
-        {activeSection === 'catalog'   && <CatalogPage />}
-        {activeSection === 'inventory' && <InventoryPage />}
-        {activeSection === 'decks'     && <p className="placeholder">Decks — coming soon</p>}
+        {activeSection === "catalog" && <CatalogPage />}
+        {activeSection === "inventory" && <InventoryPage />}
+        {activeSection === "decks" && <p className="placeholder">Decks — coming soon</p>}
       </main>
     </div>
   );

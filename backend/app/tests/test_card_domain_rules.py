@@ -10,6 +10,7 @@ or an unexpected variant was added.
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_card_domain_rules.py -v
 """
+
 import os
 
 import pytest
@@ -25,13 +26,15 @@ pytestmark = pytest.mark.skipif(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _base_card_groups(db):
     """Return variant groups for all non-OP, non-Prestige Base cards.
 
     Returns a dict keyed by (set_code, base_card_number) with values:
         {"rarity": str, "variants": set of (is_foil, is_hyperspace)}
     """
-    rows = db.execute(text("""
+    rows = db.execute(
+        text("""
         SELECT s.code, c.base_card_number, c.rarity, c.is_foil, c.is_hyperspace
         FROM cards c
         JOIN sets s ON s.id = c.set_id
@@ -39,7 +42,8 @@ def _base_card_groups(db):
           AND c.is_organized_play = false
           AND c.is_prestige     = false
         ORDER BY s.code, c.base_card_number::int
-    """)).fetchall()
+    """)
+    ).fetchall()
 
     groups = {}
     for row in rows:
@@ -51,15 +55,16 @@ def _base_card_groups(db):
     return groups
 
 
-STANDARD        = (False, False)   # is_foil=F, is_hyperspace=F
-FOIL            = (True,  False)   # is_foil=T, is_hyperspace=F
-HYPERSPACE      = (False, True)    # is_foil=F, is_hyperspace=T
-FOIL_HYPERSPACE = (True,  True)    # is_foil=T, is_hyperspace=T
+STANDARD = (False, False)  # is_foil=F, is_hyperspace=F
+FOIL = (True, False)  # is_foil=T, is_hyperspace=F
+HYPERSPACE = (False, True)  # is_foil=F, is_hyperspace=T
+FOIL_HYPERSPACE = (True, True)  # is_foil=T, is_hyperspace=T
 
 
 # ---------------------------------------------------------------------------
 # Base card variant rules
 # ---------------------------------------------------------------------------
+
 
 class TestBaseCardVariants:
     """Base cards follow specific variant rules based on rarity.
@@ -81,7 +86,9 @@ class TestBaseCardVariants:
             + "\n  ".join(failures)
         )
 
-    def test_rare_base_cards_have_standard_foil_hyperspace_and_foil_hyperspace(self, db):
+    def test_rare_base_cards_have_standard_foil_hyperspace_and_foil_hyperspace(
+        self, db
+    ):
         """Every Rare Base card should have exactly standard, foil, hyperspace,
         and foil-hyperspace variants.
 
@@ -93,15 +100,17 @@ class TestBaseCardVariants:
         rare_groups = {k: v for k, v in groups.items() if v["rarity"] == "R"}
 
         # Sets that include standalone Foil
-        expected_with_foil    = {STANDARD, FOIL, HYPERSPACE, FOIL_HYPERSPACE}
+        expected_with_foil = {STANDARD, FOIL, HYPERSPACE, FOIL_HYPERSPACE}
         # LAW skips standalone Foil
-        expected_law          = {STANDARD, HYPERSPACE, FOIL_HYPERSPACE}
+        expected_law = {STANDARD, HYPERSPACE, FOIL_HYPERSPACE}
 
         failures = []
         for (code, num), data in rare_groups.items():
             expected = expected_law if code == "LAW" else expected_with_foil
             if data["variants"] != expected:
-                failures.append(f"{code} base={num} got={data['variants']} expected={expected}")
+                failures.append(
+                    f"{code} base={num} got={data['variants']} expected={expected}"
+                )
 
         assert not failures, (
             f"{len(failures)} Rare Base card(s) have wrong variants:\n  "
@@ -112,6 +121,7 @@ class TestBaseCardVariants:
 # ---------------------------------------------------------------------------
 # Leader card variant rules
 # ---------------------------------------------------------------------------
+
 
 class TestLeaderCardVariants:
     """Every Common and Rare Leader card should have exactly three variants:
@@ -124,7 +134,8 @@ class TestLeaderCardVariants:
     def test_common_and_rare_leaders_have_standard_hyperspace_and_showcase(self, db):
         """Every C/R Leader should have a standard, hyperspace, and showcase variant."""
         # Standard cards are the anchor: non-foil, non-hyperspace, non-showcase, non-OP
-        rows = db.execute(text("""
+        rows = db.execute(
+            text("""
             SELECT s.code, c.card_number, c.name
             FROM cards c
             JOIN sets s ON s.id = c.set_id
@@ -136,14 +147,16 @@ class TestLeaderCardVariants:
               AND c.is_organized_play = false
               AND c.is_prestige      = false
             ORDER BY s.code, c.card_number::int
-        """)).fetchall()
+        """)
+        ).fetchall()
 
         missing_hyperspace = []
-        missing_showcase   = []
+        missing_showcase = []
 
         for row in rows:
             # Hyperspace: linked via base_card_number in all sets
-            hs = db.execute(text("""
+            hs = db.execute(
+                text("""
                 SELECT 1 FROM cards c
                 JOIN sets s ON s.id = c.set_id
                 WHERE s.code = :code
@@ -151,20 +164,25 @@ class TestLeaderCardVariants:
                   AND c.is_hyperspace    = true
                   AND c.is_organized_play = false
                 LIMIT 1
-            """), {"code": row.code, "num": row.card_number}).fetchone()
+            """),
+                {"code": row.code, "num": row.card_number},
+            ).fetchone()
 
             if not hs:
                 missing_hyperspace.append(f"{row.code} '{row.name}'")
 
             # Showcase: match on base name — suffix is now stripped during ingestion
-            sc = db.execute(text("""
+            sc = db.execute(
+                text("""
                 SELECT 1 FROM cards c
                 JOIN sets s ON s.id = c.set_id
                 WHERE s.code      = :code
                   AND c.name      = :name
                   AND c.is_showcase = true
                 LIMIT 1
-            """), {"code": row.code, "name": row.name}).fetchone()
+            """),
+                {"code": row.code, "name": row.name},
+            ).fetchone()
 
             if not sc:
                 missing_showcase.append(f"{row.code} '{row.name}'")
@@ -198,7 +216,7 @@ class TestLeaderCardVariants:
 # Card numbers beginning with 'T' (e.g. T01 Experience) are token upgrades
 # and are excluded for the same reason as Token type cards.
 
-_EXCLUDED_TYPES  = ("Leader", "Base", "Token", "Leader/Leader Unit")
+_EXCLUDED_TYPES = ("Leader", "Base", "Token", "Leader/Leader Unit")
 _TESTABLE_RARITIES = ("C", "U", "R", "L")
 
 # Expected non-OP, non-Prestige variants per set (is_foil, is_hyperspace)
@@ -209,7 +227,7 @@ _EXPECTED_VARIANTS: dict[str, set] = {
     "JTL": {STANDARD, FOIL, HYPERSPACE, FOIL_HYPERSPACE},
     "LOF": {STANDARD, FOIL, HYPERSPACE, FOIL_HYPERSPACE},
     "SEC": {STANDARD, FOIL, HYPERSPACE, FOIL_HYPERSPACE},
-    "LAW": {STANDARD,       HYPERSPACE, FOIL_HYPERSPACE},  # no standalone Foil in LAW
+    "LAW": {STANDARD, HYPERSPACE, FOIL_HYPERSPACE},  # no standalone Foil in LAW
 }
 
 
@@ -224,7 +242,8 @@ class TestNonLeaderNonBaseCardVariants:
     def test_all_valid_variants_present(self, db):
         # Fetch every standard (all-flags-false) C/U/R/L card that is not a
         # Leader, Base, Token, or blank type, and not a T-prefix token upgrade.
-        rows = db.execute(text("""
+        rows = db.execute(
+            text("""
             SELECT s.code, c.card_number, c.name, c.rarity, c.type
             FROM cards c
             JOIN sets s ON s.id = c.set_id
@@ -238,16 +257,18 @@ class TestNonLeaderNonBaseCardVariants:
               AND c.is_showcase       = false
               AND c.is_organized_play = false
             ORDER BY s.code, c.card_number
-        """)).fetchall()
+        """)
+        ).fetchall()
 
         failures = []
 
         for row in rows:
             expected = _EXPECTED_VARIANTS[row.code]
-            present  = {STANDARD}  # standard card itself always present
+            present = {STANDARD}  # standard card itself always present
 
-            for (is_foil, is_hyperspace) in expected - {STANDARD}:
-                exists = db.execute(text("""
+            for is_foil, is_hyperspace in expected - {STANDARD}:
+                exists = db.execute(
+                    text("""
                     SELECT 1 FROM cards v
                     JOIN sets s ON s.id = v.set_id
                     WHERE s.code               = :code
@@ -257,12 +278,14 @@ class TestNonLeaderNonBaseCardVariants:
                       AND v.is_organized_play  = false
                       AND v.is_prestige        = false
                     LIMIT 1
-                """), {
-                    "code":         row.code,
-                    "base_num":     row.card_number,
-                    "is_foil":      is_foil,
-                    "is_hyperspace": is_hyperspace,
-                }).fetchone()
+                """),
+                    {
+                        "code": row.code,
+                        "base_num": row.card_number,
+                        "is_foil": is_foil,
+                        "is_hyperspace": is_hyperspace,
+                    },
+                ).fetchone()
 
                 if exists:
                     present.add((is_foil, is_hyperspace))
@@ -270,10 +293,10 @@ class TestNonLeaderNonBaseCardVariants:
             missing = expected - present
             if missing:
                 missing_names = []
-                for (f, h) in sorted(missing):
+                for f, h in sorted(missing):
                     label = {
-                        FOIL:            "Foil",
-                        HYPERSPACE:      "Hyperspace",
+                        FOIL: "Foil",
+                        HYPERSPACE: "Hyperspace",
                         FOIL_HYPERSPACE: "F-Hyperspace",
                     }[(f, h)]
                     missing_names.append(label)

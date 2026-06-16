@@ -4,6 +4,7 @@ P4 Stage 2: row-level security on inventory.
 Integration tests -- require DATABASE_URL and APP_DATABASE_URL (standard
 inside the backend container).
 """
+
 import os
 
 import pytest
@@ -30,10 +31,14 @@ def app_db():
 
 def test_rls_enabled_and_forced(db):
     row = db.execute(
-        text("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'inventory'")
+        text(
+            "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'inventory'"
+        )
     ).first()
     assert row[0] is True, "inventory does not have RLS enabled"
-    assert row[1] is True, "inventory does not have RLS forced (required since swu_user owns it)"
+    assert row[1] is True, (
+        "inventory does not have RLS forced (required since swu_user owns it)"
+    )
 
 
 def test_tenant_isolation_policy_exists(db):

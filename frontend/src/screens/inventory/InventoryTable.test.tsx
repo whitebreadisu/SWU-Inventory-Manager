@@ -1,21 +1,21 @@
-import { render } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import { InventoryTable } from './InventoryTable';
-import type { InventoryCard } from '../../utils/inventory';
+import { render } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { InventoryTable } from "./InventoryTable";
+import type { InventoryCard } from "../../utils/inventory";
 
 const mockCard: InventoryCard = {
-  set_code: 'SOR',
-  base_card_number: '001',
-  name: 'Test Unit',
-  rarity: 'C',
-  type: 'Unit',
+  set_code: "SOR",
+  base_card_number: "001",
+  name: "Test Unit",
+  rarity: "C",
+  type: "Unit",
   aspects: [],
   keywords: [],
-  traits: ['Rebel'],
+  traits: ["Rebel"],
   cost: 3,
   power: 2,
   hp: 3,
-  arena: 'Ground',
+  arena: "Ground",
   hasStandard: true,
   hasFoil: true,
   hasHyperspace: false,
@@ -28,17 +28,17 @@ const mockCard: InventoryCard = {
   cardIds: { standard: 101, foil: 102 },
 };
 
-describe('InventoryTable', () => {
-  it('renders the correct number of variant chips for a card with Standard and Foil variants only', () => {
+describe("InventoryTable", () => {
+  it("renders the correct number of variant chips for a card with Standard and Foil variants only", () => {
     const { container } = render(
       <InventoryTable
         cards={[mockCard]}
         onIncrement={vi.fn()}
         onDecrement={vi.fn()}
         pendingCardIds={new Set()}
-      />,
+      />
     );
-    const chips = container.querySelectorAll('.variant-inv__chip');
+    const chips = container.querySelectorAll(".variant-inv__chip");
     expect(chips).toHaveLength(2);
   });
 });

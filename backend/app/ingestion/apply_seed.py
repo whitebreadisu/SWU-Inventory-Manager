@@ -7,6 +7,7 @@ Idempotent: skips if the sets table is already populated.
 Usage (called in Docker entrypoint):
     python -m app.ingestion.apply_seed
 """
+
 import logging
 import os
 from pathlib import Path
@@ -25,7 +26,9 @@ def apply_seed(seed_path: Path = SEED_PATH) -> None:
     try:
         set_count = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
         if set_count > 0:
-            logger.info("Catalog already populated (%d sets). Skipping seed.", set_count)
+            logger.info(
+                "Catalog already populated (%d sets). Skipping seed.", set_count
+            )
             print(f"Catalog already populated ({set_count} sets). Skipping seed.")
             return
 
@@ -33,7 +36,9 @@ def apply_seed(seed_path: Path = SEED_PATH) -> None:
             logger.warning(
                 "Seed file not found at %s. Catalog tables will be empty.", seed_path
             )
-            print(f"WARNING: Seed file not found at {seed_path}. Catalog tables will be empty.")
+            print(
+                f"WARNING: Seed file not found at {seed_path}. Catalog tables will be empty."
+            )
             return
 
         logger.info("Applying catalog seed from %s ...", seed_path)

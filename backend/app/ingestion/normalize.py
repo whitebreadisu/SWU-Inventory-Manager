@@ -1,4 +1,5 @@
 """Pure normalization functions for CSV ingestion. No database dependencies."""
+
 import unicodedata
 
 RARITY_MAP = {
@@ -29,8 +30,7 @@ def normalize_card_name(name: str) -> str:
     standard row vs 'Chirrut Imwe' on Hyperspace/Prestige rows in the LAW CSV).
     """
     return "".join(
-        c for c in unicodedata.normalize("NFD", name)
-        if unicodedata.category(c) != "Mn"
+        c for c in unicodedata.normalize("NFD", name) if unicodedata.category(c) != "Mn"
     )
 
 
@@ -89,7 +89,14 @@ def parse_variant_flags(
     Name suffix takes precedence over subTypeName (handles SEC promo data anomaly
     where some foil cards have subTypeName='Normal' but '(Foil)' in the name).
     """
-    for suffix, is_foil, is_hyperspace, is_prestige, is_showcase, strip in _VARIANT_SUFFIXES:
+    for (
+        suffix,
+        is_foil,
+        is_hyperspace,
+        is_prestige,
+        is_showcase,
+        strip,
+    ) in _VARIANT_SUFFIXES:
         if name.endswith(suffix):
             cleaned = name[: -len(suffix)].rstrip() if strip else name
             # For early sets (SOR/SHD/TWI), Hyperspace/Prestige variants use the same

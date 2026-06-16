@@ -6,6 +6,7 @@ These are integration tests that require a running database.
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_card_catalog.py -v
 """
+
 import os
 
 import pytest
@@ -25,7 +26,8 @@ class TestBaseCardNumberIntegrity:
 
     def test_no_orphaned_base_card_numbers(self, db):
         """base_card_number must exist as a card_number within the same set."""
-        orphans = db.execute(text("""
+        orphans = db.execute(
+            text("""
             SELECT s.code, c.card_number, c.base_card_number, c.name
             FROM cards c
             JOIN sets s ON s.id = c.set_id
@@ -34,10 +36,14 @@ class TestBaseCardNumberIntegrity:
                 WHERE ref.set_id = c.set_id
                   AND ref.card_number = c.base_card_number
             )
-        """)).fetchall()
+        """)
+        ).fetchall()
         assert orphans == [], (
             f"{len(orphans)} card(s) have a base_card_number that doesn't exist — "
-            + ", ".join(f"{r.code}#{r.card_number}(base={r.base_card_number})" for r in orphans[:5])
+            + ", ".join(
+                f"{r.code}#{r.card_number}(base={r.base_card_number})"
+                for r in orphans[:5]
+            )
         )
 
     def test_standard_card_exists_for_every_resolved_variant(self, db):
@@ -46,7 +52,8 @@ class TestBaseCardNumberIntegrity:
         Self-referencing cards (base == own number) are excluded — they represent
         unresolved cards such as OP-only or Prestige-only variants where no matching
         standard card name was found during ingestion."""
-        missing = db.execute(text("""
+        missing = db.execute(
+            text("""
             SELECT DISTINCT s.code, c.card_number, c.base_card_number, c.name
             FROM cards c
             JOIN sets s ON s.id = c.set_id
@@ -61,42 +68,52 @@ class TestBaseCardNumberIntegrity:
                   AND std.is_showcase = false
                   AND std.is_organized_play = false
               )
-        """)).fetchall()
+        """)
+        ).fetchall()
         assert missing == [], (
             f"{len(missing)} resolved variant(s) point to a missing standard — "
-            + ", ".join(f"{r.code}#{r.card_number}(base={r.base_card_number})" for r in missing[:5])
+            + ", ".join(
+                f"{r.code}#{r.card_number}(base={r.base_card_number})"
+                for r in missing[:5]
+            )
         )
 
     def test_variant_groups_share_consistent_base_name(self, db):
         """All cards that share a base_card_number within a set must share
         the same name. Showcase suffixes are stripped before storage so no
         special-casing is needed here."""
-        inconsistent = db.execute(text("""
+        inconsistent = db.execute(
+            text("""
             SELECT s.code, c.base_card_number,
                    COUNT(DISTINCT c.name) AS distinct_names
             FROM cards c
             JOIN sets s ON s.id = c.set_id
             GROUP BY s.code, c.base_card_number
             HAVING COUNT(DISTINCT c.name) > 1
-        """)).fetchall()
+        """)
+        ).fetchall()
         assert inconsistent == [], (
             f"{len(inconsistent)} variant group(s) have inconsistent names — "
-            + ", ".join(f"{r.code} base={r.base_card_number} ({r.distinct_names} names)" for r in inconsistent[:5])
+            + ", ".join(
+                f"{r.code} base={r.base_card_number} ({r.distinct_names} names)"
+                for r in inconsistent[:5]
+            )
         )
 
 
 class TestNameIntegrity:
-
     def test_no_accented_characters_in_stored_names(self, db):
         """All card names must be accent-normalized (no combining diacritical marks).
         normalize_card_name() in normalize.py strips these before storage."""
-        accented = db.execute(text("""
+        accented = db.execute(
+            text("""
             SELECT s.code, c.card_number, c.name
             FROM cards c
             JOIN sets s ON s.id = c.set_id
             WHERE c.name != unaccent(c.name)
             ORDER BY s.code, c.card_number::int
-        """)).fetchall()
+        """)
+        ).fetchall()
         assert accented == [], (
             f"{len(accented)} card(s) have accented names — "
             + ", ".join(repr(r.name) for r in accented[:5])
@@ -104,13 +121,16 @@ class TestNameIntegrity:
 
 
 class TestSchemaConstraints:
-
     def test_showcase_cards_are_always_foil(self, db):
         """Showcase cards are physically foil — is_foil must always be True."""
-        non_foil_showcases = db.query(Card).filter(
-            Card.is_showcase == True,
-            Card.is_foil == False,
-        ).count()
+        non_foil_showcases = (
+            db.query(Card)
+            .filter(
+                Card.is_showcase == True,
+                Card.is_foil == False,
+            )
+            .count()
+        )
         assert non_foil_showcases == 0
 
 
@@ -129,38 +149,62 @@ class TestSetRecordCounts:
         "LAW": 902,
     }
     EXPECTED_STANDARD = {
-        "SOR": 253, "SHD": 263, "TWI": 258,
-        "JTL": 263, "LOF": 264, "SEC": 265, "LAW": 264,
+        "SOR": 253,
+        "SHD": 263,
+        "TWI": 258,
+        "JTL": 263,
+        "LOF": 264,
+        "SEC": 265,
+        "LAW": 264,
     }
     EXPECTED_OP = {
-        "SOR": 29, "SHD": 28, "TWI": 29,
-        "JTL": 40, "LOF": 40, "SEC": 40, "LAW": 40,
+        "SOR": 29,
+        "SHD": 28,
+        "TWI": 29,
+        "JTL": 40,
+        "LOF": 40,
+        "SEC": 40,
+        "LAW": 40,
     }
 
     def test_total_cards_per_set(self, db, set_ids):
         for code, expected in self.EXPECTED_TOTALS.items():
             actual = db.query(Card).filter(Card.set_id == set_ids[code]).count()
-            assert actual == expected, f"{code}: expected {expected} total, got {actual}"
+            assert actual == expected, (
+                f"{code}: expected {expected} total, got {actual}"
+            )
 
     def test_standard_cards_per_set(self, db, set_ids):
         for code, expected in self.EXPECTED_STANDARD.items():
-            actual = db.query(Card).filter(
-                Card.set_id == set_ids[code],
-                Card.is_foil == False,
-                Card.is_hyperspace == False,
-                Card.is_prestige == False,
-                Card.is_showcase == False,
-                Card.is_organized_play == False,
-            ).count()
-            assert actual == expected, f"{code}: expected {expected} standard, got {actual}"
+            actual = (
+                db.query(Card)
+                .filter(
+                    Card.set_id == set_ids[code],
+                    Card.is_foil == False,
+                    Card.is_hyperspace == False,
+                    Card.is_prestige == False,
+                    Card.is_showcase == False,
+                    Card.is_organized_play == False,
+                )
+                .count()
+            )
+            assert actual == expected, (
+                f"{code}: expected {expected} standard, got {actual}"
+            )
 
     def test_op_cards_per_set(self, db, set_ids):
         for code, expected in self.EXPECTED_OP.items():
-            actual = db.query(Card).filter(
-                Card.set_id == set_ids[code],
-                Card.is_organized_play == True,
-            ).count()
-            assert actual == expected, f"{code}: expected {expected} OP cards, got {actual}"
+            actual = (
+                db.query(Card)
+                .filter(
+                    Card.set_id == set_ids[code],
+                    Card.is_organized_play == True,
+                )
+                .count()
+            )
+            assert actual == expected, (
+                f"{code}: expected {expected} OP cards, got {actual}"
+            )
 
 
 class TestRegressionCases:
@@ -191,7 +235,9 @@ class TestRegressionCases:
             .filter(Card.set_id == set_ids["SEC"], Card.base_card_number == "62")
             .all()
         )
-        assert len(cards) == 4, f"Expected 4 Bardottan Ornithopter variants, got {len(cards)}"
+        assert len(cards) == 4, (
+            f"Expected 4 Bardottan Ornithopter variants, got {len(cards)}"
+        )
         variants = {(c.is_foil, c.is_hyperspace) for c in cards}
         assert variants == {(False, False), (False, True), (True, False), (True, True)}
 
@@ -222,7 +268,9 @@ class TestRegressionCases:
         )
         assert len(cards) == 3, f"Expected 3 Rio Durant records, got {len(cards)}"
         for c in cards:
-            assert "Wisecracking" in c.name, f"Inconsistent name still present: {c.name!r}"
+            assert "Wisecracking" in c.name, (
+                f"Inconsistent name still present: {c.name!r}"
+            )
             assert "Wisecrack " not in c.name.replace("Wisecracking", ""), (
                 f"Unexpected truncated name: {c.name!r}"
             )

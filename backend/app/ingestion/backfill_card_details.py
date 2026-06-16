@@ -24,6 +24,7 @@ _TOKEN_TRAITS must be updated whenever a new set introduces a new token type.
 Usage (inside the backend container):
     python -m app.ingestion.backfill_card_details
 """
+
 from __future__ import annotations
 
 import csv
@@ -53,15 +54,17 @@ STANDARD_FILES = [
 # Traits that belong to token card backs, not to the base card itself.
 # These are filtered out when extracting the location name from base card extTraits.
 # Update this set when a new set introduces a new token type.
-_TOKEN_TRAITS: frozenset[str] = frozenset({
-    "Armor",    # Shield token (JTL, LOF)
-    "Learned",  # Experience token (JTL, LOF)
-    "Fighter",  # Unit token — X-Wing / TIE Fighter (JTL)
-    "Vehicle",  # Unit token — X-Wing / TIE Fighter (JTL)
-    "Force",    # Force token (LOF)
-    "Official", # Spy token (SEC)
-    "Supply",   # Credit token (LAW)
-})
+_TOKEN_TRAITS: frozenset[str] = frozenset(
+    {
+        "Armor",  # Shield token (JTL, LOF)
+        "Learned",  # Experience token (JTL, LOF)
+        "Fighter",  # Unit token — X-Wing / TIE Fighter (JTL)
+        "Vehicle",  # Unit token — X-Wing / TIE Fighter (JTL)
+        "Force",  # Force token (LOF)
+        "Official",  # Spy token (SEC)
+        "Supply",  # Credit token (LAW)
+    }
+)
 
 
 def _parse_list(raw: str) -> list[str]:
@@ -164,13 +167,15 @@ def run(db) -> None:
             for trait in data["traits"]:
                 trait_rows.append({"card_id": card_id, "trait": trait})
 
-            detail_rows.append({
-                "card_id": card_id,
-                "cost": data["cost"],
-                "power": data["power"],
-                "hp": data["hp"],
-                "arena": data["arena"],
-            })
+            detail_rows.append(
+                {
+                    "card_id": card_id,
+                    "cost": data["cost"],
+                    "power": data["power"],
+                    "hp": data["hp"],
+                    "arena": data["arena"],
+                }
+            )
 
         # Traits are deleted and re-inserted to ensure corrections take effect.
         db.execute(

@@ -15,15 +15,19 @@ Process for each test:
 
 PostgreSQL TRUNCATE is transactional and fully reversed by a savepoint rollback.
 """
+
 import os
 from pathlib import Path
 
-import pytest
 from sqlalchemy import text
 
 from app.tests.test_card_domain_rules import (
-    TestBaseCardVariants        as _BaseCardVariants,
-    TestLeaderCardVariants      as _LeaderCardVariants,
+    TestBaseCardVariants as _BaseCardVariants,
+)
+from app.tests.test_card_domain_rules import (
+    TestLeaderCardVariants as _LeaderCardVariants,
+)
+from app.tests.test_card_domain_rules import (
     TestNonLeaderNonBaseCardVariants as _NonLeaderNonBaseCardVariants,
 )
 
@@ -47,24 +51,34 @@ def _seed_lines():
 def test_reconstruct_catalog_from_seed(db):
     assert SEED_PATH.exists(), f"Seed file not found: {SEED_PATH}"
 
-    pre_sets      = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
-    pre_cards     = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
+    pre_sets = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
+    pre_cards = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
     pre_inventory = db.execute(text("SELECT COUNT(*) FROM inventory")).scalar()
 
-    assert pre_sets  > 0, "Database has no sets — run ingestion before this test"
+    assert pre_sets > 0, "Database has no sets — run ingestion before this test"
     assert pre_cards > 0, "Database has no cards — run ingestion before this test"
 
     savepoint = db.begin_nested()
     _apply_seed(db, _seed_lines())
 
-    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar()  == pre_sets,  "Set count mismatch after reconstruction"
-    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar() == pre_cards, "Card count mismatch after reconstruction"
+    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar() == pre_sets, (
+        "Set count mismatch after reconstruction"
+    )
+    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar() == pre_cards, (
+        "Card count mismatch after reconstruction"
+    )
 
     savepoint.rollback()
 
-    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar()      == pre_sets,      "Savepoint rollback did not restore sets"
-    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar()     == pre_cards,     "Savepoint rollback did not restore cards"
-    assert db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_inventory, "Savepoint rollback did not restore inventory"
+    assert db.execute(text("SELECT COUNT(*) FROM sets")).scalar() == pre_sets, (
+        "Savepoint rollback did not restore sets"
+    )
+    assert db.execute(text("SELECT COUNT(*) FROM cards")).scalar() == pre_cards, (
+        "Savepoint rollback did not restore cards"
+    )
+    assert (
+        db.execute(text("SELECT COUNT(*) FROM inventory")).scalar() == pre_inventory
+    ), "Savepoint rollback did not restore inventory"
 
 
 def test_seed_rebuilt_catalog_passes_domain_rules(db):
@@ -76,8 +90,12 @@ def test_seed_rebuilt_catalog_passes_domain_rules(db):
     _apply_seed(db, _seed_lines())
 
     _BaseCardVariants().test_common_base_cards_have_standard_and_hyperspace(db)
-    _BaseCardVariants().test_rare_base_cards_have_standard_foil_hyperspace_and_foil_hyperspace(db)
-    _LeaderCardVariants().test_common_and_rare_leaders_have_standard_hyperspace_and_showcase(db)
+    _BaseCardVariants().test_rare_base_cards_have_standard_foil_hyperspace_and_foil_hyperspace(
+        db
+    )
+    _LeaderCardVariants().test_common_and_rare_leaders_have_standard_hyperspace_and_showcase(
+        db
+    )
     _NonLeaderNonBaseCardVariants().test_all_valid_variants_present(db)
 
     savepoint.rollback()

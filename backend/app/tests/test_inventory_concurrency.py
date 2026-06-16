@@ -11,6 +11,7 @@ and have one write clobber the other.
 Integration test -- requires DATABASE_URL and APP_DATABASE_URL (standard
 inside the backend container).
 """
+
 import os
 import threading
 
@@ -43,7 +44,11 @@ def concurrency_tenant(db):
             "INSERT INTO users (firebase_uid, tenant_id, email) "
             "VALUES (:uid, :tenant_id, :email)"
         ),
-        {"uid": CONCURRENCY_TENANT_UID, "tenant_id": tenant_id, "email": CONCURRENCY_TENANT_EMAIL},
+        {
+            "uid": CONCURRENCY_TENANT_UID,
+            "tenant_id": tenant_id,
+            "email": CONCURRENCY_TENANT_EMAIL,
+        },
     )
     db.commit()
 
@@ -51,9 +56,17 @@ def concurrency_tenant(db):
         yield tenant_id
     finally:
         db.rollback()
-        db.execute(text("DELETE FROM inventory WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id})
-        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": CONCURRENCY_TENANT_UID})
-        db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(
+            text("DELETE FROM inventory WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        db.execute(
+            text("DELETE FROM users WHERE firebase_uid = :uid"),
+            {"uid": CONCURRENCY_TENANT_UID},
+        )
+        db.execute(
+            text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id}
+        )
         db.commit()
 
 
@@ -95,7 +108,9 @@ def test_concurrent_increments_are_not_lost(concurrency_tenant, db):
     assert errors == []
 
     quantity = db.execute(
-        text("SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"),
+        text(
+            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"
+        ),
         {"tid": concurrency_tenant, "cid": card_id},
     ).scalar()
     db.rollback()
@@ -139,7 +154,9 @@ def test_concurrent_decrements_clamp_at_zero(concurrency_tenant, db):
     assert errors == []
 
     quantity = db.execute(
-        text("SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"),
+        text(
+            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"
+        ),
         {"tid": concurrency_tenant, "cid": card_id},
     ).scalar()
     db.rollback()

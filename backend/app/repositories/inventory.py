@@ -1,12 +1,15 @@
 from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
+
 from app.models.card import Card
 from app.models.inventory import Inventory
 
 
 def _current_tenant_id(db: Session) -> int:
-    return db.execute(text("SELECT current_setting('app.current_tenant_id')::integer")).scalar()
+    return db.execute(
+        text("SELECT current_setting('app.current_tenant_id')::integer")
+    ).scalar()
 
 
 def get_cards_with_inventory(db: Session) -> list[Card]:
@@ -82,7 +85,10 @@ def upsert_decrement(db: Session, card_id: int) -> Inventory:
         .values(tenant_id=tenant_id, card_id=card_id, quantity=0)
         .on_conflict_do_update(
             index_elements=["tenant_id", "card_id"],
-            set_={"quantity": func.greatest(table.c.quantity - 1, 0), "updated_at": func.now()},
+            set_={
+                "quantity": func.greatest(table.c.quantity - 1, 0),
+                "updated_at": func.now(),
+            },
         )
         .returning(table)
     )

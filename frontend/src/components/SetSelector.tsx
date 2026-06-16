@@ -1,4 +1,4 @@
-import type { CardSet } from '../api/sets';
+import type { CardSet } from "../api/sets";
 
 interface Props {
   sets: CardSet[];
@@ -8,9 +8,11 @@ interface Props {
 
 export function SetSelector({ sets, selectedCode, onChange }: Props) {
   return (
-    <select value={selectedCode} onChange={e => onChange(e.target.value)}>
-      {sets.map(s => (
-        <option key={s.code} value={s.code}>{s.name}</option>
+    <select value={selectedCode} onChange={(e) => onChange(e.target.value)}>
+      {sets.map((s) => (
+        <option key={s.code} value={s.code}>
+          {s.name}
+        </option>
       ))}
     </select>
   );

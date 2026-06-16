@@ -1,4 +1,5 @@
 """Unit tests for the sets service layer. No database required."""
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -6,13 +7,17 @@ from app.services.sets import get_all_sets, get_set_by_code
 
 
 def _make_set(code="SOR", name="Spark of Rebellion", has_unique=False):
-    return SimpleNamespace(id=1, code=code, name=name, has_unique_variant_numbers=has_unique)
+    return SimpleNamespace(
+        id=1, code=code, name=name, has_unique_variant_numbers=has_unique
+    )
 
 
 class TestGetSetByCode:
     def test_uppercases_code_before_repo_call(self):
         mock_db = MagicMock()
-        with patch("app.services.sets.set_repo.get_set_by_code", return_value=_make_set()) as mock_repo:
+        with patch(
+            "app.services.sets.set_repo.get_set_by_code", return_value=_make_set()
+        ) as mock_repo:
             get_set_by_code(mock_db, "sor")
             mock_repo.assert_called_once_with(mock_db, "SOR")
 
@@ -23,7 +28,10 @@ class TestGetSetByCode:
 
     def test_returns_response_with_correct_fields(self):
         mock_db = MagicMock()
-        with patch("app.services.sets.set_repo.get_set_by_code", return_value=_make_set("SOR", "Spark of Rebellion", False)):
+        with patch(
+            "app.services.sets.set_repo.get_set_by_code",
+            return_value=_make_set("SOR", "Spark of Rebellion", False),
+        ):
             result = get_set_by_code(mock_db, "SOR")
             assert result.code == "SOR"
             assert result.name == "Spark of Rebellion"

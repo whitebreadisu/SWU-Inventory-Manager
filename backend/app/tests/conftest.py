@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.main import app
 from app.auth import get_current_identity
+from app.main import app
 
 # P5 Stage 2: get_db() resolves tenant_id from a verified Firebase identity.
 # Tests authenticate by overriding get_current_identity instead of sending a
@@ -50,9 +50,13 @@ def delete_provisioned_identity(db, firebase_uid: str) -> None:
         text("SELECT tenant_id FROM users WHERE firebase_uid = :uid"),
         {"uid": firebase_uid},
     ).scalar()
-    db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": firebase_uid})
+    db.execute(
+        text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": firebase_uid}
+    )
     if tenant_id is not None:
-        db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(
+            text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id}
+        )
     db.commit()
 
 
@@ -61,7 +65,9 @@ def make_client():
     """Returns a function that builds a TestClient authenticated as the given
     (firebase_uid, email) identity, via a get_current_identity override."""
 
-    def _make(uid: str = DEFAULT_TEST_UID, email: str = DEFAULT_TEST_EMAIL) -> TestClient:
+    def _make(
+        uid: str = DEFAULT_TEST_UID, email: str = DEFAULT_TEST_EMAIL
+    ) -> TestClient:
         app.dependency_overrides[get_current_identity] = lambda: (uid, email)
         return TestClient(app)
 
@@ -79,6 +85,7 @@ def db():
     """SQLAlchemy session for integration tests. Requires DATABASE_URL to be set
     (automatically present when running inside the backend container)."""
     from app.database import SessionLocal
+
     session = SessionLocal()
     try:
         yield session
@@ -90,4 +97,5 @@ def db():
 def set_ids(db):
     """Map of set code → set_id for all known sets."""
     from app.models.set_model import CardSet
+
     return {s.code: s.id for s in db.query(CardSet).all()}

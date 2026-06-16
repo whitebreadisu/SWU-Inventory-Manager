@@ -4,7 +4,9 @@ and POST /api/inventory/{id}/decrement endpoints.
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_inventory_api.py -v
 """
+
 import os
+
 import pytest
 
 pytestmark = pytest.mark.skipif(
@@ -48,9 +50,7 @@ class TestIncrementCard:
 
         records = client.get("/api/inventory").json()
         exclude = exclude_types or self.SINGLETON_TYPES
-        base_counts = Counter(
-            (r["set_code"], r["base_card_number"]) for r in records
-        )
+        base_counts = Counter((r["set_code"], r["base_card_number"]) for r in records)
         return next(
             (
                 r
@@ -66,7 +66,11 @@ class TestIncrementCard:
         """Return a Leader or Base variant card with quantity 0."""
         records = client.get("/api/inventory").json()
         return next(
-            (r for r in records if r["quantity"] == 0 and r["type"] in self.SINGLETON_TYPES),
+            (
+                r
+                for r in records
+                if r["quantity"] == 0 and r["type"] in self.SINGLETON_TYPES
+            ),
             None,
         )
 

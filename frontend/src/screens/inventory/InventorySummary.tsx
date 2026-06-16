@@ -1,6 +1,6 @@
-import React from 'react';
-import { cardOwnedTotal, isPlaysetComplete, isOwned } from '../../utils/inventory';
-import type { InventoryCard } from '../../utils/inventory';
+import React from "react";
+import { cardOwnedTotal, isPlaysetComplete, isOwned } from "../../utils/inventory";
+import type { InventoryCard } from "../../utils/inventory";
 
 interface Props {
   cards: InventoryCard[];
@@ -9,12 +9,11 @@ interface Props {
 
 export function InventorySummary({ cards, children }: Props) {
   const total = cards.length;
-  const playsetCount = cards.filter(c => isPlaysetComplete(c.inventory, c.type)).length;
-  const ownedCount = cards.filter(c => isOwned(c.inventory)).length;
+  const playsetCount = cards.filter((c) => isPlaysetComplete(c.inventory, c.type)).length;
+  const ownedCount = cards.filter((c) => isOwned(c.inventory)).length;
   const totalCards = cards.reduce((s, c) => s + cardOwnedTotal(c.inventory), 0);
 
-  const pct = (n: number) =>
-    total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`;
+  const pct = (n: number) => (total === 0 ? "0%" : `${Math.round((n / total) * 100)}%`);
 
   return (
     <div className="inv-summary">

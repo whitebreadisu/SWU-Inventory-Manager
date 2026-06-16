@@ -25,7 +25,9 @@ def verify_firebase_token(authorization: Optional[str]) -> tuple[str, str]:
     is missing or the token doesn't verify.
     """
     if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+        raise HTTPException(
+            status_code=401, detail="Missing or invalid Authorization header"
+        )
 
     token = authorization.removeprefix("Bearer ")
     try:
@@ -36,7 +38,9 @@ def verify_firebase_token(authorization: Optional[str]) -> tuple[str, str]:
     return decoded["uid"], decoded.get("email", "")
 
 
-def get_current_identity(authorization: Optional[str] = Header(default=None)) -> tuple[str, str]:
+def get_current_identity(
+    authorization: Optional[str] = Header(default=None),
+) -> tuple[str, str]:
     """FastAPI dependency: the verified (firebase_uid, email) of the caller.
 
     Tests override this dependency via app.dependency_overrides, so the real

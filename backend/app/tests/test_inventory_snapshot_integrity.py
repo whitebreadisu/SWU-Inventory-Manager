@@ -5,13 +5,16 @@ Validates the inventory snapshot file against the live database. These are
 integration tests that require DATABASE_URL to be set (standard inside
 the backend container).
 """
+
 import os
 import re
 from pathlib import Path
 
 from sqlalchemy import text
 
-SNAPSHOT_PATH = Path(os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql"))
+SNAPSHOT_PATH = Path(
+    os.environ.get("INVENTORY_SNAPSHOT_PATH", "/db/snapshots/inventory_snapshot.sql")
+)
 
 
 def _read_snapshot() -> str:
@@ -31,6 +34,7 @@ def _parse_metadata(content: str) -> tuple[int, int]:
 # File-level checks (no DB required)
 # ---------------------------------------------------------------------------
 
+
 def test_snapshot_file_exists():
     assert SNAPSHOT_PATH.exists(), f"Snapshot file not found: {SNAPSHOT_PATH}"
 
@@ -38,12 +42,15 @@ def test_snapshot_file_exists():
 def test_snapshot_file_contains_required_sections():
     content = _read_snapshot()
     assert "INSERT INTO inventory" in content, "Snapshot missing INSERT INTO inventory"
-    assert "ON CONFLICT DO NOTHING" in content, "Snapshot missing ON CONFLICT DO NOTHING"
+    assert "ON CONFLICT DO NOTHING" in content, (
+        "Snapshot missing ON CONFLICT DO NOTHING"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Counts: snapshot metadata vs live database
 # ---------------------------------------------------------------------------
+
 
 def test_snapshot_record_count_matches_database(db):
     content = _read_snapshot()
@@ -60,7 +67,9 @@ def test_snapshot_total_quantity_matches_database(db):
     content = _read_snapshot()
     _, snapshot_total = _parse_metadata(content)
 
-    db_total = db.execute(text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")).scalar()
+    db_total = db.execute(
+        text("SELECT COALESCE(SUM(quantity), 0) FROM inventory")
+    ).scalar()
     assert snapshot_total == db_total, (
         f"Snapshot declares total quantity {snapshot_total} but database sums to {db_total}"
     )

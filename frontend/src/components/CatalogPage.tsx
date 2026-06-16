@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { getCards, type Card } from '../api/cards';
-import { groupByBaseCard, parseCardDisplay } from '../utils/catalog';
-import { getRarityLabel } from '../utils/variants';
-import { AspectIcon } from './AspectIcon';
-import { VariantCircles } from './VariantCircles';
-import { FilterPanel, applyFilters, DEFAULT_FILTERS, type FilterState } from './FilterPanel';
+import { useState, useEffect, useMemo } from "react";
+import { getCards, type Card } from "../api/cards";
+import { groupByBaseCard, parseCardDisplay } from "../utils/catalog";
+import { getRarityLabel } from "../utils/variants";
+import { AspectIcon } from "./AspectIcon";
+import { VariantCircles } from "./VariantCircles";
+import { FilterPanel, applyFilters, DEFAULT_FILTERS, type FilterState } from "./FilterPanel";
 
-const ASPECTS = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'] as const;
+const ASPECTS = ["Vigilance", "Command", "Aggression", "Cunning", "Heroism", "Villainy"] as const;
 
 export function CatalogPage() {
   const [allCards, setAllCards] = useState<Card[]>([]);
@@ -17,7 +17,7 @@ export function CatalogPage() {
   useEffect(() => {
     getCards()
       .then(setAllCards)
-      .catch(err => setError(String(err)))
+      .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -54,9 +54,9 @@ export function CatalogPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(card => {
+              {filtered.map((card) => {
                 const { displayName, subtitle } = parseCardDisplay(card);
-                const isBase = card.type === 'Base';
+                const isBase = card.type === "Base";
                 return (
                   <tr key={`${card.set_code}-${card.base_card_number}`}>
                     <td className="cell-muted td-cardnum">{card.base_card_number}</td>
@@ -69,20 +69,30 @@ export function CatalogPage() {
                       <span className="aspect-cell">
                         {card.aspects
                           .slice()
-                          .sort((a, b) => ASPECTS.indexOf(a as typeof ASPECTS[number]) - ASPECTS.indexOf(b as typeof ASPECTS[number]))
-                          .map(a => <AspectIcon key={a} aspect={a} size={16} />)}
+                          .sort(
+                            (a, b) =>
+                              ASPECTS.indexOf(a as (typeof ASPECTS)[number]) -
+                              ASPECTS.indexOf(b as (typeof ASPECTS)[number])
+                          )
+                          .map((a) => (
+                            <AspectIcon key={a} aspect={a} size={16} />
+                          ))}
                       </span>
                     </td>
                     <td>{card.type}</td>
-                    <td className={card.cost == null ? 'cell-muted' : ''}>{card.cost ?? '—'}</td>
-                    <td className={card.power == null ? 'cell-muted' : ''}>{card.power ?? '—'}</td>
-                    <td className={card.hp == null ? 'cell-muted' : ''}>{card.hp ?? '—'}</td>
-                    <td className={isBase || card.traits.length === 0 ? 'cell-muted' : ''}>
-                      {isBase ? '—' : (card.traits.join(', ') || '—')}
+                    <td className={card.cost == null ? "cell-muted" : ""}>{card.cost ?? "—"}</td>
+                    <td className={card.power == null ? "cell-muted" : ""}>{card.power ?? "—"}</td>
+                    <td className={card.hp == null ? "cell-muted" : ""}>{card.hp ?? "—"}</td>
+                    <td className={isBase || card.traits.length === 0 ? "cell-muted" : ""}>
+                      {isBase ? "—" : card.traits.join(", ") || "—"}
                     </td>
-                    <td className={card.keywords.length === 0 ? 'cell-muted' : ''}>{card.keywords.join('; ') || '—'}</td>
-                    <td className={card.arena == null ? 'cell-muted' : ''}>{card.arena ?? '—'}</td>
-                    <td><VariantCircles card={card} /></td>
+                    <td className={card.keywords.length === 0 ? "cell-muted" : ""}>
+                      {card.keywords.join("; ") || "—"}
+                    </td>
+                    <td className={card.arena == null ? "cell-muted" : ""}>{card.arena ?? "—"}</td>
+                    <td>
+                      <VariantCircles card={card} />
+                    </td>
                     <td className="cell-muted">{card.set_code}</td>
                   </tr>
                 );

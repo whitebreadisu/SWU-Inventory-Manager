@@ -1,5 +1,5 @@
-import type { Card } from '../api/cards';
-import { getVariantLabel, getRarityLabel } from '../utils/variants';
+import type { Card } from "../api/cards";
+import { getVariantLabel, getRarityLabel } from "../utils/variants";
 
 interface Props {
   cards: Card[];
@@ -22,7 +22,7 @@ export function CardTable({ cards }: Props) {
         </tr>
       </thead>
       <tbody>
-        {cards.map(card => (
+        {cards.map((card) => (
           <tr key={card.id}>
             <td>{card.card_number}</td>
             <td>{card.name}</td>

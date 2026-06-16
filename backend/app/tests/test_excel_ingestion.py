@@ -7,7 +7,6 @@ All tests are pure (no database required). Covers:
   - Card number normalization (SEC integers, leading-zero strings)
   - VARIANT_COLUMN_FLAGS integrity
 """
-import pytest
 
 from app.ingestion.excel_ingestor import (
     VARIANT_COLUMN_FLAGS,
@@ -56,8 +55,14 @@ class TestFindHeaderRow:
 class TestIdentifyInventoryColumns:
     def test_sor_columns_detected(self):
         header = (
-            "Card #", "Non-Foil", "Foil", "Hyperspace", "F-Hyperspace",
-            "Playset", "HS-Playset", "Rarity",
+            "Card #",
+            "Non-Foil",
+            "Foil",
+            "Hyperspace",
+            "F-Hyperspace",
+            "Playset",
+            "HS-Playset",
+            "Rarity",
         )
         cols = identify_inventory_columns(header)
         assert set(cols.keys()) == {1, 2, 3, 4}
@@ -65,7 +70,14 @@ class TestIdentifyInventoryColumns:
         assert 7 not in cols  # Rarity
 
     def test_law_standard_column_detected(self):
-        header = ("Card #", "Standard", "Hyperspace", "F-Hyperspace", "Prestige", "Prestige Foil")
+        header = (
+            "Card #",
+            "Standard",
+            "Hyperspace",
+            "F-Hyperspace",
+            "Prestige",
+            "Prestige Foil",
+        )
         cols = identify_inventory_columns(header)
         assert 1 in cols
         assert cols[1]["is_foil"] is False
@@ -114,17 +126,34 @@ class TestIdentifyInventoryColumns:
 
     def test_all_nine_variant_types_recognized(self):
         header = (
-            "Card #", "Non-Foil", "Foil", "Hyperspace", "F-Hyperspace",
-            "Prestige", "Prestige Foil", "Promo", "Promo Foil",
+            "Card #",
+            "Non-Foil",
+            "Foil",
+            "Hyperspace",
+            "F-Hyperspace",
+            "Prestige",
+            "Prestige Foil",
+            "Promo",
+            "Promo Foil",
         )
         cols = identify_inventory_columns(header)
         assert set(cols.keys()) == {1, 2, 3, 4, 5, 6, 7, 8}
 
     def test_sec_full_header(self):
         header = (
-            "Card #", "Non-Foil", "Foil", "Hyperspace", "F-Hyperspace",
-            "Prestige", "Prestige Foil", "Promo", "Promo Foil",
-            "Playset", "HS-Playset", "Rarity", "Unique",
+            "Card #",
+            "Non-Foil",
+            "Foil",
+            "Hyperspace",
+            "F-Hyperspace",
+            "Prestige",
+            "Prestige Foil",
+            "Promo",
+            "Promo Foil",
+            "Playset",
+            "HS-Playset",
+            "Rarity",
+            "Unique",
         )
         cols = identify_inventory_columns(header)
         # Only the 8 inventory columns; Playset, HS-Playset, Rarity, Unique are skipped
@@ -135,12 +164,17 @@ class TestIdentifyInventoryColumns:
         # header as a primary inventory column. Only the first occurrence should
         # be used; the trailing duplicate must be ignored.
         header = (
-            "Card #", "Non-Foil", "Foil", "Hyperspace",
-            "Card Name", "Cost",
-            "Foil", "Hyperspace",   # trailing duplicates — must be ignored
+            "Card #",
+            "Non-Foil",
+            "Foil",
+            "Hyperspace",
+            "Card Name",
+            "Cost",
+            "Foil",
+            "Hyperspace",  # trailing duplicates — must be ignored
         )
         cols = identify_inventory_columns(header)
-        assert set(cols.keys()) == {1, 2, 3}   # indices 6 and 7 must not appear
+        assert set(cols.keys()) == {1, 2, 3}  # indices 6 and 7 must not appear
         assert 6 not in cols
         assert 7 not in cols
 

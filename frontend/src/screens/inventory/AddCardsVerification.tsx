@@ -1,8 +1,8 @@
-import type { VerificationItem } from '../../utils/addCardsResolver';
+import type { VerificationItem } from "../../utils/addCardsResolver";
 
 interface SectionProps {
   title: string;
-  kind: 'add' | 'skip';
+  kind: "add" | "skip";
   count: number;
   items: VerificationItem[];
   reason?: string;
@@ -15,7 +15,7 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
         <span>{title}</span>
         <span className="ac-verify__section-rule" />
         <span className="ac-verify__count">
-          {count} {count === 1 ? 'card' : 'cards'}
+          {count} {count === 1 ? "card" : "cards"}
         </span>
       </div>
       <table className="ac-verify__table">
@@ -26,13 +26,13 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
             <th style={{ width: 180 }}>Variant</th>
             <th style={{ width: 60 }}>OP</th>
             <th style={{ width: 100 }}>Inventory</th>
-            {kind === 'skip' && <th>Reason</th>}
+            {kind === "skip" && <th>Reason</th>}
           </tr>
         </thead>
         <tbody>
           {items.map(({ row, resolved, inv }) => (
             <tr key={row.id}>
-              <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
+              <td style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}>
                 {row.cardNumber}
               </td>
               <td className="ac-verify__name">
@@ -41,8 +41,8 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
                   <div
                     style={{
                       fontSize: 11,
-                      fontStyle: 'italic',
-                      color: 'var(--color-text-muted)',
+                      fontStyle: "italic",
+                      color: "var(--color-text-muted)",
                       fontWeight: 400,
                     }}
                   >
@@ -53,20 +53,20 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
               <td>{resolved.variant}</td>
               <td
                 style={{
-                  color: resolved.isOp ? 'var(--variant-op)' : 'var(--color-text-muted)',
+                  color: resolved.isOp ? "var(--variant-op)" : "var(--color-text-muted)",
                 }}
               >
-                {resolved.isOp ? '✓' : '—'}
+                {resolved.isOp ? "✓" : "—"}
               </td>
               <td>
                 <span className="ac-dot-row">
                   <span className={`ac-dot ac-dot--${inv.color}`} aria-hidden="true" />
-                  <span>{inv.owned}/{inv.max}</span>
+                  <span>
+                    {inv.owned}/{inv.max}
+                  </span>
                 </span>
               </td>
-              {kind === 'skip' && (
-                <td className="ac-verify__skip-reason">{reason}</td>
-              )}
+              {kind === "skip" && <td className="ac-verify__skip-reason">{reason}</td>}
             </tr>
           ))}
         </tbody>

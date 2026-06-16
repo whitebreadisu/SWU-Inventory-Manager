@@ -9,6 +9,7 @@ surface, exercised here for the first time.
 Integration tests -- require DATABASE_URL and APP_DATABASE_URL (standard
 inside the backend container).
 """
+
 import os
 
 import pytest
@@ -42,10 +43,14 @@ def app_db():
 
 def test_rls_enabled_and_forced(db):
     row = db.execute(
-        text("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'users'")
+        text(
+            "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'users'"
+        )
     ).first()
     assert row[0] is True, "users does not have RLS enabled"
-    assert row[1] is True, "users does not have RLS forced (required since swu_user owns it)"
+    assert row[1] is True, (
+        "users does not have RLS forced (required since swu_user owns it)"
+    )
 
 
 def test_user_self_access_policy_exists(db):
@@ -91,7 +96,9 @@ def test_swu_app_cannot_see_another_identitys_row(app_db, db):
         text("INSERT INTO tenants (name) VALUES ('RLS Other Tenant') RETURNING id")
     ).scalar()
     db.execute(
-        text("INSERT INTO users (firebase_uid, tenant_id, email) VALUES (:uid, :tid, :email)"),
+        text(
+            "INSERT INTO users (firebase_uid, tenant_id, email) VALUES (:uid, :tid, :email)"
+        ),
         {"uid": other_uid, "tid": tenant_id, "email": "rls-other@example.com"},
     )
     db.commit()
@@ -107,7 +114,9 @@ def test_swu_app_cannot_see_another_identitys_row(app_db, db):
         assert {r.firebase_uid for r in rows} == {DEFAULT_TEST_UID}
     finally:
         db.rollback()
-        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": other_uid})
+        db.execute(
+            text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": other_uid}
+        )
         db.execute(text("DELETE FROM tenants WHERE id = :tid"), {"tid": tenant_id})
         db.commit()
 

@@ -11,6 +11,7 @@ refuses to return another tenant's rows.
 Integration tests -- require DATABASE_URL and APP_DATABASE_URL (standard
 inside the backend container).
 """
+
 import os
 
 import pytest
@@ -90,7 +91,11 @@ def tenant_two(db):
                     "INSERT INTO inventory (tenant_id, card_id, quantity) "
                     "VALUES (:tenant_id, :card_id, :quantity)"
                 ),
-                {"tenant_id": tenant_id, "card_id": card_id, "quantity": SEEDED_QUANTITY},
+                {
+                    "tenant_id": tenant_id,
+                    "card_id": card_id,
+                    "quantity": SEEDED_QUANTITY,
+                },
             )
         db.commit()
 
@@ -101,9 +106,16 @@ def tenant_two(db):
         }
     finally:
         db.rollback()
-        db.execute(text("DELETE FROM inventory WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id})
-        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": TENANT_TWO_UID})
-        db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(
+            text("DELETE FROM inventory WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        db.execute(
+            text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": TENANT_TWO_UID}
+        )
+        db.execute(
+            text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id}
+        )
         db.commit()
 
 
@@ -127,7 +139,9 @@ def test_naive_query_as_tenant_two_excludes_tenant_one_rows(app_db, tenant_two):
         text("SET LOCAL app.current_tenant_id = :tid"),
         {"tid": str(tenant_two["tenant_id"])},
     )
-    rows = app_db.execute(text("SELECT tenant_id, card_id, quantity FROM inventory")).all()
+    rows = app_db.execute(
+        text("SELECT tenant_id, card_id, quantity FROM inventory")
+    ).all()
     app_db.rollback()
 
     assert len(rows) == len(tenant_two["card_ids"])
@@ -141,7 +155,9 @@ def test_naive_query_as_tenant_one_excludes_tenant_two_rows(app_db, tenant_two):
     card_ids never appear, even though they exist in the table."""
     app_db.execute(text("SET LOCAL app.current_tenant_id = '1'"))
     rows = app_db.execute(
-        text("SELECT card_id, tenant_id, quantity FROM inventory WHERE card_id = ANY(:card_ids)"),
+        text(
+            "SELECT card_id, tenant_id, quantity FROM inventory WHERE card_id = ANY(:card_ids)"
+        ),
         {"card_ids": tenant_two["card_ids"]},
     ).all()
     app_db.rollback()
@@ -195,9 +211,17 @@ def tenant_three(db):
         yield {"tenant_id": tenant_id}
     finally:
         db.rollback()
-        db.execute(text("DELETE FROM inventory WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id})
-        db.execute(text("DELETE FROM users WHERE firebase_uid = :uid"), {"uid": TENANT_THREE_UID})
-        db.execute(text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id})
+        db.execute(
+            text("DELETE FROM inventory WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        db.execute(
+            text("DELETE FROM users WHERE firebase_uid = :uid"),
+            {"uid": TENANT_THREE_UID},
+        )
+        db.execute(
+            text("DELETE FROM tenants WHERE id = :tenant_id"), {"tenant_id": tenant_id}
+        )
         db.commit()
 
 
@@ -206,7 +230,9 @@ def tenant_three_client(make_client, tenant_three):
     return make_client(TENANT_THREE_UID, TENANT_THREE_EMAIL)
 
 
-def test_increment_for_brand_new_tenant_creates_own_row(tenant_three_client, tenant_three, db):
+def test_increment_for_brand_new_tenant_creates_own_row(
+    tenant_three_client, tenant_three, db
+):
     """Reproduces the P5 stage 4 bug: a freshly auto-provisioned tenant
     (zero inventory rows) increments a card for the first time."""
     card_id = db.execute(
@@ -225,7 +251,9 @@ def test_increment_for_brand_new_tenant_creates_own_row(tenant_three_client, ten
     assert response.json()["quantity"] == 1
 
     row = db.execute(
-        text("SELECT tenant_id, quantity FROM inventory WHERE tenant_id = :tenant_id AND card_id = :card_id"),
+        text(
+            "SELECT tenant_id, quantity FROM inventory WHERE tenant_id = :tenant_id AND card_id = :card_id"
+        ),
         {"tenant_id": tenant_three["tenant_id"], "card_id": card_id},
     ).first()
     assert row is not None
@@ -233,7 +261,9 @@ def test_increment_for_brand_new_tenant_creates_own_row(tenant_three_client, ten
     assert row.quantity == 1
 
 
-def test_increment_for_tenant_two_does_not_affect_tenant_one(tenant_two_client, tenant_two, db):
+def test_increment_for_tenant_two_does_not_affect_tenant_one(
+    tenant_two_client, tenant_two, db
+):
     """The 'two people, two inventories' proof: incrementing tenant #2's
     row for a card -- via the same naive repository code tenant #1 uses --
     leaves tenant #1's row for that same card_id untouched."""
@@ -244,7 +274,9 @@ def test_increment_for_tenant_two_does_not_affect_tenant_one(tenant_two_client, 
     assert response.json()["quantity"] == SEEDED_QUANTITY + 1
 
     tenant_one_quantity = db.execute(
-        text("SELECT quantity FROM inventory WHERE tenant_id = 1 AND card_id = :card_id"),
+        text(
+            "SELECT quantity FROM inventory WHERE tenant_id = 1 AND card_id = :card_id"
+        ),
         {"card_id": card_id},
     ).scalar()
     assert tenant_one_quantity == tenant_two["tenant_one_quantities"][card_id]

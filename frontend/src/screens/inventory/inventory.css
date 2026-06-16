@@ -130,9 +130,16 @@
 }
 
 /* Inventory-specific column widths */
-.data-table--inventory .td-name      { min-width: 200px; white-space: normal; }
-.data-table--inventory .td-inventory { padding-right: 16px; }
-.data-table--inventory .th-inventory { min-width: 360px; }
+.data-table--inventory .td-name {
+  min-width: 200px;
+  white-space: normal;
+}
+.data-table--inventory .td-inventory {
+  padding-right: 16px;
+}
+.data-table--inventory .th-inventory {
+  min-width: 360px;
+}
 
 /* ── VariantInventory chips + steppers ──────────────────────────────────── */
 
@@ -157,15 +164,21 @@
   white-space: nowrap;
 }
 
-.variant-inv__chip--zero { color: var(--color-text-muted); }
-.variant-inv__chip--pending { opacity: 0.5; }
+.variant-inv__chip--zero {
+  color: var(--color-text-muted);
+}
+.variant-inv__chip--pending {
+  opacity: 0.5;
+}
 
 .variant-inv__label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.variant-inv__colon { margin-right: 4px; }
+.variant-inv__colon {
+  margin-right: 4px;
+}
 
 .variant-inv__qty {
   font-family: var(--font-mono);
@@ -194,12 +207,18 @@
   padding: 0;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .data-table--inventory tbody tr:hover .variant-inv__step,
 .variant-inv__chip:hover .variant-inv__step,
-.variant-inv__chip:focus-within .variant-inv__step { opacity: 1; }
+.variant-inv__chip:focus-within .variant-inv__step {
+  opacity: 1;
+}
 
 .variant-inv__step:hover {
   background: var(--bg-surface);
@@ -213,8 +232,13 @@
   color: var(--color-text);
 }
 
-.variant-inv__step:disabled { opacity: 0; pointer-events: none; }
-.data-table--inventory tbody tr:hover .variant-inv__step:disabled { opacity: 0.25; }
+.variant-inv__step:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+.data-table--inventory tbody tr:hover .variant-inv__step:disabled {
+  opacity: 0.25;
+}
 
 /* Blocked state: + button for a completed playset */
 .variant-inv__step--blocked {
@@ -224,8 +248,16 @@
 
 /* ── Playset cell ────────────────────────────────────────────────────────── */
 
-.playset { display: inline-flex; align-items: center; gap: 8px; }
-.playset__pips { display: inline-flex; gap: 3px; align-items: center; }
+.playset {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.playset__pips {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
 
 .playset__pip {
   width: 10px;
@@ -259,5 +291,9 @@
   font-weight: 600;
 }
 
-.playset--empty .playset__pip { border-color: var(--color-border); }
-.playset--empty .playset__label { color: var(--color-text-muted); }
+.playset--empty .playset__pip {
+  border-color: var(--color-border);
+}
+.playset--empty .playset__label {
+  color: var(--color-text-muted);
+}

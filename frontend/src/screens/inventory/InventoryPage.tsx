@@ -1,16 +1,16 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { getInventory, incrementCard, decrementCard } from '../../api/inventory';
-import { groupWithInventory, isPlaysetComplete } from '../../utils/inventory';
-import { InventorySummary } from './InventorySummary';
-import { InventoryTable } from './InventoryTable';
-import { FilterPanel, applyFilters, DEFAULT_FILTERS } from '../../components/FilterPanel';
-import { SWUButton } from '../../components/SWUButton';
-import { AddCardsModal } from './AddCardsModal';
-import type { InventoryCard } from '../../utils/inventory';
-import type { CardWithQty } from '../../api/inventory';
-import type { FilterState } from '../../components/FilterPanel';
-import type { BaseCard } from '../../utils/catalog';
-import './inventory.css';
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { getInventory, incrementCard, decrementCard } from "../../api/inventory";
+import { groupWithInventory, isPlaysetComplete } from "../../utils/inventory";
+import { InventorySummary } from "./InventorySummary";
+import { InventoryTable } from "./InventoryTable";
+import { FilterPanel, applyFilters, DEFAULT_FILTERS } from "../../components/FilterPanel";
+import { SWUButton } from "../../components/SWUButton";
+import { AddCardsModal } from "./AddCardsModal";
+import type { InventoryCard } from "../../utils/inventory";
+import type { CardWithQty } from "../../api/inventory";
+import type { FilterState } from "../../components/FilterPanel";
+import type { BaseCard } from "../../utils/catalog";
+import "./inventory.css";
 
 export function InventoryPage() {
   const [rawCards, setRawCards] = useState<CardWithQty[]>([]);
@@ -30,34 +30,34 @@ export function InventoryPage() {
 
   useEffect(() => {
     fetchInventory()
-      .catch(err => setError(String(err)))
+      .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
   }, [fetchInventory]);
 
   const filtered = useMemo(() => {
     let result = applyFilters(cards as BaseCard[], filters) as InventoryCard[];
-    if (incompleteOnly) result = result.filter(c => !isPlaysetComplete(c.inventory, c.type));
+    if (incompleteOnly) result = result.filter((c) => !isPlaysetComplete(c.inventory, c.type));
     return result;
   }, [cards, filters, incompleteOnly]);
 
   async function handleIncrement(card: InventoryCard, invKey: string) {
     const cardId = card.cardIds[invKey];
     if (cardId == null || pendingCardIds.has(cardId)) return;
-    setPendingCardIds(prev => new Set(prev).add(cardId));
+    setPendingCardIds((prev) => new Set(prev).add(cardId));
     try {
       const result = await incrementCard(cardId);
       if (result.blocked) return;
-      setCards(prev =>
-        prev.map(c =>
+      setCards((prev) =>
+        prev.map((c) =>
           c.set_code === card.set_code && c.base_card_number === card.base_card_number
             ? { ...c, inventory: { ...c.inventory, [invKey]: result.quantity } }
-            : c,
-        ),
+            : c
+        )
       );
     } catch (err) {
-      console.error('Increment failed:', err);
+      console.error("Increment failed:", err);
     } finally {
-      setPendingCardIds(prev => {
+      setPendingCardIds((prev) => {
         const next = new Set(prev);
         next.delete(cardId);
         return next;
@@ -68,20 +68,20 @@ export function InventoryPage() {
   async function handleDecrement(card: InventoryCard, invKey: string) {
     const cardId = card.cardIds[invKey];
     if (cardId == null || pendingCardIds.has(cardId)) return;
-    setPendingCardIds(prev => new Set(prev).add(cardId));
+    setPendingCardIds((prev) => new Set(prev).add(cardId));
     try {
       const result = await decrementCard(cardId);
-      setCards(prev =>
-        prev.map(c =>
+      setCards((prev) =>
+        prev.map((c) =>
           c.set_code === card.set_code && c.base_card_number === card.base_card_number
             ? { ...c, inventory: { ...c.inventory, [invKey]: result.quantity } }
-            : c,
-        ),
+            : c
+        )
       );
     } catch (err) {
-      console.error('Decrement failed:', err);
+      console.error("Decrement failed:", err);
     } finally {
-      setPendingCardIds(prev => {
+      setPendingCardIds((prev) => {
         const next = new Set(prev);
         next.delete(cardId);
         return next;
@@ -98,21 +98,25 @@ export function InventoryPage() {
       ) : (
         <>
           <InventorySummary cards={filtered}>
-            <SWUButton size="sm" onClick={() => setModalOpen(true)}>Add Cards</SWUButton>
+            <SWUButton size="sm" onClick={() => setModalOpen(true)}>
+              Add Cards
+            </SWUButton>
           </InventorySummary>
           {modalOpen && (
             <AddCardsModal
               catalog={rawCards}
               onClose={() => setModalOpen(false)}
-              onCommitted={() => { fetchInventory().catch(console.error); }}
+              onCommitted={() => {
+                fetchInventory().catch(console.error);
+              }}
             />
           )}
           <FilterPanel filters={filters} setFilters={setFilters} cards={cards as BaseCard[]}>
             <div className="ifp-toggle-row">
               <button
                 type="button"
-                className={`pl-toggle${incompleteOnly ? ' pl-toggle--on' : ''}`}
-                onClick={() => setIncompleteOnly(v => !v)}
+                className={`pl-toggle${incompleteOnly ? " pl-toggle--on" : ""}`}
+                onClick={() => setIncompleteOnly((v) => !v)}
                 aria-pressed={incompleteOnly}
               >
                 <span className="pl-toggle__box" />

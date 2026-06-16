@@ -1,16 +1,30 @@
 from datetime import datetime
+
 from sqlalchemy import (
-    String, Integer, Boolean, DateTime, ForeignKey,
-    UniqueConstraint, CheckConstraint, func,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.models.base import Base
 
 
 class Card(Base):
     __tablename__ = "cards"
     __table_args__ = (
-        UniqueConstraint("set_id", "card_number", "is_foil", "is_organized_play", name="uq_cards_set_card_number_foil_op"),
+        UniqueConstraint(
+            "set_id",
+            "card_number",
+            "is_foil",
+            "is_organized_play",
+            name="uq_cards_set_card_number_foil_op",
+        ),
         CheckConstraint(
             "NOT is_showcase OR type = 'Leader'",
             name="ck_cards_showcase_leader_only",
@@ -57,9 +71,7 @@ class Card(Base):
     keywords: Mapped[list["CardKeyword"]] = relationship(
         "CardKeyword", back_populates="card"
     )
-    traits: Mapped[list["CardTrait"]] = relationship(
-        "CardTrait", back_populates="card"
-    )
+    traits: Mapped[list["CardTrait"]] = relationship("CardTrait", back_populates="card")
     detail: Mapped["CardDetail"] = relationship(
         "CardDetail", back_populates="card", uselist=False
     )

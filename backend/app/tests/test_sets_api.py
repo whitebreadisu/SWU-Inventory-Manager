@@ -3,7 +3,9 @@
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_sets_api.py -v
 """
+
 import os
+
 import pytest
 
 pytestmark = pytest.mark.skipif(

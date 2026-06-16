@@ -1,5 +1,5 @@
-import type { CardWithQty } from '../api/inventory';
-import type { Card } from '../api/cards';
+import type { CardWithQty } from "../api/inventory";
+import type { Card } from "../api/cards";
 
 export type RowId = string;
 
@@ -11,65 +11,76 @@ export interface Row {
 }
 
 export type ResolveResult =
-  | { status: 'empty' }
-  | { status: 'error'; message: string }
-  | { status: 'needs_variant'; name: string; subtitle: string | null; variants: string[]; hasOpOption: boolean }
-  | { status: 'resolved'; cardId: number; name: string; subtitle: string | null; type: string; variant: string; isOp: boolean; hasOpOption: boolean };
+  | { status: "empty" }
+  | { status: "error"; message: string }
+  | {
+      status: "needs_variant";
+      name: string;
+      subtitle: string | null;
+      variants: string[];
+      hasOpOption: boolean;
+    }
+  | {
+      status: "resolved";
+      cardId: number;
+      name: string;
+      subtitle: string | null;
+      type: string;
+      variant: string;
+      isOp: boolean;
+      hasOpOption: boolean;
+    };
 
 export interface InventoryStatus {
-  color: 'green' | 'red';
+  color: "green" | "red";
   owned: number;
   max: number;
 }
 
 export interface VerificationItem {
   row: Row;
-  resolved: Extract<ResolveResult, { status: 'resolved' }>;
+  resolved: Extract<ResolveResult, { status: "resolved" }>;
   inv: InventoryStatus;
 }
 
 export function variantLabelNoOp(card: Card): string {
   const parts: string[] = [];
-  if (card.is_hyperspace) parts.push('Hyperspace');
-  if (card.is_prestige) parts.push('Prestige');
-  if (card.is_showcase) parts.push('Showcase');
-  if (card.is_foil) parts.push('Foil');
-  return parts.length > 0 ? parts.join(' ') : 'Standard';
+  if (card.is_hyperspace) parts.push("Hyperspace");
+  if (card.is_prestige) parts.push("Prestige");
+  if (card.is_showcase) parts.push("Showcase");
+  if (card.is_foil) parts.push("Foil");
+  return parts.length > 0 ? parts.join(" ") : "Standard";
 }
 
 export function maxCopies(type: string): number {
-  return type === 'Leader' || type === 'Base' ? 1 : 3;
+  return type === "Leader" || type === "Base" ? 1 : 3;
 }
 
 function cardNameParts(card: CardWithQty): { displayName: string; subtitle: string | null } {
-  if (card.type === 'Base') {
+  if (card.type === "Base") {
     return { displayName: card.name, subtitle: card.traits[0] ?? null };
   }
-  const sep = card.name.indexOf(' - ');
+  const sep = card.name.indexOf(" - ");
   if (sep !== -1) {
     return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
   }
   return { displayName: card.name, subtitle: null };
 }
 
-export function resolveRow(
-  setCode: string,
-  row: Row,
-  catalog: CardWithQty[],
-): ResolveResult {
-  if (!row.cardNumber) return { status: 'empty' };
+export function resolveRow(setCode: string, row: Row, catalog: CardWithQty[]): ResolveResult {
+  if (!row.cardNumber) return { status: "empty" };
 
   const filtered = catalog.filter(
-    c => c.set_code === setCode && c.card_number === row.cardNumber,
+    (c) => c.set_code === setCode && c.card_number === row.cardNumber
   );
 
-  const opMatches = filtered.filter(c => c.is_organized_play);
-  const baseMatches = filtered.filter(c => !c.is_organized_play);
+  const opMatches = filtered.filter((c) => c.is_organized_play);
+  const baseMatches = filtered.filter((c) => !c.is_organized_play);
   const hasOpOption = opMatches.length > 0;
   const activeSet = row.op ? opMatches : baseMatches;
 
   if (activeSet.length === 0) {
-    return { status: 'error', message: 'Card# is not valid for the selected set.' };
+    return { status: "error", message: "Card# is not valid for the selected set." };
   }
 
   const { displayName: name, subtitle } = cardNameParts(activeSet[0]);
@@ -77,7 +88,7 @@ export function resolveRow(
   if (activeSet.length === 1) {
     const card = activeSet[0];
     return {
-      status: 'resolved',
+      status: "resolved",
       cardId: card.id,
       name,
       subtitle,
@@ -89,16 +100,16 @@ export function resolveRow(
   }
 
   // Multiple cards share this card_number in the same OP partition: need variant pick
-  const variants = activeSet.map(c => variantLabelNoOp(c));
+  const variants = activeSet.map((c) => variantLabelNoOp(c));
 
   if (!row.variant || !variants.includes(row.variant)) {
-    return { status: 'needs_variant', name, subtitle, variants, hasOpOption };
+    return { status: "needs_variant", name, subtitle, variants, hasOpOption };
   }
 
   const idx = variants.indexOf(row.variant);
   const card = activeSet[idx];
   return {
-    status: 'resolved',
+    status: "resolved",
     cardId: card.id,
     name,
     subtitle,
@@ -113,10 +124,10 @@ export function inventoryStatus(
   setCode: string,
   rows: Row[],
   row: Row,
-  resolved: Extract<ResolveResult, { status: 'resolved' }>,
-  catalog: CardWithQty[],
+  resolved: Extract<ResolveResult, { status: "resolved" }>,
+  catalog: CardWithQty[]
 ): InventoryStatus {
-  const owned = catalog.find(c => c.id === resolved.cardId)?.quantity ?? 0;
+  const owned = catalog.find((c) => c.id === resolved.cardId)?.quantity ?? 0;
   const max = maxCopies(resolved.type);
 
   const idx = rows.indexOf(row);
@@ -124,29 +135,29 @@ export function inventoryStatus(
   for (let i = 0; i <= idx; i++) {
     const r = rows[i];
     const rr = resolveRow(setCode, r, catalog);
-    if (rr.status === 'resolved' && rr.cardId === resolved.cardId) {
+    if (rr.status === "resolved" && rr.cardId === resolved.cardId) {
       pendingThroughThis++;
     }
   }
 
   const wouldBe = owned + pendingThroughThis;
-  return { color: wouldBe > max ? 'red' : 'green', owned, max };
+  return { color: wouldBe > max ? "red" : "green", owned, max };
 }
 
 export function splitForVerification(
   setCode: string,
   rows: Row[],
-  catalog: CardWithQty[],
+  catalog: CardWithQty[]
 ): { willAdd: VerificationItem[]; willSkip: VerificationItem[] } {
   const willAdd: VerificationItem[] = [];
   const willSkip: VerificationItem[] = [];
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const res = resolveRow(setCode, row, catalog);
-    if (res.status !== 'resolved') return;
+    if (res.status !== "resolved") return;
     const inv = inventoryStatus(setCode, rows, row, res, catalog);
     const item: VerificationItem = { row, resolved: res, inv };
-    if (inv.color === 'red') willSkip.push(item);
+    if (inv.color === "red") willSkip.push(item);
     else willAdd.push(item);
   });
 

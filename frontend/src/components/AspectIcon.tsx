@@ -1,10 +1,10 @@
 const ASPECT_IMAGES: Record<string, string> = {
-  Command:    '/images/SWH_Aspects_Command.png',
-  Aggression: '/images/SWH_Aspects_Aggression.png',
-  Cunning:    '/images/SWH_Aspects_Cunning.png',
-  Vigilance:  '/images/SWH_Aspects_Vigilance.png',
-  Heroism:    '/images/SWH_Aspects_Heroism.png',
-  Villainy:   '/images/SWH_Aspects_Villainy.png',
+  Command: "/images/SWH_Aspects_Command.png",
+  Aggression: "/images/SWH_Aspects_Aggression.png",
+  Cunning: "/images/SWH_Aspects_Cunning.png",
+  Vigilance: "/images/SWH_Aspects_Vigilance.png",
+  Heroism: "/images/SWH_Aspects_Heroism.png",
+  Villainy: "/images/SWH_Aspects_Villainy.png",
 };
 
 interface Props {
@@ -23,7 +23,7 @@ export function AspectIcon({ aspect, size = 24 }: Props) {
       title={aspect}
       width={size}
       height={size}
-      style={{ display: 'inline-block', verticalAlign: 'middle' }}
+      style={{ display: "inline-block", verticalAlign: "middle" }}
     />
   );
 }

@@ -3,7 +3,9 @@ P4 Stage 1: tenants table and inventory.tenant_id backfill.
 
 Integration tests — require DATABASE_URL (standard inside the backend container).
 """
+
 import os
+
 import pytest
 from sqlalchemy import text
 

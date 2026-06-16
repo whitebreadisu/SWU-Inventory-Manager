@@ -1,25 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap");
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 :root {
-  --bg-page:        #090b14;
-  --bg-surface:     #0f1528;
+  --bg-page: #090b14;
+  --bg-surface: #0f1528;
   --bg-surface-alt: #0b0f1f;
-  --color-primary:  #2563eb;
+  --color-primary: #2563eb;
   --color-primary-dim: #1d4ed8;
-  --color-btn-off:  #2d3748;
+  --color-btn-off: #2d3748;
   --color-btn-off-dim: #374151;
-  --color-button-edge:     #ebe2c6;
+  --color-button-edge: #ebe2c6;
   --color-button-edge-dim: #5d6470;
-  --color-text:     #e6e6e6;
+  --color-text: #e6e6e6;
   --color-text-muted: #6b7a99;
-  --color-border:   #1e2748;
-  --font-ui:        'Barlow Condensed', sans-serif;
-  --font-body:      'Barlow', system-ui, sans-serif;
-  --font-mono:      ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  --color-border: #1e2748;
+  --font-ui: "Barlow Condensed", sans-serif;
+  --font-body: "Barlow", system-ui, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
   --aspect-command: #178a3a;
 }
 
@@ -93,7 +95,9 @@ body {
   text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .app-header__logout:hover {
@@ -133,7 +137,7 @@ body {
 }
 
 .nav-tab--active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 8px;
@@ -162,7 +166,7 @@ body {
 }
 
 .section-separator::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image: radial-gradient(circle, rgba(37, 99, 235, 0.28) 1.5px, transparent 1.5px);
@@ -180,11 +184,23 @@ body {
   user-select: none;
   transition: transform 0.08s ease;
 }
-.swu-btn:active   { transform: translateY(1px); }
-.swu-btn:disabled { cursor: not-allowed; opacity: 0.55; }
-.swu-btn__cap { display: block; flex-shrink: 0; }
-.swu-btn__cap:first-child { margin-right: -1px; }
-.swu-btn__cap:last-child  { margin-left:  -1px; }
+.swu-btn:active {
+  transform: translateY(1px);
+}
+.swu-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.swu-btn__cap {
+  display: block;
+  flex-shrink: 0;
+}
+.swu-btn__cap:first-child {
+  margin-right: -1px;
+}
+.swu-btn__cap:last-child {
+  margin-left: -1px;
+}
 .swu-btn__center {
   flex: 1;
   position: relative;
@@ -259,7 +275,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
 }
 
 .set-filter-btn:hover {
@@ -287,7 +305,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
   padding: 0;
 }
 

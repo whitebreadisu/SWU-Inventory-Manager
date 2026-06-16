@@ -5,11 +5,11 @@ Validates the catalog seed file against the live database. These are
 integration tests that require DATABASE_URL to be set (standard inside
 the backend container).
 """
+
 import os
 import re
 from pathlib import Path
 
-import pytest
 from sqlalchemy import text
 
 SEED_PATH = Path(os.environ.get("CATALOG_SEED_PATH", "/db/seeds/catalog_seed.sql"))
@@ -34,6 +34,7 @@ def _parse_metadata(content: str) -> tuple[int, int]:
 # File-level checks (no DB required)
 # ---------------------------------------------------------------------------
 
+
 def test_seed_file_exists():
     assert SEED_PATH.exists(), f"Seed file not found: {SEED_PATH}"
 
@@ -49,6 +50,7 @@ def test_seed_file_contains_required_sections():
 # ---------------------------------------------------------------------------
 # Counts: seed metadata vs live database
 # ---------------------------------------------------------------------------
+
 
 def test_seed_set_count_matches_database(db):
     content = _read_seed()
@@ -76,10 +78,11 @@ def test_seed_card_count_matches_database(db):
 # Set codes: seed vs live database
 # ---------------------------------------------------------------------------
 
+
 def test_seed_set_codes_match_database(db):
     content = _read_seed()
     set_line = next(
-        (l for l in content.splitlines() if l.startswith("INSERT INTO sets")), None
+        (ln for ln in content.splitlines() if ln.startswith("INSERT INTO sets")), None
     )
     assert set_line is not None, "Could not find INSERT INTO sets line in seed"
 
@@ -90,6 +93,7 @@ def test_seed_set_codes_match_database(db):
     )
 
     from app.models.set_model import CardSet
+
     codes_in_db = {s.code for s in db.query(CardSet).all()}
     assert codes_in_seed == codes_in_db, (
         f"Seed set codes {codes_in_seed} differ from database {codes_in_db}"
@@ -100,6 +104,7 @@ def test_seed_set_codes_match_database(db):
 # Spot check: known variant counts per set
 # ---------------------------------------------------------------------------
 
+
 def test_seed_card_counts_per_set_match_database(db):
     """Each set's card count in the seed header should match the live DB.
     Validates that no set was silently dropped or duplicated during seed generation."""
@@ -108,7 +113,9 @@ def test_seed_card_counts_per_set_match_database(db):
     assert seed_total > 0
 
     rows = db.execute(
-        text("SELECT s.code, COUNT(c.id) FROM cards c JOIN sets s ON c.set_id = s.id GROUP BY s.code")
+        text(
+            "SELECT s.code, COUNT(c.id) FROM cards c JOIN sets s ON c.set_id = s.id GROUP BY s.code"
+        )
     ).fetchall()
     db_total = sum(count for _, count in rows)
 

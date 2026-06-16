@@ -1,4 +1,5 @@
 """P6 stage 1: structured JSON logging."""
+
 import json
 import logging
 

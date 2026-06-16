@@ -1,6 +1,8 @@
 from datetime import datetime
-from sqlalchemy import String, DateTime, func
+
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.models.base import Base
 
 
@@ -13,5 +15,7 @@ class Tenant(Base):
         DateTime, server_default=func.now(), nullable=False
     )
 
-    inventory: Mapped[list["Inventory"]] = relationship("Inventory", back_populates="tenant")
+    inventory: Mapped[list["Inventory"]] = relationship(
+        "Inventory", back_populates="tenant"
+    )
     users: Mapped[list["User"]] = relationship("User", back_populates="tenant")

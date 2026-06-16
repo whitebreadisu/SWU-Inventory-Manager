@@ -7,6 +7,7 @@ Run inside the backend container after CSV ingestion has completed:
 The Excel file path defaults to /personal_card_inventory/<filename>.
 Override with the INGESTION_EXCEL_FILE environment variable if needed.
 """
+
 import logging
 import os
 import sys
@@ -21,9 +22,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-_DEFAULT_EXCEL = (
-    "/personal_card_inventory/SWU Collection Tracker MASTER v2.1.xlsx"
-)
+_DEFAULT_EXCEL = "/personal_card_inventory/SWU Collection Tracker MASTER v2.1.xlsx"
 EXCEL_FILE = Path(os.environ.get("INGESTION_EXCEL_FILE", _DEFAULT_EXCEL))
 
 
@@ -52,7 +51,9 @@ def main() -> None:
     print(f"{'Set':<6} {'Upserted':>9} {'Skipped':>8} {'Failures':>9}")
     print("-" * 36)
     for s in result.sheet_summaries:
-        print(f"{s['set_code']:<6} {s['upserted']:>9} {s['skipped']:>8} {s['failed_lookups']:>9}")
+        print(
+            f"{s['set_code']:<6} {s['upserted']:>9} {s['skipped']:>8} {s['failed_lookups']:>9}"
+        )
 
     if result.lookup_failures:
         print("\n=== Lookup Failures ===")

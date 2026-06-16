@@ -1,4 +1,4 @@
-import type { CardSet } from '../../api/sets';
+import type { CardSet } from "../../api/sets";
 
 interface Props {
   sets: CardSet[];
@@ -32,7 +32,9 @@ export function AddCardsSetBar({ sets, setCode, onChoose, onChangeSet }: Props) 
           >
             <option value="">Select a set to begin…</option>
             {sets.map((s) => (
-              <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+              <option key={s.code} value={s.code}>
+                {s.code} — {s.name}
+              </option>
             ))}
           </select>
         </div>
@@ -40,7 +42,7 @@ export function AddCardsSetBar({ sets, setCode, onChoose, onChangeSet }: Props) 
     );
   }
 
-  const set = sets.find(s => s.code === setCode);
+  const set = sets.find((s) => s.code === setCode);
   return (
     <div className="ac-setbar">
       <SetMark code={setCode} />

@@ -1,9 +1,11 @@
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.services import cards as card_service
 from app.schemas.card_schema import CardResponse
+from app.services import cards as card_service
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
 
@@ -18,7 +20,9 @@ def list_cards(
     rarity: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    return card_service.get_cards(db, set_code=set_code, variant=variant, type=type, rarity=rarity)
+    return card_service.get_cards(
+        db, set_code=set_code, variant=variant, type=type, rarity=rarity
+    )
 
 
 @router.get("/{card_id}", response_model=CardResponse)

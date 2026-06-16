@@ -1,5 +1,5 @@
-import type { BaseCard } from './catalog';
-import type { CardWithQty } from '../api/inventory';
+import type { BaseCard } from "./catalog";
+import type { CardWithQty } from "../api/inventory";
 
 export interface VariantDef {
   key: keyof BaseCard;
@@ -11,19 +11,61 @@ export interface VariantDef {
 }
 
 export const VARIANT_DEFS: VariantDef[] = [
-  { key: 'hasStandard',       invKey: 'standard',       short: 'S',   label: 'Standard',        color: '#6b7280', solid: true  },
-  { key: 'hasFoil',           invKey: 'foil',           short: 'F',   label: 'Foil',            color: '#9ca3af', solid: false },
-  { key: 'hasHyperspace',     invKey: 'hyperspace',     short: 'HS',  label: 'Hyperspace',      color: '#2563eb', solid: true  },
-  { key: 'hasHyperspaceFoil', invKey: 'hyperspaceFoil', short: 'HSF', label: 'Hyperspace Foil', color: '#60a5fa', solid: false },
-  { key: 'hasPrestige',       invKey: 'prestige',       short: 'P',   label: 'Prestige',        color: '#d97706', solid: true  },
-  { key: 'hasPrestigeFoil',   invKey: 'prestigeFoil',   short: 'PF',  label: 'Prestige Foil',   color: '#fbbf24', solid: false },
-  { key: 'hasOp',             invKey: 'op',             short: 'OP',  label: 'OP',              color: '#dc2626', solid: true  },
-  { key: 'hasOpFoil',         invKey: 'opFoil',         short: 'OPF', label: 'OP Foil',         color: '#f87171', solid: false },
+  {
+    key: "hasStandard",
+    invKey: "standard",
+    short: "S",
+    label: "Standard",
+    color: "#6b7280",
+    solid: true,
+  },
+  { key: "hasFoil", invKey: "foil", short: "F", label: "Foil", color: "#9ca3af", solid: false },
+  {
+    key: "hasHyperspace",
+    invKey: "hyperspace",
+    short: "HS",
+    label: "Hyperspace",
+    color: "#2563eb",
+    solid: true,
+  },
+  {
+    key: "hasHyperspaceFoil",
+    invKey: "hyperspaceFoil",
+    short: "HSF",
+    label: "Hyperspace Foil",
+    color: "#60a5fa",
+    solid: false,
+  },
+  {
+    key: "hasPrestige",
+    invKey: "prestige",
+    short: "P",
+    label: "Prestige",
+    color: "#d97706",
+    solid: true,
+  },
+  {
+    key: "hasPrestigeFoil",
+    invKey: "prestigeFoil",
+    short: "PF",
+    label: "Prestige Foil",
+    color: "#fbbf24",
+    solid: false,
+  },
+  { key: "hasOp", invKey: "op", short: "OP", label: "OP", color: "#dc2626", solid: true },
+  {
+    key: "hasOpFoil",
+    invKey: "opFoil",
+    short: "OPF",
+    label: "OP Foil",
+    color: "#f87171",
+    solid: false,
+  },
 ];
 
 export const PLAYSET_SIZE = 3;
 
-const SINGLETON_TYPES = new Set(['Leader', 'Base']);
+const SINGLETON_TYPES = new Set(["Leader", "Base"]);
 
 export function getPlaysetSize(type: string): number {
   return SINGLETON_TYPES.has(type) ? 1 : PLAYSET_SIZE;
@@ -47,11 +89,11 @@ export interface InventoryCard extends BaseCard {
 }
 
 function getInvKey(card: CardWithQty): string {
-  if (card.is_organized_play) return card.is_foil ? 'opFoil' : 'op';
-  if (card.is_prestige) return card.is_foil ? 'prestigeFoil' : 'prestige';
-  if (card.is_hyperspace) return card.is_foil ? 'hyperspaceFoil' : 'hyperspace';
-  if (card.is_foil) return 'foil';
-  return 'standard';
+  if (card.is_organized_play) return card.is_foil ? "opFoil" : "op";
+  if (card.is_prestige) return card.is_foil ? "prestigeFoil" : "prestige";
+  if (card.is_hyperspace) return card.is_foil ? "hyperspaceFoil" : "hyperspace";
+  if (card.is_foil) return "foil";
+  return "standard";
 }
 
 export function groupWithInventory(cards: CardWithQty[]): InventoryCard[] {

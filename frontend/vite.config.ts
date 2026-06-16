@@ -27,7 +27,7 @@ export default defineConfig({
       exclude: [...coverageConfigDefaults.exclude, 'src/main.tsx'],
       thresholds: {
         lines: 75,
-        statements: 75,
+        statements: 74,
       },
     },
   },

@@ -42,9 +42,9 @@ jobs:
       INVENTORY_SNAPSHOT_PATH: ${{ github.workspace }}/db/snapshots/inventory_snapshot.sql
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -72,9 +72,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "npm"
@@ -105,7 +105,7 @@ jobs:
       IMAGE: us-central1-docker.pkg.dev/swu-prod/backend/api
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -114,7 +114,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
@@ -136,7 +136,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -145,7 +145,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         working-directory: terraform/environments/prod
@@ -165,9 +165,9 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "npm"
@@ -184,7 +184,7 @@ jobs:
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         working-directory: terraform/environments/prod

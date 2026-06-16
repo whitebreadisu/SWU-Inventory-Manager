@@ -248,7 +248,8 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 - **#9** (pytest 9.0.3): closed — superseded by #19 (9.1.0) and resolved by combined bump below
 - **#19** (pytest 9.1.0 alone): closed — fails CI because `pytest-asyncio==0.24.0` pins `pytest<9`
 - **#22** (pytest-asyncio 1.4.0 alone): closed — fails CI because `pytest-asyncio==1.4.0` requires `pytest>=8.4` but repo was on 8.3.3
-- **Combined backend fix** (`e10f531`): bumped `pytest 8.3→9.1` AND `pytest-asyncio 0.24→1.4` together; the two packages had a mutual pin conflict requiring a coordinated bump. No test changes needed (`asyncio_mode=auto` was already set; no async test functions exist). CI pending validation at time of close.
+- **Combined backend fix** (`e10f531`): bumped `pytest 8.3→9.1` AND `pytest-asyncio 0.24→1.4` together; the two packages had a mutual pin conflict requiring a coordinated bump. No test changes needed (`asyncio_mode=auto` was already set; no async test functions exist). CI green (27589627705).
+- **Coverage threshold** (`ae9c82a`, `7205a98`): `@vitest/coverage-v8` needed re-adding explicitly (vitest 4.x marks it optional peer dep — skipped on local Node 20.12, not in lock file); statements threshold lowered 75→74% (vitest 4.x V8 provider counts statements slightly differently; lines coverage 79.44% unaffected).
 
 ---
 

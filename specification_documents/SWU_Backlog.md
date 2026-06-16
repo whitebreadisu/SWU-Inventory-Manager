@@ -234,7 +234,21 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either implemented (new non-auth dependency for catalog routers, frontend auth-gate updated, docs updated, tests covering both authenticated and unauthenticated catalog access) or explicitly decided against with the rationale recorded here.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — All 18 PRs closed. Passing PRs merged (10 squash-merged via `gh pr merge --admin`; 6 applied manually due to package-lock.json 3-way conflicts after earlier merges updated the same file); failing PRs resolved via combined bumps and then closed.
+
+**Resolution detail:**
+- **#8, #18, #23** (python-dotenv 1.2.2, psycopg2-binary 2.9.12, pydantic-settings 2.14.1): squash-merged
+- **#20** (sqlalchemy 2.0.50): merged manually via `cec8848` (3-way conflict after #8/#18/#23 landed first)
+- **#13, #14, #15, #16, #17** (actions/checkout v6, setup-node v6, setup-python v6, setup-terraform v4, setup-gcloud v3): squash-merged
+- **#11** (vite 5→8, vitest 2→4, @vitejs/plugin-react 4→6, esbuild removed): merged manually via `ad93322` (package-lock.json 3-way conflict; lock file regenerated fresh via `npm install`)
+- **#12** (vite/vitest/@vitejs grouped bump — same targets as #11): closed as superseded by #11
+- **#21** (vitest alone, major bump): closed — fails CI when applied alone (vitest 4.x requires vite 8.x as peer dep); superceded by #11's grouped bump
+- **#24** (@vitejs/plugin-react alone, major bump): closed — same reason; superseded by #11
+- **#25, #26, #27** (jsdom 29.1.1, firebase 12.14.0, typescript 6.0.3): merged manually via `9c08de1` (package-lock.json conflict after #11's major bump)
+- **#9** (pytest 9.0.3): closed — superseded by #19 (9.1.0) and resolved by combined bump below
+- **#19** (pytest 9.1.0 alone): closed — fails CI because `pytest-asyncio==0.24.0` pins `pytest<9`
+- **#22** (pytest-asyncio 1.4.0 alone): closed — fails CI because `pytest-asyncio==1.4.0` requires `pytest>=8.4` but repo was on 8.3.3
+- **Combined backend fix** (`e10f531`): bumped `pytest 8.3→9.1` AND `pytest-asyncio 0.24→1.4` together; the two packages had a mutual pin conflict requiring a coordinated bump. No test changes needed (`asyncio_mode=auto` was already set; no async test functions exist). CI pending validation at time of close.
 
 ---
 

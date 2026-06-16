@@ -161,7 +161,7 @@ No linting or formatting tooling exists anywhere in this repo today (confirmed v
 
 **Definition of done:** Tool configured, CI step added, existing code passes (or is reformatted in one pass with a clearly-labeled commit).
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — `backend/pyproject.toml` created with ruff 0.15.17; E/F/W/I rules enabled; E712/F821/E501 suppressed (SQLAlchemy false positives and SQL string lengths). One-pass format + auto-fix applied to all 67 files. Five genuine issues corrected: F841 (unused `has_unique` var in csv_ingestor.py), 3× F401 (unused `pytest` imports in test_excel_ingestion/test_seed_integrity/test_seed_reconstruction), E741 (ambiguous `l` → `ln`). Two CI steps added before pytest: `ruff check app` and `ruff format --check app`. Commit `0c5073e`.
 
 ---
 
@@ -173,7 +173,7 @@ No linting or formatting tooling exists anywhere in this repo today (confirmed v
 
 **Definition of done:** Tooling configured, CI step added, existing code passes/is reformatted.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — ESLint v9 + Prettier installed with typescript-eslint, eslint-plugin-react, eslint-plugin-react-hooks, eslint-config-prettier. `frontend/eslint.config.js` (flat config) and `frontend/.prettierrc` created. One-pass Prettier format applied to all 44 files. One genuine lint fix: ternary side-effect in `FilterPanel.toggle` (→ `if/else`). `react-hooks/set-state-in-effect` disabled globally — all three instances are either async data-fetch patterns (false positive) or intentional derived-state resets. npm scripts added: `lint`, `format:check`, `format:write`. Two CI steps added before build/vitest: `npm run lint` and `npm run format:check`. Commit `0c5073e`.
 
 ---
 

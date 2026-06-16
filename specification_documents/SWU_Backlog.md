@@ -62,7 +62,7 @@ These come first because they fix the "two specs at different detail levels" pro
 
 **Definition of done:** docx archived, platform guide renamed, CLAUDE.md alias updated.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — `SWU_Learning_Guide.docx` moved to `learning_guide/archive/SWU_Learning_Guide_v1.docx`; `SWU_Platform_Learning_Guide.md` renamed to `SWU_Learning_Guide.md`; CLAUDE.md alias updated; README.md Documentation Map and `SWU_Platform_Roadmap.md` Decision Log reference updated to new filename. (Both files gitignored — local filesystem moves only, no git rename commit.) BL-5's remaining piece ("the learning guide" alias) resolved as part of this item.
 
 ---
 
@@ -93,7 +93,7 @@ These come first because they fix the "two specs at different detail levels" pro
 
 **Definition of done:** CLAUDE.md updated with both new aliases and the corrected learning guide path.
 
-**Status:** 🔲 Open — *Note: "the backlog" and "the platform spec" aliases were added immediately when each file was created (see CLAUDE.md). The remaining "the learning guide" alias update waits on BL-3.*
+**Status:** ✅ Resolved 2026-06-15 — all three aliases present in CLAUDE.md ("the backlog", "the platform spec" added at file creation; "the learning guide" updated from .docx → .md path as part of BL-3).
 
 ---
 

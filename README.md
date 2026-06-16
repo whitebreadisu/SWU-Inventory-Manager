@@ -174,6 +174,6 @@ Local development uses `.env` (copied from `.env.example`). Production values ar
 | `specification_documents/SWU_Platform_Roadmap.md` | P1-P7 phase history and status — read for *when and why* each platform decision was made |
 | `specification_documents/SWU_Platform_Security_Review.md` | Full OWASP Top 10 + secrets/network walkthrough (P7 Stage 4) |
 | `specification_documents/SWU_Backlog.md` | Open tech-debt, refactoring, and follow-up items with narrative context |
-| `learning_guide/SWU_Platform_Learning_Guide.md` | Teaching companion — Key Concepts, decision comparisons, external resources (P1-P7) |
+| `learning_guide/SWU_Learning_Guide.md` | Teaching companion — Key Concepts, decision comparisons, external resources (P1-P7) |
 | `learning_journal/` | Session-by-session development notes |
 | `claude_design/` | UI design assets and component handoff files |

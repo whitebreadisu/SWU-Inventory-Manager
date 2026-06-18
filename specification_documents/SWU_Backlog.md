@@ -23,7 +23,6 @@
 | BL-15 | Observability walkthrough | 2 — Guided Review | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6 |
 | BL-16 | Authentication hardening — email verification on signup | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow |
 | BL-17 | Public catalog view, auth-gated inventory | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated |
-| BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
 | BL-10 | `card_keywords` / `sub_text` / `is_unique` data gaps | 5 — Opportunistic | Three unpopulated columns with no known source; revisit if S5 swuapi.com integration surfaces data |
 | BL-11 | Local cleanup — source files | 5 — Opportunistic | Delete stale source CSVs and old Excel tracker from local disk whenever convenient |
 | BL-19 | Add new card sets to catalog | 6 — Feature Enhancements | Dedicated upsert script for adding new SWU sets; new sets may have new attributes requiring manual inspection before running |
@@ -44,6 +43,7 @@
 | BL-7 | Frontend linting/formatting | 3 — Tooling Investment | Add ESLint + Prettier to frontend; one genuine fix; wire lint and format checks into CI |
 | BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload`; move seed/snapshot checks in-process via FastAPI lifespan |
 | BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
+| BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
 
 ---
 
@@ -309,7 +309,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** `App.tsx` updated; tab switching is instant after initial load; no regression in FilterPanel state, inventory increment/decrement behavior, or AddCardsModal behavior when switching away mid-flow.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-17 — `c77a41c`. `App.tsx` updated: `CatalogPage` and `InventoryPage` wrapped in always-mounted `<div>`s toggled via `display: none`. Decks placeholder left as conditional render (no data fetching). `App.test.tsx` (3 tests) green.
 
 ---
 

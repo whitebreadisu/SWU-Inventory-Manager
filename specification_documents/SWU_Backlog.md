@@ -16,18 +16,22 @@
 
 ### Outstanding
 
-| ID | Name | Tier | Description |
-|----|------|------|-------------|
-| BL-13 | Manual review of `SWU_Platform_Spec.md` and `SWU_Backlog.md` | 2 — Guided Review | Jeremy reads and verifies both new reference docs while context is fresh |
-| BL-14 | Understanding commits, pushes, and PRs | 2 — Guided Review | Guided conversation on this repo's git/CI workflow model and solo-dev practices |
-| BL-15 | Observability walkthrough | 2 — Guided Review | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6 |
-| BL-16 | Authentication hardening — email verification on signup | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow |
-| BL-17 | Public catalog view, auth-gated inventory | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated |
-| BL-10 | `card_keywords` / `sub_text` / `is_unique` data gaps | 5 — Opportunistic | Three unpopulated columns with no known source; revisit if S5 swuapi.com integration surfaces data |
-| BL-11 | Local cleanup — source files | 5 — Opportunistic | Delete stale source CSVs and old Excel tracker from local disk whenever convenient |
-| BL-19 | Add new card sets to catalog | 6 — Feature Enhancements | Dedicated upsert script for adding new SWU sets; new sets may have new attributes requiring manual inspection before running |
-| BL-20 | Import/export inventory | 6 — Feature Enhancements | User-facing CSV or JSON import/export for inventory; serves as user-managed backup until DR is live |
-| BL-21 | Disaster recovery — automated DB backup | 6 — Feature Enhancements | Automated Cloud SQL backup and restore on behalf of users, removing the burden of manual exports for recovery |
+| ID    | Name                                                         | Tier                      | Description                                                                                                                  |
+| ----- | ------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| BL-13 | Manual review of `SWU_Platform_Spec.md` and `SWU_Backlog.md` | 2 — Guided Review         | Jeremy reads and verifies both new reference docs while context is fresh                                                     |
+| BL-14 | Understanding commits, pushes, and PRs                       | 2 — Guided Review         | Guided conversation on this repo's git/CI workflow model and solo-dev practices                                              |
+| BL-15 | Observability walkthrough                                    | 2 — Guided Review         | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6                                                   |
+| BL-16 | Authentication hardening — email verification on signup      | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow                                                    |
+| BL-17 | Public catalog view, auth-gated inventory                    | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated                                          |
+| BL-10 | `card_keywords` / `sub_text` / `is_unique` data gaps         | 5 — Opportunistic         | Three unpopulated columns with no known source; revisit if S5 swuapi.com integration surfaces data                           |
+| BL-11 | Local cleanup — source files                                 | 5 — Opportunistic         | Delete stale source CSVs and old Excel tracker from local disk whenever convenient                                           |
+| BL-19 | Add new card sets to catalog                                 | 6 — Feature Enhancements  | Dedicated upsert script for adding new SWU sets; new sets may have new attributes requiring manual inspection before running |
+| BL-20 | Import/export inventory                                      | 6 — Feature Enhancements  | User-facing CSV or JSON import/export for inventory; serves as user-managed backup until DR is live                          |
+| BL-21 | Disaster recovery — automated DB backup                      | 6 — Feature Enhancements  | Automated Cloud SQL backup and restore on behalf of users, removing the burden of manual exports for recovery                |
+| BL-22 | User settings page scaffolding                                | 6 — Feature Enhancements  | New account-menu entry and empty Settings route/container; infra for BL-23 and BL-25                                       |
+| BL-23 | Change password from settings                                 | 6 — Feature Enhancements  | Firebase client-side reauth + password update, surfaced in the Settings page                                                |
+| BL-24 | Per-tenant, per-variant inventory limit overrides (data model) | 6 — Feature Enhancements  | Configurable limits keyed by type-category x variant, replacing the hardcoded shared-pool playset cap with independent per-variant caps |
+| BL-25 | Settings UI for inventory limit overrides                     | 6 — Feature Enhancements  | Grid UI to edit BL-24's limit matrix; updates frontend constants to use tenant-specific values                              |
 
 ### Completed
 
@@ -286,7 +290,9 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either implemented (new non-auth dependency for catalog routers, frontend auth-gate updated, docs updated, tests covering both authenticated and unauthenticated catalog access) or explicitly decided against with the rationale recorded here.
 
-**Status:** 🔲 Open
+**2026-06-17 update:** Discussed implement-vs-decide-against. Jeremy confirmed he intends to offer this app to other people for real ongoing use, not just as a portfolio piece — which means the "does a logged-out visitor benefit from browsing first" calculus is different than for a purely personal tool. He paused the decision here because he wants to think through the full intended user flow (auth, catalog, inventory) end-to-end before deciding this item in isolation — see Open Question D.
+
+**Status:** 🔲 Open — paused pending Open Question D
 
 ---
 
@@ -383,6 +389,60 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 ---
 
+### BL-22: User settings page scaffolding
+
+**What:** A new "Settings" entry in the account menu (under the existing user email/logout area in `Header.tsx`), routing to an empty Settings page/container. No real settings logic yet — this item only establishes where settings UI will live.
+
+**Why:** Both BL-23 (change password) and BL-25 (inventory limit overrides UI) need a settings surface to render in. Splitting this out lets it ship independently and keeps the UI-infra concern separate from the feature logic that will populate it.
+
+**Definition of done:** Account menu has a "Settings" entry; navigating to it renders an empty (or placeholder) Settings page; existing nav (Catalog/Inventory/Decks) and the account menu's other items (email display, logout) are unaffected.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-23: Change password from settings
+
+**What:** Within the Settings page (BL-22), let a logged-in user change their password. Implemented entirely via the Firebase client SDK: `reauthenticateWithCredential()` using their current password, followed by `updatePassword()`. No backend endpoints are needed — the backend never owns credentials today (`backend/app/auth.py` only verifies tokens).
+
+**Why:** Requested directly by Jeremy as part of a broader user-settings capability for an app intended for real multi-user use (see [[project_bl17_user_flow]] discussion). Firebase requires a recent sign-in for sensitive operations like password change, so the UX must collect the current password (for reauth) in addition to the new one — this isn't optional, it's a Firebase platform constraint.
+
+**Depends on:** BL-22 (settings page to host the form).
+
+**Definition of done:** Settings page has a password-change form (current password, new password, confirm); successful change confirmed via Firebase; incorrect current password and weak/invalid new password produce clear error messages; manually verified end-to-end (sign out, sign back in with new password).
+
+**Status:** 🔲 Open
+
+---
+
+### BL-24: Per-tenant, per-variant inventory limit overrides (data model)
+
+**What:** Replace the hardcoded inventory limits in `backend/app/services/inventory.py` (`PLAYSET_SIZE = 3`, `SINGLETON_TYPES = {"Leader", "Base"}`) with tenant-configurable limits keyed by **type-category × variant**: type-category is singleton (Leader/Base) vs. standard (everything else); variant is one of the eight keys already used on the frontend (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`). New table (e.g. `tenant_card_limits`), seeded with today's defaults (1 for every singleton×variant combination, 3 for every standard×variant combination) when a tenant is provisioned. New GET/PUT endpoint(s) to read and update a tenant's limit matrix.
+
+**Why:** Requested by Jeremy: e.g. Standard Leader/Base capped at 1 but Hyperspace Leader/Base allowed up to 2, while non-singleton cards might allow 4 Standard / 5 Hyperspace / 3 Foil simultaneously. **Important behavior change uncovered during design:** today, non-singleton limits are enforced as a *shared pool* across all variants of a card (`inventory_repo.get_base_card_total` sums every variant toward one cap of 3 — `backend/app/services/inventory.py:70-88`). This item changes that to *independent per-variant caps*, matching how Leader/Base already work (each variant capped separately, `inventory.py:54-62`). This is a deliberate, necessary change to support the requested behavior, not an incidental side effect.
+
+**Definition of done:** New migration adds the tenant limit table, seeded with current-equivalent defaults on tenant creation; `increment_card` checks the relevant tenant+category+variant limit independently (no cross-variant summing) for both singleton and standard categories; new settings endpoint(s) are authenticated and tenant-scoped; tests cover the new independent-per-variant enforcement and at least one non-default override.
+
+**Depends on:** None technically, but pairs with BL-25 to be usable end-to-end.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-25: Settings UI for inventory limit overrides
+
+**What:** In the Settings page (BL-22), a grid/table UI to view and edit the type-category × variant limit matrix from BL-24 (e.g. rows = Standard/Hyperspace/Foil/..., columns = Singleton/Standard category, or vice versa). Also updates the two frontend hardcoded constants — `frontend/src/utils/inventory.ts` (`PLAYSET_SIZE`, `getPlaysetSize`) and `frontend/src/utils/addCardsResolver.ts` (`maxCopies`) — to read the tenant's configured matrix (fetched via BL-24's endpoint) instead of literal constants, so both inline inventory adjustments and the Add Cards flow respect the user's overrides.
+
+**Why:** Closes the loop on BL-24 — the backend enforcement and settings storage are useless to a user without a way to view/edit them, and the frontend's own hardcoded limits would otherwise silently disagree with the backend's per-tenant values (e.g. an Add Cards UI still defaulting to "max 3" while the backend now allows 5).
+
+**Depends on:** BL-22 (settings page), BL-24 (data model + endpoint).
+
+**Definition of done:** Grid UI renders current limits per type-category × variant and saves edits via BL-24's endpoint; `VariantInventory.tsx`'s increment-disable logic and `addCardsResolver.ts`'s `maxCopies()` both reflect the fetched tenant limits instead of the old constants; manually verified that raising a limit in Settings immediately allows a previously-blocked increment, and lowering it blocks further increments.
+
+**Status:** 🔲 Open
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.
@@ -406,3 +466,9 @@ Discussed adopting lightweight Architecture Decision Records (`docs/adr/NNNN-tit
 BL-3 retires the docx and renames the platform guide for *future* chapters, but doesn't address whether F1-S4's existing docx chapters — which use a shallower "Key Concepts" format, and (for chapters 6-10) describe a slice structure that doesn't match what was built — get rewritten in the new deeper format.
 
 **How to apply:** Personal-use material, low priority. Revisit if Jeremy wants a consistent reference across all phases; otherwise the docx remains a historical artifact (per BL-3) and only S5-onward gets the deeper treatment.
+
+### D. Intended user flow for auth, catalog, and inventory
+
+Raised 2026-06-17 while discussing BL-17. Jeremy confirmed the app is intended for real ongoing use by other people, not just himself/portfolio viewing — which means decisions like "can a logged-out visitor browse the catalog" shouldn't be made item-by-item, but as part of a deliberate end-to-end picture of how new/returning/anonymous users are meant to move through auth, catalog browsing, and inventory management.
+
+**How to apply:** Before resolving BL-17 (and likely BL-16, email verification), have a dedicated conversation mapping out the intended user flow — who can see what, when signup is required, what happens to an anonymous visitor's intent (e.g. do they get prompted to sign up after browsing?). Once that flow is decided, BL-16/BL-17 become implementation details of it rather than standalone judgment calls.

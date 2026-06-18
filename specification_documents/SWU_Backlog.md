@@ -21,7 +21,6 @@
 | BL-13 | Manual review of `SWU_Platform_Spec.md` and `SWU_Backlog.md` | 2 — Guided Review | Jeremy reads and verifies both new reference docs while context is fresh |
 | BL-14 | Understanding commits, pushes, and PRs | 2 — Guided Review | Guided conversation on this repo's git/CI workflow model and solo-dev practices |
 | BL-15 | Observability walkthrough | 2 — Guided Review | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6 |
-| BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload` from prod; decide if alembic/seed-apply belong in container startup |
 | BL-16 | Authentication hardening — email verification on signup | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow |
 | BL-17 | Public catalog view, auth-gated inventory | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated |
 | BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
@@ -43,6 +42,7 @@
 | BL-12 | Spec-vs-implementation reconciliation | 1 — Documentation Foundation | Reconcile `SWU_ClaudeCode_Spec.md` Sections 6-9 with what S2-S4 actually built |
 | BL-6 | Backend linting/formatting | 3 — Tooling Investment | Add ruff to backend; fix five genuine lint issues; wire `ruff check` + `ruff format` into CI |
 | BL-7 | Frontend linting/formatting | 3 — Tooling Investment | Add ESLint + Prettier to frontend; one genuine fix; wire lint and format checks into CI |
+| BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload`; move seed/snapshot checks in-process via FastAPI lifespan |
 | BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
 
 ---
@@ -228,7 +228,9 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** At minimum, `--reload` removed from the production path. The migration-on-every-start pattern is either confirmed-and-documented as intentional (in `SWU_Platform_Spec.md`, BL-1) or changed with a documented rationale.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-17 — `fd507a6`. Removed `--reload` and the two separate Python process spawns (`apply_seed`, `apply_inventory_snapshot`) from the Dockerfile `CMD`. Both functions moved into a FastAPI lifespan context manager in `main.py` — they run in-process on every cold start, reusing the existing DB connection pool, and exit immediately (idempotent COUNT check) when data is already present. 200 tests pass.
+
+**Deferred to v1.0:** `apply_inventory_snapshot()` will be removed from the lifespan at the clean-slate milestone when test inventory is wiped and real inventory is loaded; `apply_seed()` stays as a fresh-environment bootstrap safety net.
 
 ---
 

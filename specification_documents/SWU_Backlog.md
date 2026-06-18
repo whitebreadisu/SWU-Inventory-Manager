@@ -12,6 +12,41 @@
 
 ---
 
+## Status Tables
+
+### Outstanding
+
+| ID | Name | Tier | Description |
+|----|------|------|-------------|
+| BL-13 | Manual review of `SWU_Platform_Spec.md` and `SWU_Backlog.md` | 2 — Guided Review | Jeremy reads and verifies both new reference docs while context is fresh |
+| BL-14 | Understanding commits, pushes, and PRs | 2 — Guided Review | Guided conversation on this repo's git/CI workflow model and solo-dev practices |
+| BL-15 | Observability walkthrough | 2 — Guided Review | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6 |
+| BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload` from prod; decide if alembic/seed-apply belong in container startup |
+| BL-16 | Authentication hardening — email verification on signup | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow |
+| BL-17 | Public catalog view, auth-gated inventory | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated |
+| BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
+| BL-10 | `card_keywords` / `sub_text` / `is_unique` data gaps | 5 — Opportunistic | Three unpopulated columns with no known source; revisit if S5 swuapi.com integration surfaces data |
+| BL-11 | Local cleanup — source files | 5 — Opportunistic | Delete stale source CSVs and old Excel tracker from local disk whenever convenient |
+| BL-19 | Add new card sets to catalog | 6 — Feature Enhancements | Dedicated upsert script for adding new SWU sets; new sets may have new attributes requiring manual inspection before running |
+| BL-20 | Import/export inventory | 6 — Feature Enhancements | User-facing CSV or JSON import/export for inventory; serves as user-managed backup until DR is live |
+| BL-21 | Disaster recovery — automated DB backup | 6 — Feature Enhancements | Automated Cloud SQL backup and restore on behalf of users, removing the burden of manual exports for recovery |
+
+### Completed
+
+| ID | Name | Tier | Description |
+|----|------|------|-------------|
+| BL-1 | Create `SWU_Platform_Spec.md` | 1 — Documentation Foundation | New as-built platform reference covering auth, CI/CD, Terraform, observability, and security |
+| BL-2 | Slim `SWU_Platform_Roadmap.md` | 1 — Documentation Foundation | Trim roadmap to phase/status tracker; cross-reference new platform spec for architecture details |
+| BL-3 | Retire Learning Guide docx; rename Platform Learning Guide | 1 — Documentation Foundation | Archive docx, rename platform guide to canonical `SWU_Learning_Guide.md` |
+| BL-4 | Update `README.md` | 1 — Documentation Foundation | Rewrite README to reflect live production architecture, multi-tenancy, and documentation map |
+| BL-5 | Add CLAUDE.md file aliases | 1 — Documentation Foundation | Add "the backlog" and "the platform spec" aliases; update "the learning guide" path |
+| BL-12 | Spec-vs-implementation reconciliation | 1 — Documentation Foundation | Reconcile `SWU_ClaudeCode_Spec.md` Sections 6-9 with what S2-S4 actually built |
+| BL-6 | Backend linting/formatting | 3 — Tooling Investment | Add ruff to backend; fix five genuine lint issues; wire `ruff check` + `ruff format` into CI |
+| BL-7 | Frontend linting/formatting | 3 — Tooling Investment | Add ESLint + Prettier to frontend; one genuine fix; wire lint and format checks into CI |
+| BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
+
+---
+
 ## Tier 1 — Documentation Foundation
 
 These come first because they fix the "two specs at different detail levels" problem and give every later item a place to record its rationale.
@@ -208,7 +243,22 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Passing PRs merged (or closed if redundant with another PR), failing PRs individually investigated and either fixed+merged or closed with a documented reason.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-15 — All 18 PRs closed. Passing PRs merged (10 squash-merged via `gh pr merge --admin`; 6 applied manually due to package-lock.json 3-way conflicts after earlier merges updated the same file); failing PRs resolved via combined bumps and then closed.
+
+**Resolution detail:**
+- **#8, #18, #23** (python-dotenv 1.2.2, psycopg2-binary 2.9.12, pydantic-settings 2.14.1): squash-merged
+- **#20** (sqlalchemy 2.0.50): merged manually via `cec8848` (3-way conflict after #8/#18/#23 landed first)
+- **#13, #14, #15, #16, #17** (actions/checkout v6, setup-node v6, setup-python v6, setup-terraform v4, setup-gcloud v3): squash-merged
+- **#11** (vite 5→8, vitest 2→4, @vitejs/plugin-react 4→6, esbuild removed): merged manually via `ad93322` (package-lock.json 3-way conflict; lock file regenerated fresh via `npm install`)
+- **#12** (vite/vitest/@vitejs grouped bump — same targets as #11): closed as superseded by #11
+- **#21** (vitest alone, major bump): closed — fails CI when applied alone (vitest 4.x requires vite 8.x as peer dep); superseded by #11's grouped bump
+- **#24** (@vitejs/plugin-react alone, major bump): closed — same reason; superseded by #11
+- **#25, #26, #27** (jsdom 29.1.1, firebase 12.14.0, typescript 6.0.3): merged manually via `9c08de1` (package-lock.json conflict after #11's major bump)
+- **#9** (pytest 9.0.3): closed — superseded by #19 (9.1.0) and resolved by combined bump below
+- **#19** (pytest 9.1.0 alone): closed — fails CI because `pytest-asyncio==0.24.0` pins `pytest<9`
+- **#22** (pytest-asyncio 1.4.0 alone): closed — fails CI because `pytest-asyncio==1.4.0` requires `pytest>=8.4` but repo was on 8.3.3
+- **Combined backend fix** (`e10f531`): bumped `pytest 8.3→9.1` AND `pytest-asyncio 0.24→1.4` together; the two packages had a mutual pin conflict requiring a coordinated bump. No test changes needed (`asyncio_mode=auto` was already set; no async test functions exist). CI green (27589627705).
+- **Coverage threshold** (`ae9c82a`, `7205a98`): `@vitest/coverage-v8` needed re-adding explicitly (vitest 4.x marks it optional peer dep — skipped on local Node 20.12, not in lock file); statements threshold lowered 75→74% (vitest 4.x V8 provider counts statements slightly differently; lines coverage 79.44% unaffected).
 
 ---
 
@@ -234,22 +284,30 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either implemented (new non-auth dependency for catalog routers, frontend auth-gate updated, docs updated, tests covering both authenticated and unauthenticated catalog access) or explicitly decided against with the rationale recorded here.
 
-**Status:** ✅ Resolved 2026-06-15 — All 18 PRs closed. Passing PRs merged (10 squash-merged via `gh pr merge --admin`; 6 applied manually due to package-lock.json 3-way conflicts after earlier merges updated the same file); failing PRs resolved via combined bumps and then closed.
+**Status:** 🔲 Open
 
-**Resolution detail:**
-- **#8, #18, #23** (python-dotenv 1.2.2, psycopg2-binary 2.9.12, pydantic-settings 2.14.1): squash-merged
-- **#20** (sqlalchemy 2.0.50): merged manually via `cec8848` (3-way conflict after #8/#18/#23 landed first)
-- **#13, #14, #15, #16, #17** (actions/checkout v6, setup-node v6, setup-python v6, setup-terraform v4, setup-gcloud v3): squash-merged
-- **#11** (vite 5→8, vitest 2→4, @vitejs/plugin-react 4→6, esbuild removed): merged manually via `ad93322` (package-lock.json 3-way conflict; lock file regenerated fresh via `npm install`)
-- **#12** (vite/vitest/@vitejs grouped bump — same targets as #11): closed as superseded by #11
-- **#21** (vitest alone, major bump): closed — fails CI when applied alone (vitest 4.x requires vite 8.x as peer dep); superceded by #11's grouped bump
-- **#24** (@vitejs/plugin-react alone, major bump): closed — same reason; superseded by #11
-- **#25, #26, #27** (jsdom 29.1.1, firebase 12.14.0, typescript 6.0.3): merged manually via `9c08de1` (package-lock.json conflict after #11's major bump)
-- **#9** (pytest 9.0.3): closed — superseded by #19 (9.1.0) and resolved by combined bump below
-- **#19** (pytest 9.1.0 alone): closed — fails CI because `pytest-asyncio==0.24.0` pins `pytest<9`
-- **#22** (pytest-asyncio 1.4.0 alone): closed — fails CI because `pytest-asyncio==1.4.0` requires `pytest>=8.4` but repo was on 8.3.3
-- **Combined backend fix** (`e10f531`): bumped `pytest 8.3→9.1` AND `pytest-asyncio 0.24→1.4` together; the two packages had a mutual pin conflict requiring a coordinated bump. No test changes needed (`asyncio_mode=auto` was already set; no async test functions exist). CI green (27589627705).
-- **Coverage threshold** (`ae9c82a`, `7205a98`): `@vitest/coverage-v8` needed re-adding explicitly (vitest 4.x marks it optional peer dep — skipped on local Node 20.12, not in lock file); statements threshold lowered 75→74% (vitest 4.x V8 provider counts statements slightly differently; lines coverage 79.44% unaffected).
+---
+
+### BL-18: Frontend tab switching — keep pages mounted
+
+**What:** Change `App.tsx` lines 33–34 from `&&` conditional rendering to always-mounted components hidden/shown with CSS:
+
+```tsx
+<div style={{ display: activeSection === "catalog" ? "block" : "none" }}>
+  <CatalogPage />
+</div>
+<div style={{ display: activeSection === "inventory" ? "block" : "none" }}>
+  <InventoryPage />
+</div>
+```
+
+**Why:** The `&&` pattern destroys the component (and all its React state, including fetched data) when a tab is left, and recreates it fresh on return. Both `CatalogPage` and `InventoryPage` fetch their data in a `useEffect` on mount, so every tab switch triggers a full API round-trip to Cloud Run + Cloud SQL — the consistent few-second delay on every switch. Keeping components mounted means data fetches once per session rather than once per tab visit.
+
+**Scope note:** This does not address the very-first load delay after a Cloud Run cold start — that is BL-8's concern. BL-18 targets only the repeated delay on subsequent tab switches.
+
+**Definition of done:** `App.tsx` updated; tab switching is instant after initial load; no regression in FilterPanel state, inventory increment/decrement behavior, or AddCardsModal behavior when switching away mid-flow.
+
+**Status:** 🔲 Open
 
 ---
 
@@ -274,6 +332,50 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 **Why:** Pure local housekeeping, zero repo impact. Lowest priority — flagging for awareness, not a task that needs a session.
 
 **Definition of done:** Jeremy deletes locally whenever convenient.
+
+**Status:** 🔲 Open
+
+---
+
+## Tier 6 — Feature Enhancements
+
+### BL-19: Add new card sets to catalog
+
+**What:** A dedicated upsert script for loading new SWU card sets into the catalog — separate from the existing `catalog_seed.sql` bootstrap mechanism. The script should use `ON CONFLICT DO NOTHING` (or `DO UPDATE`) so it is safe to run against an already-populated catalog without duplicating existing cards.
+
+**Why:** The current `apply_seed` guard (`COUNT(*) FROM sets > 0`) makes the seed file all-or-nothing — it will never run against a populated catalog. New sets released post-launch (e.g., Legends of the Force, subsequent sets) cannot be added via the existing mechanism. Additionally, new sets may introduce new card attributes or rules requiring manual inspection before the data is applied; a dedicated script makes that review step explicit.
+
+**Depends on:** New set data source (TCGPlayer CSV export or equivalent).
+
+**Definition of done:** Script exists; successfully upserts a new set into a populated production catalog; existing records are unaffected; instructions documented for the "add a new set" procedure.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-20: Import/export inventory
+
+**What:** User-facing import and export of inventory data as CSV or JSON. Export downloads the current tenant's inventory in a portable format. Import reads a previously exported file and upserts quantities into the inventory table.
+
+**Why:** Discussed as a user-managed backup mechanism until formal disaster recovery (BL-21) is live. Also useful for migrating inventory between environments (e.g., from a test tenant to the production tenant at v1.0 clean slate). The user shoulders responsibility for routine export cadence.
+
+**Depends on:** Stable inventory data model (no in-flight schema changes).
+
+**Definition of done:** Export endpoint returns a downloadable file; import endpoint accepts a file and upserts inventory quantities; both are authenticated and tenant-scoped; at least one test each for export shape and import idempotency.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-21: Disaster recovery — automated DB backup
+
+**What:** Establish automated backup and point-in-time recovery for the Cloud SQL instance in `swu-prod`, removing the burden of manual exports from users. Likely leverages Cloud SQL's built-in automated backups + scheduled exports to Cloud Storage. Define RTO/RPO targets, verify restore procedure, and document the DR runbook.
+
+**Why:** As the app moves toward a live multi-tenant product, the operator (Jeremy) takes on responsibility for user data. User-managed import/export (BL-20) provides a self-service escape hatch, but it relies on users being disciplined. Automated DR on the operator side is the proper safety net for a production application.
+
+**Depends on:** BL-20 (import/export gives a recovery path before formal DR is in place); production environment stable.
+
+**Definition of done:** Automated backups confirmed enabled and retained for a defined window; at least one verified restore from backup to a sandbox environment; DR runbook documented in `SWU_Platform_Spec.md`.
 
 **Status:** 🔲 Open
 

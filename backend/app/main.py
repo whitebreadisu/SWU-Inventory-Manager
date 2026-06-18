@@ -1,8 +1,11 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ingestion.apply_inventory_snapshot import apply_inventory_snapshot
+from app.ingestion.apply_seed import apply_seed
 from app.logging_config import configure_logging
 from app.middleware import log_requests
 from app.routers import cards as cards_router
@@ -10,6 +13,13 @@ from app.routers import inventory as inventory_router
 from app.routers import sets as sets_router
 
 configure_logging()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    apply_seed()
+    apply_inventory_snapshot()
+    yield
 
 
 def _api_docs_enabled() -> bool:
@@ -29,6 +39,7 @@ app = FastAPI(
     title="SWU Inventory Manager",
     description="Star Wars Unlimited card inventory management API",
     version="1.0.0",
+    lifespan=lifespan,
     **_docs_kwargs,
 )
 

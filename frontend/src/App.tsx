@@ -30,8 +30,12 @@ function AppContent() {
       />
       <SectionSeparator />
       <main className="app-main">
-        {activeSection === "catalog" && <CatalogPage />}
-        {activeSection === "inventory" && <InventoryPage />}
+        <div style={{ display: activeSection === "catalog" ? "block" : "none" }}>
+          <CatalogPage />
+        </div>
+        <div style={{ display: activeSection === "inventory" ? "block" : "none" }}>
+          <InventoryPage />
+        </div>
         {activeSection === "decks" && <p className="placeholder">Decks — coming soon</p>}
       </main>
     </div>

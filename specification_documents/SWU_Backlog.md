@@ -32,6 +32,12 @@
 | BL-23 | Change password from settings                                 | 6 — Feature Enhancements  | Firebase client-side reauth + password update, surfaced in the Settings page                                                |
 | BL-24 | Per-tenant, per-variant inventory limit overrides (data model) | 6 — Feature Enhancements  | Configurable limits keyed by type-category x variant, replacing the hardcoded shared-pool playset cap with independent per-variant caps |
 | BL-25 | Settings UI for inventory limit overrides                     | 6 — Feature Enhancements  | Grid UI to edit BL-24's limit matrix; updates frontend constants to use tenant-specific values                              |
+| BL-26 | Claude.ai design-system sync workflow — inspection needed      | 6 — Feature Enhancements  | The conversion layer (`components/*.jsx`, `screens/*/*.jsx`) that actually renders in claude.ai isn't covered by `source/src/` syncs; needs a dedicated session |
+| BL-27 | Additional card variant types (Judge, Showcase, Prerelease Promo, etc.) | 6 — Feature Enhancements  | Use swuapi.com to identify the full set of variant types beyond our existing 8; analyze and implement all touchpoints across the app |
+| BL-29 | Replace CSV-based catalog seed with swuapi.com | 6 — Feature Enhancements  | Build catalog creation (new environments / full rebuilds) directly from swuapi.com instead of the F3/F4 TCGPlayer CSV pipeline |
+| BL-30 | Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks) | 6 — Feature Enhancements  | Add every card in a precon product to inventory in one action instead of scanning each card; blocked on a decklist (card+quantity) data source swuapi doesn't provide |
+| BL-31 | Card detail popup — consolidated representation for stamp-only variants | 6 — Feature Enhancements  | Tournament/judge/prerelease variants that share one piece of art (differ only by a stamp) need one consolidated image on the popup, with per-variant inventory tracking preserved underneath |
+| BL-32 | Inline inventory editing — consolidated entry for tournament-tier variants | 6 — Feature Enhancements  | The flat per-variant +/- row pattern doesn't scale to cards with 5-6 tournament-tier variants; needs its own interaction pattern |
 
 ### Completed
 
@@ -48,6 +54,7 @@
 | BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload`; move seed/snapshot checks in-process via FastAPI lifespan |
 | BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
 | BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
+| BL-28 | swuapi.com analysis — ongoing sync and schema alignment | 6 — Feature Enhancements | Five-phase analysis of swuapi.com's live export; produced BL-29/30/31/32 and a field-by-field schema delta |
 
 ---
 
@@ -438,6 +445,161 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 **Depends on:** BL-22 (settings page), BL-24 (data model + endpoint).
 
 **Definition of done:** Grid UI renders current limits per type-category × variant and saves edits via BL-24's endpoint; `VariantInventory.tsx`'s increment-disable logic and `addCardsResolver.ts`'s `maxCopies()` both reflect the fetched tenant limits instead of the old constants; manually verified that raising a limit in Settings immediately allows a previously-blocked increment, and lowering it blocks further increments.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-26: Claude.ai design-system sync workflow — inspection needed
+
+**What:** On 2026-06-19, the `DesignSync` tool was used to push `frontend/src/` into the "SWU Inventory Manager Design System" claude.ai project's `source/src/` tree (34 files: `App.tsx`, auth, Add Cards modal flow, Inventory screens, `FilterPanel`, etc. — all the S2-S5/auth work the prior snapshot was missing). That sync is complete, but it doesn't close the real gap: per the project's own `SKILL.md`, `source/src/` is explicitly "reference only" — the files that actually *render* inside claude.ai are `components/*.jsx` and `screens/*/*.jsx`, hand-converted from the TS source (Babel-in-browser JSX, `Object.assign(window, …)` exports instead of ES modules, per `SKILL.md`'s conversion steps). Jeremy reports having to do significant continued manual modification *within* claude.ai chats to get production screens actually showing up there — almost certainly patches to this `.jsx` conversion layer, which the `source/src/` sync never touches.
+
+**Why:** Before investing in a repeatable sync workflow, the actual conversion gap needs to be understood structurally, not just patched again from memory. Two inspection paths are available:
+- **The more durable signal:** diff `components/*.jsx` + `screens/*/*.jsx` (the live-rendering layer) directly against current `frontend/src/` to see exactly what conversion logic (JSX rename, import/export rewrite, prop typing, data-fetch wiring) is missing or stale — a stable artifact, not a reconstruction from memory.
+- **Available but lossier:** Jeremy's claude.ai chat history includes the actual back-and-forth where he inspected and fixed what was needed to get screens working in claude.ai — real signal on what broke and how it was fixed, but scattered across conversational turns rather than captured as a diffable artifact.
+
+Likely the right approach is to use the chat history to understand *what kinds of fixes* were needed (informing the inspection), then formalize the result as a reusable conversion script/checklist diffed structurally against `frontend/src/` — rather than relying on either source alone.
+
+**Definition of done:** Not yet scoped — Jeremy wants to revisit this as its own session rather than decide an approach now.
+
+**Status:** 🔲 Open — deferred, no session scheduled
+
+---
+
+### BL-27: Additional card variant types (Judge, Showcase, Prerelease Promo, etc.)
+
+**What:** Discovered while planning the card detail popup (2026-06-20): swuapi.com's `?variant=all` lookup returns variant types beyond our existing 8 (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`) — confirmed via a live API call on Luke Skywalker (SOR_005): `Standard`, `Hyperspace`, `Prerelease Judge`, `Prerelease Promo`, `Showcase`, each with a genuinely distinct `frontImageUrl`. The full universe of variant types isn't known yet — needs a dedicated pass against swuapi.com (likely iterating `?variant=all` across a representative sample of cards/sets) to enumerate every type that actually exists.
+
+**Why:** These are real, rare variants (Judge, Championship, Showcase, Prerelease Promo, etc.) that collectors do own and would expect to track. They weren't on the radar when the original 8-variant model was designed (`card_variants` table, frontend's `variant.ts`/`addCardsResolver.ts` constants, inventory limit logic). Adding them isn't a narrow data change — per the discussion that surfaced this, it touches the catalog data model, ingestion/backfill scripts, Add Cards modal resolution logic, inventory limit enforcement (BL-24's per-variant caps), and now the card detail popup's variant-button UI — so it needs deliberate cross-cutting analysis, not an ad hoc add.
+
+**Depends on:** None technically; informed by (but not blocking) the card detail popup work that surfaced it.
+
+**Definition of done:** Full enumeration of variant types available via swuapi.com documented; a scoped plan exists identifying every touchpoint in the app that assumes the current fixed 8-variant set; either implemented or explicitly deferred per-variant-type with rationale.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-28: swuapi.com analysis — ongoing sync and schema alignment
+
+**What:** Raised 2026-06-20 while planning the card detail popup, after discovering swuapi.com is significantly more capable than originally assumed (per-variant images confirmed real and distinct — see BL-26/BL-27's discovery; structured front/back/epic-action text fields; rich card metadata). This item is **analysis only** — no code changes. Two threads:
+
+1. **Ongoing sync:** New sets can appear in swuapi.com before official release/sale date. Investigate a scheduled job (Cloud Scheduler + Cloud Run, or similar) that polls swuapi.com on some cadence and upserts new/changed cards automatically, vs. today's fully manual "new set" process (BL-19).
+2. **Schema alignment:** Compare the current `cards`/`card_details`/`card_variants` schema field-by-field against everything swuapi.com's card object exposes (already found gaps: no formatted text storage need since swuapi text is plain — BL discussion above — but also fields we don't capture at all, e.g. `artist`, `reprints`/`reprintOf`, `keywords` as a structured array vs. our `card_keywords` table that's unpopulated per BL-10). Determine what's worth adding/refactoring vs. intentionally not needed.
+
+**Why:** Jeremy's own assessment, in hindsight: swuapi.com should likely have been used more heavily from the start, both for original catalog construction and for keeping it current, rather than the one-time CSV-based F3/F4 pipeline. This is a strategic "did we pick the right long-term data source" question, not a bug — it surfaced organically while scoping the card image work (S5) and variant text work (this session), both of which already lean on swuapi.com. The original third thread of this analysis — replacing CSV-based catalog *creation* with swuapi.com — was split out into BL-29 (2026-06-20) since it's already concrete enough to be its own implementation item rather than open-ended analysis.
+
+**Relationship to other items:** Overlaps with BL-10 (unpopulated `card_keywords`/`sub_text`/`is_unique` — swuapi.com may have these), BL-19 (manual new-set upsert — could be subsumed by thread 1 here), BL-27 (variant-type discovery — same API, adjacent investigation), and BL-29 (catalog creation — split out, see above). Don't duplicate work — if this item is picked up, fold BL-10/BL-19/BL-27's investigations into it rather than doing them separately.
+
+**Definition of done:** This item never produces implementation — it produces backlog items. At minimum: a field-by-field comparison of current schema vs. swuapi.com's card object, and a recommendation on whether/how to automate ongoing sync. Each actionable finding gets written up as its own new backlog item (with its own ID, Why, and Definition of done) rather than implemented inline here. This item is marked resolved once that write-up is done, even if none of the resulting items have been built yet.
+
+**Findings log (running, 2026-06-20 session):**
+- **Token cards may need shared modeling, not per-set duplication.** While analyzing TS26's internal numbering (its 4 card-number collisions turned out to be its 4 generic token cards — Battle Droid, Clone Trooper, Experience, Shield — colliding with 4 of its unique Leaders), those same 4 tokens are also the only TS26 cards that matched a core-8-set card by name. Generic tokens appear to be reused/duplicated across many products in swuapi rather than being unique per set. Our schema currently has no concept of a shared token catalog — every card row belongs to exactly one set. Worth a deliberate decision later: one shared token catalog vs. a duplicate row per set (matching how swuapi/TCGPlayer both already do it). Not scoped as its own item — fold into whatever BL-28/BL-29 recommendation touches catalog structure.
+- **`(name, subtitle)` matching must be case-insensitive.** While testing whether `(name, subtitle)` reliably groups every variant of a card together (Phase 3 of this analysis), an apparent "card with no Standard printing anywhere" turned out to be a false positive: R2-D2's Weekly Play variant (TWI 17) has `subtitle: "Full Of Solutions"` (capital O), while its Standard printing (TWI 193) has `subtitle: "Full of Solutions"` (lowercase o) — same physical card, inconsistent casing within swuapi's own data. This was the only such inconsistency found across the full dataset, but any future swuapi-based linking logic (BL-29, or a card-identity key per Phase 3's finding) must normalize case before comparing `name`/`subtitle`, or it will silently mis-group cards.
+
+**Final Write-Up (2026-06-20):** Pulled the live `GET https://api.swuapi.com/export/all` export (27 sets, 8,353 cards) and analyzed it in five phases. Summary below; raw analysis is in this session's history, not reproduced here.
+
+#### Set structure (Phase 1)
+
+27 sets total, not the 7 (now 8, with ASH) we model:
+- **Core 8** — SOR, SHD, TWI, JTL, LOF, SEC, LAW, ASH (ASH not yet released — ASH-only data is `Standard`-variant-only so far, confirming swuapi exposes upcoming-set content before sale, consistent with finding ASH was the next set to release).
+- **17 sets are pure variant containers** — every card matches a core-8 card by name+subtitle (case-insensitive): the 7 Weekly Play sets (`*P`), Judge Program (J24/J25), Promo (P25/P26), Convention Exclusive (C24/C25), Gamegenic, Gift Box, Movie Promo. These need no special handling beyond normal variant linking.
+- **IBH (Intro Battle: Hoth) and TS26 (2026 Twin Suns) are genuinely standalone card pools** (0% and ~5% match respectively) — confirmed by Jeremy's product knowledge (IBH and Twin Suns precons contain cards unique to themselves) and corroborated by the data. **Decision: both will be added as new sets in our database.** IBH is clean to ingest (104 cards, single rarity `Special`, single `variantType: Standard`, zero number collisions, two-sided intro-box composition: 80 Unit/20 Event/2 Leader/2 Base). TS26 has a numbering quirk: its 4 generic token cards (Battle Droid, Clone Trooper, Experience, Shield) share card numbers 1-4 with 4 of its unique Leaders — a same-set collision unrelated to foil/variant logic. Recommend ingesting both via the **BL-19 mechanism** (dedicated new-set upsert script) rather than a special case.
+- **C26's one orphan card ("Zam Wesell - Not What She Seems")** doesn't exist anywhere yet (checked ASH directly — not present in its 267 currently-revealed cards). Likely a preview of an unreleased ASH or future card; not resolvable until more of ASH is revealed or the 2026 convention happens. Demonstrates the "ongoing sync" thread's value directly — a point-in-time pull can't resolve this, periodic re-sync naturally would.
+
+#### Field census (Phase 2)
+
+swuapi's card object has 32 fields against our ~17 columns (`cards`/`card_details`/`card_aspects`/`card_traits`/`card_keywords`). Full table produced during the session; headline outcomes:
+- **Closes BL-10 directly**: `keywords` and `isUnique` are both populated in swuapi, resolving our two longest-standing unpopulated columns.
+- **Confirms the planned S5 fields** (`frontText`/`backText`/`epicAction`/`frontImageUrl`/`backImageUrl`) are present and ready to source from swuapi as already specified in `SWU_ClaudeCode_Spec.md` Section 9.
+- **New fields with no current DB equivalent**: `subtitle` (cleaner than our derived name-splitting), `artist` (already flagged in the spec as deferred here), `type2`/`doubleSided` (useful for popup back-face logic), `rules`/`additionalRulings` (extended errata text, not currently planned anywhere).
+- **No rich text formatting exists anywhere** in `frontText`/`backText`/`text`/`rules` — confirmed by scanning the full dataset for HTML tags, markdown, and bracket-tags. Square brackets (`[Exhaust]`, `[Villainy]`) are literal printed game text, not markup. One unrelated data-quality bug found: some ASH cards have an unresolved `<uq>` template placeholder in their text, likely a scraper artifact specific to ASH being pre-release.
+- **Set-level fields with no equivalent**: `release_date`, `total_cards`, `updated_at` — all directly useful for the sync thread below. Conversely, our own `has_unique_variant_numbers` and `base_card_number` have no swuapi equivalent and would still need local derivation even if swuapi became the source.
+
+#### Variant-to-base-card alignment (Phase 3)
+
+- **`(setCode, name, subtitle)`, matched case-insensitively, is a reliable grouping key** for "all variants of one printed card" — only one true data inconsistency found in the entire dataset (SOR "Hardpoint Heavy Blaster" has two rows mislabeled `type: Unit` instead of `Upgrade` — a swuapi data bug, not a structural problem).
+- **Not every card has a Standard printing to anchor to.** True count, after correcting two false positives (a per-set-only grouping bug, and the casing bug above): **1** — "Zam Wesell - Not What She Seems" (see above). Any base-card-linking design must treat "no Standard anchor" as a valid, expected case for convention-exclusive-only cards.
+- **Recommended linking key for "one physical printing": `(setCode, name, subtitle, variantType)`**, not `card_number`. `card_number` alone collides in 1,353+ cases (1,339 are expected foil pairs already consistent with our schema; 14 are genuine cross-variant collisions, e.g. two different tournament tiers sharing a number) — confirmed concentrated entirely in the three earliest sets (SOR/SHD/TWI), zero in JTL onward or in promo containers.
+
+#### Cross-set oddities (Phase 4)
+
+- **47 cards have a Standard printing in 2+ different core sets** (mostly shared tokens, some genuine staple reprints like "Corellian Freighter" in both JTL and SOR) — confirms `(name, subtitle)` grouping must stay scoped within a set, not used as a cross-set identity. Benign, not actionable.
+- **Exception to the Phase 3 linking key recommendation**: SEC's 21 "Serialized Prestige" senator cards (Queen Amidala, Mon Mothma, etc.) each have 3 rows sharing identical `setCode`/`cardNumber`/`variantType` — they're 3 distinct finishes (plain Carbonite/Gold/Rose Gold) distinguishable only by parsing the image filename, not any structured field. `(setCode, name, subtitle, variantType)` is not sufficient for these 21 cards specifically.
+- Diacritic/accent handling in swuapi is clean (verified via raw codepoints on "Chirrut Îmwe", unlike our own TCGPlayer pipeline which needed migrations 0007/0009 to fix this).
+
+#### Tournament/judge/prerelease variant images (informs BL-31/BL-32)
+
+Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed pattern via card-number-collision data on other cards) shows these variants are **pixel-identical art with only a text stamp changed** in the trait-line area. This is real for the ~58-value `variantType` long tail beyond our 8 modeled variants, and motivated BL-31 (popup) and BL-32 (inline editing) as dedicated UX items.
+
+#### Recommendations
+
+1. **Catalog creation (BL-29):** swuapi is a substantially richer source than the CSV pipeline ever was — recommend it as the primary source for new-environment/rebuild catalog creation, with the above linking key, case-insensitivity, no-Standard-anchor handling, and the Serialized Prestige exception built in from the start.
+2. **Ongoing sync:** Recommend a scheduled job, low frequency (daily/weekly, not real-time) — `meta.lastScrapedAt` and per-set `updated_at` make "what changed since last pull" cheap to check. Directly useful for the ASH/C26 case demonstrated this session.
+3. **Schema alignment:** Add `subtitle`, `artist`, `type2`, `doubleSided` as new columns; backfill `card_keywords`/`is_unique` from swuapi (closes BL-10); proceed with the already-planned S5 columns sourced from swuapi as specified. `rules`/`additionalRulings` — defer, no current consumer.
+4. **IBH/TS26** — ingest via BL-19's new-set mechanism once it exists, not as a one-off.
+
+**Spun-off backlog items from this analysis:** BL-29 (catalog creation), BL-30 (bulk-add precon products), BL-31 (popup stamp consolidation), BL-32 (inline editing consolidation).
+
+**Status:** ✅ Resolved 2026-06-20 — five-phase analysis complete; findings and recommendations above; BL-29/30/31/32 spun off as planned. No code changed by this item, per its own definition of done.
+
+---
+
+### BL-29: Replace CSV-based catalog seed with swuapi.com
+
+**What:** Split out from BL-28 (2026-06-20). Today's catalog is seeded from `db/seeds/catalog_seed.sql`, originally built from the F3/F4 TCGPlayer CSV ingestion pipeline (`tcgcsv_files/`, `backend/app/ingestion/`). Investigate and likely implement catalog creation (for new environments, or full rebuilds) directly from swuapi.com instead.
+
+**Why:** swuapi.com appears more capable than the original CSV pipeline assumed (per-variant images, structured text fields, richer metadata — see BL-26/BL-27). Pulled out of BL-28 as its own item because it's concrete enough to scope and build directly, rather than open-ended research — unlike BL-28's remaining sync-cadence and schema-delta questions, which are genuinely undecided.
+
+**Depends on:** BL-28's schema alignment thread should inform this (don't build against a schema that's about to change), but doesn't strictly block starting design work.
+
+**Definition of done:** Not yet scoped — decide build-or-defer once BL-28's schema findings land, then write the real definition of done.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-30: Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks)
+
+**What:** Surfaced 2026-06-20 during BL-28's swuapi.com analysis. Star Wars Unlimited sells several precon products whose card pools are partly or entirely unique: **Intro Battle: Hoth (IBH)** (104 cards, confirmed 0/104 match any core-8-set card — a fully standalone pool), **Twin Suns (TS26)** (4 decks × 83 cards = 332 physical cards; swuapi's distinct-card catalog for it is 88 cards, 84 of which are unique to Twin Suns — a different game format's precon decks with crossover collector appeal), and the **two starter decks per mainline set** (rarity `Special`/`S` cards mixed into the regular set catalog). Add a feature letting a user select one of these products and add its full card list to their inventory in one action, rather than entering each card individually through the existing Add Cards modal.
+
+**Why:** These products are explicitly designed as an easy on-ramp for new players, but Jeremy notes the unique cards inside them are also attractive to existing collectors — someone who buys an Intro Battle: Hoth box or a Twin Suns deck wants those cards reflected in their inventory without manually keying in 80+ entries.
+
+**Key gap — blocks scoping:** swuapi.com's `cards`/`sets` export only contains a distinct-card catalog, not deck composition. It can tell us *which* cards are unique to a given product, but not *how many copies* of each card a specific deck/box contains (332 physical TS26 cards vs. 88 distinct catalog entries — the other ~244 are duplicate copies within and across the 4 decks). A decklist (card + quantity per product) has to come from elsewhere — official decklist PDFs, FFG product pages, or manual curation — before this feature can be built.
+
+**Second gap, found during the same analysis:** our current catalog substantially undercounts `Special`/Starter-rarity cards relative to swuapi — `db/seeds/catalog_seed.sql` has only 15 rows with `rarity = 'S'`, against 387 `Special`-rarity card records in the swuapi export. The starter-deck-unique cards this feature depends on may not even be in our catalog yet; that's a prerequisite gap, likely resolved by whichever of BL-28/BL-29's recommendations ends up adding missing cards to the catalog.
+
+**Depends on:** A decklist/quantity data source (not yet identified) for each product; catalog completeness for `Special`-rarity cards (see gap above, tracked under BL-28/BL-29).
+
+**Definition of done:** Not yet scoped — decklist data source needs to be identified first, then a real implementation plan (UI entry point, backend bulk-insert endpoint, inventory-limit interaction for products containing more than the normal per-variant cap) can be written.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-31: Card detail popup — consolidated representation for stamp-only variants
+
+**What:** Raised 2026-06-20 during BL-28's swuapi.com analysis, while inspecting tournament/judge/prerelease card images. Confirmed by direct visual comparison: "Rey - Keeping the Past" (P25) has six tournament-tier variants — RQ Day Two, Top 4, Top 8, Finalist, Champion, Judge — that are **pixel-identical art**, differing only in a single text stamp swapped into the trait-line area. The card detail popup (in-flight feature, spec Section 9.x) cannot reasonably render one variant button per stamp — for cards with 5-6 such tiers (e.g. SHD "Doctor Evazan - Wanted on Twelve Systems" has 5: PQ Top 4/Top 8/Top 16/Finalist/Champion) that's a wall of near-duplicate buttons showing the same picture. The popup needs a consolidated display — likely one representative image standing in for the whole stamp family — while inventory tracking underneath stays per-variant (a user can still record owning specifically a "PQ Champion" copy vs. a "PQ Top 4" copy of the same card).
+
+**Why:** Discovered organically while testing whether swuapi's per-variant images were genuinely distinct (they are, for the 8 variant types we already model) or just stamped (true for the tournament-tier long tail). Building the popup without accounting for this would either bloat the variant-button UI unusably or silently drop tournament-tier variants from being viewable at all.
+
+**Depends on:** BL-27 (full variant-type enumeration — needed to know exactly which `variantType` values are stamp-only vs. genuinely distinct art) and the card detail popup feature itself (spec Section 9.x, in-flight).
+
+**Definition of done:** Not yet scoped — needs a decision on what "consolidated" looks like (one shared image per tier-family vs. a single image with a rendered badge/overlay) and how the popup's variant-selection UI surfaces per-variant inventory state without one button per stamp.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-32: Inline inventory editing — consolidated entry for tournament-tier variants
+
+**What:** Raised 2026-06-20 alongside BL-31, same root cause, different surface. The existing inventory screen's per-variant `+`/`-` row (`VariantInventory.tsx`) doesn't scale to cards with several tournament-tier variants — a card with 5 PQ tiers would need 5 near-identical rows differing only by tier label, which is a worse problem on a dense inline-editing list than it is on the popup (BL-31). Needs its own interaction pattern, likely an expandable sub-list or secondary modal per card, rather than one flat row per tournament-tier variant.
+
+**Why:** Same triggering discovery as BL-31 (stamp-only tournament-tier variants confirmed via swuapi image comparison), but the inline-editing list and the detail popup are different UI surfaces with different space constraints and different existing interaction patterns (`+`/`-` counters vs. variant-selector buttons) — solving one doesn't automatically solve the other.
+
+**Depends on:** BL-27 (variant-type enumeration), and is closely related to BL-31 — likely worth designing both together once BL-27's enumeration lands, even though they're separate UI surfaces.
+
+**Definition of done:** Not yet scoped — needs a decision on the consolidated interaction pattern (expandable row, secondary modal, etc.) before implementation.
 
 **Status:** 🔲 Open
 

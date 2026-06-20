@@ -555,7 +555,8 @@ Each Claude Design handoff is committed to `claude_design/<handoff-folder>/` and
 | Slice 3 | S3 | *Claude Design pre-step: complete.* Shared `FilterPanel` ported to TypeScript and applied to both screens. `FilterPanel.tsx` lives in `frontend/src/components/` with co-located `FilterPanel.css`. Exports: `FilterPanel`, `MultiSelect`, `RangeSlider`, `AspectPicker`, `applyFilters`, `DEFAULT_FILTERS`, `FilterState`. Catalog: S1 set-logo/aspect toggle bar removed; replaced with `FilterPanel` (no children). Inventory: `FilterPanel` added with the "Show only incomplete playsets" toggle slotted as a child; `InventorySummary` receives the full unfiltered card list so stats stay stable under filtering; `applyFilters` runs first, `incompleteOnly` predicate after. Implementation note: `applyFilters` calls `parseCardDisplay(card)` internally to derive `displayName`/`subtitle` for text search — avoids adding computed fields to `BaseCard`. `InventoryCard[]` is safely cast to `BaseCard[]` when passed to `FilterPanel` because `InventoryCard` extends `BaseCard`. |
 | Slice 4 | S4 | *Claude Design pre-step: complete. Implementation complete 2026-05-25. Resolver corrected 2026-06-10.* Add Cards modal. A modal popup invoked from the "Add Cards" button in `InventorySummary`. Keyboard-driven batch entry: user picks a set once, then types card numbers one at a time — each resolves client-side against the already-loaded inventory data into a card name + variant, accumulates in a chip list, and commits on Enter. A verification phase splits the batch into "will be added" (green) vs. "at limit" (red) before committing. On commit, `POST /api/inventory/{id}/increment` is called once per green row; `InventoryPage` re-fetches inventory after modal close. Card resolution uses `GET /api/inventory` data already in memory — `GET /api/cards/lookup` backend endpoint deferred (see Section 6.4). **Resolver algorithm:** `resolveRow` always matches user input against `card_number` (the number printed on the physical card) — never `base_card_number`. The variant picker (`needs_variant`) appears when multiple records share the same `card_number` in the same OP partition (e.g., SOR foil/non-foil pairs at the same number, or OP foil/non-foil pairs). Auto-resolve occurs when exactly one record matches. `has_unique_variant_numbers` is NOT used by the resolver. The OP flag (`is_organized_play`) partitions the matched pool; `hasOpOption` is true when the entered `card_number` has at least one OP record. Components live in `frontend/src/screens/inventory/` (`AddCardsModal`, `AddCardsSetBar`, `AddCardsKeypad`, `AddCardsVerification`, `AddCardsModal.css`). Resolver pure functions in `frontend/src/utils/addCardsResolver.ts` (`resolveRow`, `inventoryStatus`, `splitForVerification`, `variantLabelNoOp`). `InventoryPage` now stores both `rawCards: CardWithQty[]` (passed to modal as `catalog`) and grouped `cards: InventoryCard[]`; sets are fetched inside the modal via `getSets()`. CSS tokens `--aspect-aggression` and `--variant-op` added to `:root` in `AddCardsModal.css`. |
 | Foundation | F5 | *Implemented 2026-06-11.* Inventory snapshot & F4 retirement. `generate_inventory_snapshot.py` exports the `inventory` table (card_id, quantity, updated_at) to `db/snapshots/inventory_snapshot.sql` (3,412 records, total quantity 6,439). `apply_inventory_snapshot.py` restores it idempotently on a fresh database, running automatically in the Docker startup chain immediately after `apply_seed`. F4 ON CONFLICT was already DO NOTHING (changed pre-emptively during the seed architecture session). The `personal_card_inventory` Excel volume mount was removed from `docker-compose.yml`; the F4 ingestion script remains in the repo as a retired/historical tool. New tests: `test_inventory_snapshot_integrity.py`, `test_inventory_snapshot_reconstruction.py`. See Section 5.5. |
-| Slice 5 | S5 | *Claude Design pre-step: required before implementation begins.* Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required). Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
+| Slice 5 | S5 | *Claude Design pre-step: required before implementation begins. Spec revised 2026-06-20 — see note below Section 9.1.* Official card images. Enriches all card records with `front_image_url` and `back_image_url` sourced from the swuapi.com public API (no authentication required), one distinct image per local variant. Displays card images in Catalog and card lookup views. Regenerates catalog seed to capture URLs. See Section 9.1 for full specification. |
+| Slice 6 | S6 | *Claude Design pre-step: required before implementation begins. Planned 2026-06-20, not yet implemented.* Card detail popup. Click a Catalog/Inventory row to open a modal showing the card's image (variant-switchable), full ability text, and remaining catalog metadata. **Depends on:** S5's revised per-variant image backfill; `SWU_Backlog.md` BL-28's analysis for two still-undecided fields (Artist, Keyword population). See Section 9.2 for full specification. |
 
 > **Note (2026-06-12):** S5 and all further application feature work (including the unscoped Decks section) are paused in favor of the **Platform Roadmap** — a P1–P7 track that transforms this application into a multi-tenant, production-grade platform on GCP. See `SWU_Platform_Roadmap.md` and its companion `SWU_Learning_Guide.md`. Feature work resumes after P7 completes.
 
@@ -611,15 +612,16 @@ New Alembic migration adds two nullable columns to the `cards` table:
 
 #### Backfill Script
 
+> **Revised 2026-06-20** (during S6 planning): the original version of this section assumed swuapi.com returns one image per *card face*, shared across every local variant of that base card. A live API check (`GET /cards/SOR_005?variant=all`) disproved this — Luke Skywalker's Standard, Hyperspace, Prerelease Judge, Prerelease Promo, and Showcase variants each returned a genuinely distinct `frontImageUrl` pointing at different CDN artwork. Each row in the local `cards` table already represents one specific local variant (one row per `card_number`, distinguished by the `is_foil`/`is_hyperspace`/`is_prestige`/`is_showcase` flags from migration 0002) — so no schema change is needed, only a corrected matching strategy below.
+
 `backend/app/ingestion/backfill_image_urls.py` — one-time run, idempotent:
 
-1. Fetch full card catalog from `GET https://api.swuapi.com/export/all`
-2. For each API record, match to database records by `set_code` + `base_card_number`
-3. Write `front_image_url` and `back_image_url` to all matched records (Standard, Foil, Hyperspace, and other local variants for that base card all share the same image URL)
-4. Log any unmatched API records (cards not yet in the local DB — likely a new set)
-5. After a successful run, regenerate `db/seeds/catalog_seed.sql` to capture the URLs
-
-> ⚠ Variant handling: swuapi.com returns one record per unique card face, not one per local variant. The same `front_image_url` should be written to all local variant rows (Standard, Foil, Hyperspace Foil, etc.) that share a `base_card_number`. Match on `base_card_number`, not `card_number`.
+1. For each local card row, determine its variant type from the existing boolean flags (`is_foil`, `is_hyperspace`, `is_prestige`, `is_showcase`, plus `is_organized_play`) and map it to the corresponding swuapi.com `variantType` (e.g. `Standard`, `Foil`, `Hyperspace`, `Hyperspace Foil`, `Prestige`, `Prestige Foil`).
+2. Query swuapi.com per base card via `?variant=all` (matched by `set_code` + `base_card_number`), which returns every variant face swuapi.com has for that card as a list.
+3. Within that list, match each local variant row to the swuapi.com record whose `variantType` corresponds, and write **that record's own** `frontImageUrl`/`backImageUrl` to the row — never broadcast one URL across multiple local variant rows.
+4. Scope this pass to our existing 8 local variant types only (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`) — swuapi.com exposes additional variant types (Judge, Showcase, Prerelease Promo, etc.) that we don't model locally yet; see `SWU_Backlog.md` BL-27.
+5. Log any local variant row with no corresponding swuapi.com match, and any unmatched API records (cards not yet in the local DB — likely a new set).
+6. After a successful run, regenerate `db/seeds/catalog_seed.sql` to capture the URLs.
 
 #### API Endpoint Change
 
@@ -648,6 +650,78 @@ When a new set releases:
 1. Run ingestion pipeline for new set CSVs (existing process)
 2. Run `backfill_image_urls.py` to populate image URLs for new cards
 3. Regenerate catalog seed
+
+---
+
+### 9.2 Card Detail Popup — S6 Specification
+
+**Goal:** Clicking a card row in Catalog or Inventory opens a modal showing the card's full detail: switchable variant image, complete ability text, and the remaining catalog metadata not already visible in the row. Modeled loosely on an example from another SWU community site (`specification_documents/card popup example.PNG`), with explicit simplifications.
+
+**Planned 2026-06-20. Claude Design pre-step required before implementation begins** — the actual layout/visual design happens in claude.ai, not here; this section captures the data and behavior requirements that constrain that design.
+
+#### Explicit Simplifications vs. the Reference Example
+
+- **No tabbed navigation.** The reference example splits "Card information" / "Add to collection" / "Price details" into tabs. We are not building "Add to collection" (redundant with the existing Inventory screen) or "Price details" (out of scope) — single unified view, no tabs.
+- **No rich text formatting.** The reference example renders bold/colored keyword headers (e.g. a red "RESTORE 2" banner). swuapi.com's text fields are plain strings with no embedded markup — confirmed via live API checks on two leader cards (Luke Skywalker, Grand Admiral Thrawn). Formatting is a front-end rendering rule (keyword pattern-matching), not stored data, and is explicitly deferred — v1 renders plain text.
+
+#### Image Behavior
+
+- Default to the card's **Standard** variant image on open.
+- Below the image, render one button per **existing** variant for that card — only variants actually present in the catalog for that `base_card_number` get a button (e.g. no "Prestige" button if that card has no Prestige printing).
+- Clicking a variant button swaps in that variant's own image — confirmed via live swuapi.com check that variants have genuinely distinct artwork, not a shared image with a CSS effect.
+- Scope to our existing 8 local variant types only (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`). Additional variant types swuapi.com exposes (Judge, Showcase, Prerelease Promo, etc.) are out of scope here — see `SWU_Backlog.md` BL-27.
+- If the card is a **Leader**, render an additional "flip" button (shown only for leaders) that swaps between `front_image_url` and `back_image_url` for the currently-selected variant.
+- **Depends on:** S5's revised backfill (Section 9.1) populating a genuinely distinct `front_image_url`/`back_image_url` per local variant row, not one shared URL per base card.
+
+#### Ability Text
+
+- New nullable columns on `card_details` (one row per card, per migration 0016's existing pattern):
+
+| Column | Type | Notes |
+|--------|------|-------|
+| front_text | TEXT | Leader front-side ability, or the card's only ability text for non-leader types. Sourced from swuapi.com `frontText`. |
+| back_text | TEXT | Leader back-side (deployed Unit) ability. NULL for non-leader types. Sourced from swuapi.com `backText`. |
+| epic_action | TEXT | Leader-only Epic Action text. NULL for non-leader types. Sourced from swuapi.com `epicAction`. |
+
+- Plain text, rendered as-is — no bold/italic/color, no bracket-token-to-icon substitution (e.g. `[Heroism]`, `[Exhaust]`) in v1.
+- Backfill these columns in the same per-variant pass as the image backfill (Section 9.1) — both pull from the same swuapi.com per-card lookup, so they should be a single combined script/pass rather than two separate ones.
+
+#### Remaining Metadata Fields
+
+All other fields shown in the reference example map directly to existing schema — no new columns needed:
+
+| Field | Source |
+|-------|--------|
+| Aspect(s) | `card_aspects` |
+| Type(s) | `cards.type` |
+| Arena | `card_details.arena` |
+| Cost | `card_details.cost` |
+| Trait(s) | `card_traits` |
+| Power | `card_details.power` |
+| Rarity | `cards.rarity` |
+| HP | `card_details.hp` |
+| Set | `sets.code` / `sets.name` |
+| Card Number | `cards.card_number` |
+
+Two fields from the reference example remain **open, pending `SWU_Backlog.md` BL-28**:
+
+- **Keyword(s)** — `card_keywords` table exists (migration 0016) but is unpopulated (`SWU_Backlog.md` BL-10). Whether this popup is what finally populates it depends on BL-28's broader swuapi.com-as-data-source analysis.
+- **Artist** — no column exists anywhere in the schema today. swuapi.com exposes an `artist` field per card. Whether/how to add it is deferred to the same BL-28 analysis rather than decided ad hoc here.
+
+#### API Endpoint Change
+
+Extend `CardResponse` schema:
+
+```python
+front_text: Optional[str] = None
+back_text: Optional[str] = None
+epic_action: Optional[str] = None
+```
+
+#### Frontend Changes
+
+- New modal component (name/location TBD at Claude Design handoff), invoked by clicking a card row in `CatalogPage`/`CatalogTable` and `InventoryPage`/`InventoryTable`.
+- Variant-button row and leader-flip button drive local component state (selected variant, selected face) — no new API calls on toggle; all variant image URLs and text are already present in the `GET /api/cards` response loaded for the page.
 
 ---
 

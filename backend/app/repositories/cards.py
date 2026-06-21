@@ -1,68 +1,53 @@
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.card import Card
+from app.models.base_card import BaseCard
+from app.models.card_variant import CardVariant
 from app.models.set_model import CardSet
 
 
-def get_cards(
+def get_variants(
     db: Session,
     set_code: str | None = None,
-    variant: str | None = None,
+    variant_type: str | None = None,
     type: str | None = None,
     rarity: str | None = None,
-) -> list[Card]:
-    q = db.query(Card).options(
-        selectinload(Card.card_set),
-        selectinload(Card.aspects),
-        selectinload(Card.keywords),
-        selectinload(Card.traits),
-        selectinload(Card.detail),
+) -> list[CardVariant]:
+    """Returns card_variants flattened with their base card's shared data
+    eager-loaded. set_code filters on the base card's own (base) set —
+    the base/long-tail provenance toggle (redesign spec §5.1/§5.2) is a
+    later UI step, not part of this CRUD-level port."""
+    q = (
+        db.query(CardVariant)
+        .join(BaseCard, CardVariant.base_card_id == BaseCard.id)
+        .options(
+            selectinload(CardVariant.base_card).selectinload(BaseCard.set),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.aspects),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.keywords),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.traits),
+        )
     )
     if set_code:
-        q = q.join(CardSet, Card.set_id == CardSet.id).filter(CardSet.code == set_code)
-    if type:
-        q = q.filter(Card.type == type)
-    if rarity:
-        q = q.filter(Card.rarity == rarity)
-    if variant:
-        q = _apply_variant_filter(q, variant)
-    return q.order_by(Card.base_card_number, Card.card_number).all()
-
-
-def get_card_by_id(db: Session, card_id: int) -> Card | None:
-    return (
-        db.query(Card)
-        .options(
-            selectinload(Card.card_set),
-            selectinload(Card.aspects),
-            selectinload(Card.keywords),
-            selectinload(Card.traits),
-            selectinload(Card.detail),
+        q = q.join(CardSet, BaseCard.set_id == CardSet.id).filter(
+            CardSet.code == set_code
         )
-        .filter(Card.id == card_id)
+    if type:
+        q = q.filter(BaseCard.type == type)
+    if rarity:
+        q = q.filter(BaseCard.rarity == rarity)
+    if variant_type:
+        q = q.filter(CardVariant.variant_type == variant_type)
+    return q.order_by(BaseCard.base_card_number, CardVariant.card_number).all()
+
+
+def get_variant_by_id(db: Session, variant_id: int) -> CardVariant | None:
+    return (
+        db.query(CardVariant)
+        .options(
+            selectinload(CardVariant.base_card).selectinload(BaseCard.set),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.aspects),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.keywords),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.traits),
+        )
+        .filter(CardVariant.id == variant_id)
         .first()
     )
-
-
-def _apply_variant_filter(q, variant: str):
-    match variant.lower():
-        case "foil":
-            return q.filter(Card.is_foil == True)
-        case "hyperspace":
-            return q.filter(Card.is_hyperspace == True)
-        case "prestige":
-            return q.filter(Card.is_prestige == True)
-        case "showcase":
-            return q.filter(Card.is_showcase == True)
-        case "organized_play":
-            return q.filter(Card.is_organized_play == True)
-        case "standard":
-            return q.filter(
-                Card.is_foil == False,
-                Card.is_hyperspace == False,
-                Card.is_prestige == False,
-                Card.is_showcase == False,
-                Card.is_organized_play == False,
-            )
-        case _:
-            return q

@@ -1,6 +1,10 @@
 """Integration tests for GET /api/inventory, POST /api/inventory/{id}/increment,
 and POST /api/inventory/{id}/decrement endpoints.
 
+Ported to base_cards/card_variants (BL-33 step 1): "card_id" is now
+"variant_id" in increment/decrement responses, and the fixture catalog
+(conftest's seed_minimal_catalog) replaces the old bulk CSV-seeded one.
+
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_inventory_api.py -v
 """
@@ -76,29 +80,27 @@ class TestIncrementCard:
 
     def test_increment_happy_path_returns_updated_quantity(self, client):
         solo = self._find_solo_zero_card(client)
-        if solo is None:
-            pytest.skip("No isolated zero-quantity non-singleton card available")
+        assert solo is not None, "fixture should include an isolated zero-qty card"
 
-        card_id = solo["id"]
-        response = client.post(f"/api/inventory/{card_id}/increment")
+        variant_id = solo["id"]
+        response = client.post(f"/api/inventory/{variant_id}/increment")
         assert response.status_code == 200
         body = response.json()
-        assert body["card_id"] == card_id
+        assert body["variant_id"] == variant_id
         assert body["quantity"] == 1
         assert body["blocked"] is False
 
         # Restore
-        client.post(f"/api/inventory/{card_id}/decrement")
+        client.post(f"/api/inventory/{variant_id}/decrement")
 
     def test_increment_to_playset_returns_playset_complete(self, client):
         solo = self._find_solo_zero_card(client)
-        if solo is None:
-            pytest.skip("No isolated zero-quantity non-singleton card available")
+        assert solo is not None, "fixture should include an isolated zero-qty card"
 
-        card_id = solo["id"]
-        client.post(f"/api/inventory/{card_id}/increment")
-        client.post(f"/api/inventory/{card_id}/increment")
-        response = client.post(f"/api/inventory/{card_id}/increment")
+        variant_id = solo["id"]
+        client.post(f"/api/inventory/{variant_id}/increment")
+        client.post(f"/api/inventory/{variant_id}/increment")
+        response = client.post(f"/api/inventory/{variant_id}/increment")
         assert response.status_code == 200
         body = response.json()
         assert body["playset_complete"] is True
@@ -106,18 +108,17 @@ class TestIncrementCard:
 
         # Restore
         for _ in range(3):
-            client.post(f"/api/inventory/{card_id}/decrement")
+            client.post(f"/api/inventory/{variant_id}/decrement")
 
     def test_increment_beyond_playset_returns_blocked(self, client):
         solo = self._find_solo_zero_card(client)
-        if solo is None:
-            pytest.skip("No isolated zero-quantity non-singleton card available")
+        assert solo is not None, "fixture should include an isolated zero-qty card"
 
-        card_id = solo["id"]
+        variant_id = solo["id"]
         for _ in range(3):
-            client.post(f"/api/inventory/{card_id}/increment")
+            client.post(f"/api/inventory/{variant_id}/increment")
 
-        response = client.post(f"/api/inventory/{card_id}/increment")
+        response = client.post(f"/api/inventory/{variant_id}/increment")
         assert response.status_code == 200
         body = response.json()
         assert body["blocked"] is True
@@ -126,15 +127,14 @@ class TestIncrementCard:
 
         # Restore
         for _ in range(3):
-            client.post(f"/api/inventory/{card_id}/decrement")
+            client.post(f"/api/inventory/{variant_id}/decrement")
 
     def test_singleton_increment_returns_playset_complete_at_1(self, client):
         singleton = self._find_zero_singleton(client)
-        if singleton is None:
-            pytest.skip("No zero-quantity Leader/Base card available")
+        assert singleton is not None, "fixture should include a zero-qty Leader/Base"
 
-        card_id = singleton["id"]
-        response = client.post(f"/api/inventory/{card_id}/increment")
+        variant_id = singleton["id"]
+        response = client.post(f"/api/inventory/{variant_id}/increment")
         assert response.status_code == 200
         body = response.json()
         assert body["quantity"] == 1
@@ -142,17 +142,16 @@ class TestIncrementCard:
         assert body["blocked"] is False
 
         # Restore
-        client.post(f"/api/inventory/{card_id}/decrement")
+        client.post(f"/api/inventory/{variant_id}/decrement")
 
     def test_singleton_increment_blocked_at_1(self, client):
         singleton = self._find_zero_singleton(client)
-        if singleton is None:
-            pytest.skip("No zero-quantity Leader/Base card available")
+        assert singleton is not None, "fixture should include a zero-qty Leader/Base"
 
-        card_id = singleton["id"]
-        client.post(f"/api/inventory/{card_id}/increment")
+        variant_id = singleton["id"]
+        client.post(f"/api/inventory/{variant_id}/increment")
 
-        response = client.post(f"/api/inventory/{card_id}/increment")
+        response = client.post(f"/api/inventory/{variant_id}/increment")
         assert response.status_code == 200
         body = response.json()
         assert body["blocked"] is True
@@ -160,7 +159,7 @@ class TestIncrementCard:
         assert body["quantity"] == 1
 
         # Restore
-        client.post(f"/api/inventory/{card_id}/decrement")
+        client.post(f"/api/inventory/{variant_id}/decrement")
 
     def test_increment_unknown_card_returns_404(self, client):
         response = client.post("/api/inventory/99999999/increment")
@@ -171,26 +170,24 @@ class TestDecrementCard:
     def test_decrement_happy_path_reduces_quantity(self, client):
         records = client.get("/api/inventory").json()
         zero_card = next((r for r in records if r["quantity"] == 0), None)
-        if zero_card is None:
-            pytest.skip("No zero-quantity card available for this test")
+        assert zero_card is not None, "fixture should include a zero-qty card"
 
-        card_id = zero_card["id"]
-        client.post(f"/api/inventory/{card_id}/increment")
+        variant_id = zero_card["id"]
+        client.post(f"/api/inventory/{variant_id}/increment")
 
-        response = client.post(f"/api/inventory/{card_id}/decrement")
+        response = client.post(f"/api/inventory/{variant_id}/decrement")
         assert response.status_code == 200
         body = response.json()
-        assert body["card_id"] == card_id
+        assert body["variant_id"] == variant_id
         assert body["quantity"] == 0
 
     def test_decrement_at_zero_stays_at_zero(self, client):
         records = client.get("/api/inventory").json()
         zero_card = next((r for r in records if r["quantity"] == 0), None)
-        if zero_card is None:
-            pytest.skip("No zero-quantity card available for this test")
+        assert zero_card is not None, "fixture should include a zero-qty card"
 
-        card_id = zero_card["id"]
-        response = client.post(f"/api/inventory/{card_id}/decrement")
+        variant_id = zero_card["id"]
+        response = client.post(f"/api/inventory/{variant_id}/decrement")
         assert response.status_code == 200
         body = response.json()
         assert body["quantity"] == 0

@@ -8,7 +8,7 @@ class CardWithInventoryResponse(CardResponse):
 
 
 class IncrementResponse(BaseModel):
-    card_id: int
+    variant_id: int
     quantity: int
     playset_complete: bool = False
     blocked: bool = False
@@ -16,5 +16,5 @@ class IncrementResponse(BaseModel):
 
 
 class DecrementResponse(BaseModel):
-    card_id: int
+    variant_id: int
     quantity: int

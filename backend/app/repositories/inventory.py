@@ -2,7 +2,8 @@ from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.card import Card
+from app.models.base_card import BaseCard
+from app.models.card_variant import CardVariant
 from app.models.inventory import Inventory
 
 
@@ -12,60 +13,64 @@ def _current_tenant_id(db: Session) -> int:
     ).scalar()
 
 
-def get_cards_with_inventory(db: Session) -> list[Card]:
+def get_variants_with_inventory(db: Session) -> list[CardVariant]:
     return (
-        db.query(Card)
+        db.query(CardVariant)
+        .join(BaseCard, CardVariant.base_card_id == BaseCard.id)
         .options(
-            selectinload(Card.card_set),
-            selectinload(Card.aspects),
-            selectinload(Card.keywords),
-            selectinload(Card.traits),
-            selectinload(Card.detail),
-            selectinload(Card.inventory),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.set),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.aspects),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.keywords),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.traits),
+            selectinload(CardVariant.inventory),
         )
-        .order_by(Card.base_card_number, Card.card_number)
+        .order_by(BaseCard.base_card_number, CardVariant.card_number)
         .all()
     )
 
 
-def get_card_with_inventory(db: Session, card_id: int) -> Card | None:
+def get_variant_with_inventory(db: Session, variant_id: int) -> CardVariant | None:
     return (
-        db.query(Card)
+        db.query(CardVariant)
         .options(
-            selectinload(Card.card_set),
-            selectinload(Card.aspects),
-            selectinload(Card.keywords),
-            selectinload(Card.traits),
-            selectinload(Card.detail),
-            selectinload(Card.inventory),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.set),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.aspects),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.keywords),
+            selectinload(CardVariant.base_card).selectinload(BaseCard.traits),
+            selectinload(CardVariant.inventory),
         )
-        .filter(Card.id == card_id)
+        .filter(CardVariant.id == variant_id)
         .first()
     )
 
 
-def get_base_card_total(db: Session, set_id: int, base_card_number: str) -> int:
+def get_base_card_total(db: Session, base_card_id: int) -> int:
+    """Sum of inventory.quantity across every variant of one base card.
+    Shared-pool cap for non-singleton types — ported 1:1 from the old
+    set_id+base_card_number key; BL-24 will later replace this with
+    independent per-variant caps, but that's its own backlog item, not
+    part of this schema port."""
     result = (
         db.query(func.sum(func.coalesce(Inventory.quantity, 0)))
-        .select_from(Card)
-        .outerjoin(Inventory, Card.id == Inventory.card_id)
-        .filter(Card.set_id == set_id, Card.base_card_number == base_card_number)
+        .select_from(CardVariant)
+        .outerjoin(Inventory, CardVariant.id == Inventory.variant_id)
+        .filter(CardVariant.base_card_id == base_card_id)
         .scalar()
     )
     return int(result) if result is not None else 0
 
 
-def upsert_increment(db: Session, card_id: int) -> Inventory:
-    """Atomically insert-or-increment the (tenant_id, card_id) row in a
-    single statement, relying on uq_inventory_tenant_id_card_id so
-    concurrent increments for the same card can't lose an update."""
+def upsert_increment(db: Session, variant_id: int) -> Inventory:
+    """Atomically insert-or-increment the (tenant_id, variant_id) row in a
+    single statement, relying on uq_inventory_tenant_id_variant_id so
+    concurrent increments for the same variant can't lose an update."""
     tenant_id = _current_tenant_id(db)
     table = Inventory.__table__
     stmt = (
         pg_insert(table)
-        .values(tenant_id=tenant_id, card_id=card_id, quantity=1)
+        .values(tenant_id=tenant_id, variant_id=variant_id, quantity=1)
         .on_conflict_do_update(
-            index_elements=["tenant_id", "card_id"],
+            index_elements=["tenant_id", "variant_id"],
             set_={"quantity": table.c.quantity + 1, "updated_at": func.now()},
         )
         .returning(table)
@@ -75,16 +80,16 @@ def upsert_increment(db: Session, card_id: int) -> Inventory:
     return Inventory(**row._mapping)
 
 
-def upsert_decrement(db: Session, card_id: int) -> Inventory:
-    """Atomically insert-or-decrement (clamped at 0) the (tenant_id, card_id)
-    row in a single statement, mirroring upsert_increment."""
+def upsert_decrement(db: Session, variant_id: int) -> Inventory:
+    """Atomically insert-or-decrement (clamped at 0) the (tenant_id,
+    variant_id) row in a single statement, mirroring upsert_increment."""
     tenant_id = _current_tenant_id(db)
     table = Inventory.__table__
     stmt = (
         pg_insert(table)
-        .values(tenant_id=tenant_id, card_id=card_id, quantity=0)
+        .values(tenant_id=tenant_id, variant_id=variant_id, quantity=0)
         .on_conflict_do_update(
-            index_elements=["tenant_id", "card_id"],
+            index_elements=["tenant_id", "variant_id"],
             set_={
                 "quantity": func.greatest(table.c.quantity - 1, 0),
                 "updated_at": func.now(),

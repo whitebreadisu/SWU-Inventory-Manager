@@ -6,10 +6,8 @@ from unittest.mock import MagicMock, patch
 from app.services.sets import get_all_sets, get_set_by_code
 
 
-def _make_set(code="SOR", name="Spark of Rebellion", has_unique=False):
-    return SimpleNamespace(
-        id=1, code=code, name=name, has_unique_variant_numbers=has_unique
-    )
+def _make_set(code="SOR", name="Spark of Rebellion", is_base_set=True):
+    return SimpleNamespace(id=1, code=code, name=name, is_base_set=is_base_set)
 
 
 class TestGetSetByCode:
@@ -30,12 +28,12 @@ class TestGetSetByCode:
         mock_db = MagicMock()
         with patch(
             "app.services.sets.set_repo.get_set_by_code",
-            return_value=_make_set("SOR", "Spark of Rebellion", False),
+            return_value=_make_set("SOR", "Spark of Rebellion", True),
         ):
             result = get_set_by_code(mock_db, "SOR")
             assert result.code == "SOR"
             assert result.name == "Spark of Rebellion"
-            assert result.has_unique_variant_numbers is False
+            assert result.is_base_set is True
 
 
 class TestGetAllSets:

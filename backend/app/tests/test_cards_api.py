@@ -1,5 +1,11 @@
 """Integration tests for GET /api/cards endpoints.
 
+Ported from the flat cards.is_foil/is_hyperspace shape to base_cards/
+card_variants (BL-33 step 1) — exercises the fixture catalog seeded by
+conftest's seed_minimal_catalog rather than the old bulk CSV-seeded
+catalog. The old 6-way `variant` enum filter is replaced by an exact
+`variant_type` match (open vocabulary, BL-27).
+
 Run inside the backend container:
     docker compose exec backend pytest app/tests/test_cards_api.py -v
 """
@@ -32,14 +38,12 @@ class TestListCards:
             assert "name" in card
             assert "rarity" in card
             assert "type" in card
-            assert "is_foil" in card
-            assert "is_hyperspace" in card
-            assert "is_prestige" in card
-            assert "is_showcase" in card
-            assert "is_organized_play" in card
+            assert "variant_type" in card
+            assert "source_set_code" in card
 
     def test_set_code_filter_returns_only_that_set(self, client):
         cards = client.get("/api/cards?set_code=SOR").json()
+        assert len(cards) > 0
         assert all(c["set_code"] == "SOR" for c in cards)
 
     def test_unknown_set_code_returns_empty_list(self, client):
@@ -52,23 +56,19 @@ class TestListCards:
         assert all(c["type"] == "Leader" for c in cards)
 
     def test_rarity_filter(self, client):
-        cards = client.get("/api/cards?set_code=SOR&rarity=L").json()
+        cards = client.get("/api/cards?set_code=SOR&rarity=Rare").json()
         assert len(cards) > 0
-        assert all(c["rarity"] == "L" for c in cards)
+        assert all(c["rarity"] == "Rare" for c in cards)
 
-    def test_variant_filter_foil(self, client):
-        cards = client.get("/api/cards?set_code=SOR&variant=foil").json()
-        assert all(c["is_foil"] for c in cards)
-
-    def test_variant_filter_standard(self, client):
-        cards = client.get("/api/cards?set_code=SOR&variant=standard").json()
+    def test_variant_type_filter_foil(self, client):
+        cards = client.get("/api/cards?set_code=SOR&variant_type=Foil").json()
         assert len(cards) > 0
-        for c in cards:
-            assert not c["is_foil"]
-            assert not c["is_hyperspace"]
-            assert not c["is_prestige"]
-            assert not c["is_showcase"]
-            assert not c["is_organized_play"]
+        assert all(c["variant_type"] == "Foil" for c in cards)
+
+    def test_variant_type_filter_standard(self, client):
+        cards = client.get("/api/cards?set_code=SOR&variant_type=Standard").json()
+        assert len(cards) > 0
+        assert all(c["variant_type"] == "Standard" for c in cards)
 
 
 class TestGetCardById:

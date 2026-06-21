@@ -99,3 +99,106 @@ def set_ids(db):
     from app.models.set_model import CardSet
 
     return {s.code: s.id for s in db.query(CardSet).all()}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def seed_minimal_catalog():
+    """BL-33 step 1: the production CSV-sourced catalog seed is retired
+    (BL-29 will repopulate base_cards/card_variants from swuapi, blocked on
+    BL-27's vocabulary census). Tests can no longer rely on a bulk-seeded
+    catalog with known counts (the old "977 SOR cards" pattern) — this
+    inserts a small, self-contained fixture catalog instead, scoped to SOR
+    (already is_base_set=true from the redesign migration). Idempotent via
+    ON CONFLICT DO NOTHING on swuapi_id, so it's safe across repeated runs
+    against a persistent dev database."""
+    if "DATABASE_URL" not in os.environ:
+        return
+
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        sor_id = db.execute(text("SELECT id FROM sets WHERE code = 'SOR'")).scalar()
+        if sor_id is None:
+            return
+
+        base_cards = [
+            # (swuapi_id, base_card_number, name, type, rarity)
+            ("test-0001", "9001", "Test Leader Alpha", "Leader", "Common"),
+            ("test-0002", "9002", "Test Base Alpha", "Base", "Common"),
+            ("test-0003", "9003", "Test Trooper Alpha", "Unit", "Common"),
+            ("test-0004", "9004", "Test Trooper Beta", "Unit", "Common"),
+            ("test-0005", "9005", "Test Officer Alpha", "Unit", "Rare"),
+        ]
+        base_card_ids = {}
+        for swuapi_id, number, name, type_, rarity in base_cards:
+            row = db.execute(
+                text(
+                    "INSERT INTO base_cards "
+                    "(set_id, base_card_number, name, type, rarity, swuapi_id) "
+                    "VALUES (:set_id, :number, :name, :type, :rarity, :swuapi_id) "
+                    "ON CONFLICT (swuapi_id) DO UPDATE SET name = EXCLUDED.name "
+                    "RETURNING id"
+                ),
+                {
+                    "set_id": sor_id,
+                    "number": number,
+                    "name": name,
+                    "type": type_,
+                    "rarity": rarity,
+                    "swuapi_id": swuapi_id,
+                },
+            ).first()
+            base_card_ids[swuapi_id] = row.id
+
+        variants = [
+            # (swuapi_id, base_card_swuapi_id, card_number, variant_type)
+            ("test-v0001", "test-0001", "9001", "Standard"),
+            ("test-v0002", "test-0002", "9002", "Standard"),
+            ("test-v0003", "test-0003", "9003", "Standard"),
+            ("test-v0004", "test-0004", "9004", "Standard"),
+            ("test-v0005", "test-0004", "9104", "Foil"),
+            ("test-v0006", "test-0005", "9005", "Standard"),
+        ]
+        variant_ids = {}
+        for swuapi_id, base_swuapi_id, card_number, variant_type in variants:
+            row = db.execute(
+                text(
+                    "INSERT INTO card_variants "
+                    "(base_card_id, variant_type, source_set_code, card_number, swuapi_id) "
+                    "VALUES (:base_card_id, :variant_type, 'SOR', :card_number, :swuapi_id) "
+                    "ON CONFLICT (swuapi_id) DO UPDATE SET card_number = EXCLUDED.card_number "
+                    "RETURNING id"
+                ),
+                {
+                    "base_card_id": base_card_ids[base_swuapi_id],
+                    "variant_type": variant_type,
+                    "card_number": card_number,
+                    "swuapi_id": swuapi_id,
+                },
+            ).first()
+            variant_ids[swuapi_id] = row.id
+
+        # Tenant #1 inventory: one nonzero row (Trooper Beta, Standard) so
+        # "has nonzero quantities"/RLS "count > 0" assertions hold; explicit
+        # zero rows on two more non-singleton base-card groups so
+        # tenant_isolation's "eligible tenant #1 rows" query has >=2 groups
+        # to pick from.
+        seed_inventory = [
+            ("test-v0004", 2),  # Trooper Beta, Standard
+            ("test-v0003", 0),  # Trooper Alpha, Standard (solo variant)
+            ("test-v0005", 0),  # Trooper Beta, Foil
+        ]
+        for swuapi_id, quantity in seed_inventory:
+            db.execute(
+                text(
+                    "INSERT INTO inventory (tenant_id, variant_id, quantity) "
+                    "VALUES (1, :variant_id, :quantity) "
+                    "ON CONFLICT (tenant_id, variant_id) DO UPDATE SET quantity = EXCLUDED.quantity"
+                ),
+                {"variant_id": variant_ids[swuapi_id], "quantity": quantity},
+            )
+
+        db.commit()
+    finally:
+        db.close()

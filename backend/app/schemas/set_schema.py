@@ -5,6 +5,6 @@ class SetResponse(BaseModel):
     id: int
     code: str
     name: str
-    has_unique_variant_numbers: bool
+    is_base_set: bool
 
     model_config = ConfigDict(from_attributes=True)

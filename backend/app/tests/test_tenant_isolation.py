@@ -49,8 +49,8 @@ def tenant_two(db):
     tenant is "current" -- the same property test_row_level_security.py's
     test_swu_user_bypasses_rls documents.
 
-    The two cards are chosen from distinct (set, base_card_number) groups
-    and excluding Leader/Base, so seeding tenant #2's rows at
+    The two variants are chosen from distinct (set, base_card_number)
+    groups and excluding Leader/Base, so seeding tenant #2's rows at
     SEEDED_QUANTITY can't trip app/services/inventory.py's
     singleton/playset "blocked" rules during the increment test below.
     """
@@ -70,12 +70,13 @@ def tenant_two(db):
         rows = db.execute(
             text(
                 """
-                SELECT DISTINCT ON (c.set_id, c.base_card_number)
-                       i.card_id, i.quantity
+                SELECT DISTINCT ON (bc.set_id, bc.base_card_number)
+                       i.variant_id, i.quantity
                 FROM inventory i
-                JOIN cards c ON c.id = i.card_id
-                WHERE i.tenant_id = 1 AND c.type NOT IN ('Leader', 'Base')
-                ORDER BY c.set_id, c.base_card_number, i.card_id
+                JOIN card_variants cv ON cv.id = i.variant_id
+                JOIN base_cards bc ON bc.id = cv.base_card_id
+                WHERE i.tenant_id = 1 AND bc.type NOT IN ('Leader', 'Base')
+                ORDER BY bc.set_id, bc.base_card_number, i.variant_id
                 LIMIT 2
                 """
             )
@@ -85,15 +86,15 @@ def tenant_two(db):
         card_ids = [r[0] for r in rows]
         tenant_one_quantities = {r[0]: r[1] for r in rows}
 
-        for card_id in card_ids:
+        for variant_id in card_ids:
             db.execute(
                 text(
-                    "INSERT INTO inventory (tenant_id, card_id, quantity) "
-                    "VALUES (:tenant_id, :card_id, :quantity)"
+                    "INSERT INTO inventory (tenant_id, variant_id, quantity) "
+                    "VALUES (:tenant_id, :variant_id, :quantity)"
                 ),
                 {
                     "tenant_id": tenant_id,
-                    "card_id": card_id,
+                    "variant_id": variant_id,
                     "quantity": SEEDED_QUANTITY,
                 },
             )
@@ -140,7 +141,7 @@ def test_naive_query_as_tenant_two_excludes_tenant_one_rows(app_db, tenant_two):
         {"tid": str(tenant_two["tenant_id"])},
     )
     rows = app_db.execute(
-        text("SELECT tenant_id, card_id, quantity FROM inventory")
+        text("SELECT tenant_id, variant_id, quantity FROM inventory")
     ).all()
     app_db.rollback()
 
@@ -156,7 +157,7 @@ def test_naive_query_as_tenant_one_excludes_tenant_two_rows(app_db, tenant_two):
     app_db.execute(text("SET LOCAL app.current_tenant_id = '1'"))
     rows = app_db.execute(
         text(
-            "SELECT card_id, tenant_id, quantity FROM inventory WHERE card_id = ANY(:card_ids)"
+            "SELECT variant_id, tenant_id, quantity FROM inventory WHERE variant_id = ANY(:card_ids)"
         ),
         {"card_ids": tenant_two["card_ids"]},
     ).all()
@@ -235,26 +236,27 @@ def test_increment_for_brand_new_tenant_creates_own_row(
 ):
     """Reproduces the P5 stage 4 bug: a freshly auto-provisioned tenant
     (zero inventory rows) increments a card for the first time."""
-    card_id = db.execute(
+    variant_id = db.execute(
         text(
             """
-            SELECT c.id FROM cards c
-            WHERE c.type NOT IN ('Leader', 'Base')
-            ORDER BY c.id
+            SELECT cv.id FROM card_variants cv
+            JOIN base_cards bc ON bc.id = cv.base_card_id
+            WHERE bc.type NOT IN ('Leader', 'Base')
+            ORDER BY cv.id
             LIMIT 1
             """
         )
     ).scalar()
 
-    response = tenant_three_client.post(f"/api/inventory/{card_id}/increment")
+    response = tenant_three_client.post(f"/api/inventory/{variant_id}/increment")
     assert response.status_code == 200
     assert response.json()["quantity"] == 1
 
     row = db.execute(
         text(
-            "SELECT tenant_id, quantity FROM inventory WHERE tenant_id = :tenant_id AND card_id = :card_id"
+            "SELECT tenant_id, quantity FROM inventory WHERE tenant_id = :tenant_id AND variant_id = :variant_id"
         ),
-        {"tenant_id": tenant_three["tenant_id"], "card_id": card_id},
+        {"tenant_id": tenant_three["tenant_id"], "variant_id": variant_id},
     ).first()
     assert row is not None
     assert row.tenant_id == tenant_three["tenant_id"]
@@ -275,7 +277,7 @@ def test_increment_for_tenant_two_does_not_affect_tenant_one(
 
     tenant_one_quantity = db.execute(
         text(
-            "SELECT quantity FROM inventory WHERE tenant_id = 1 AND card_id = :card_id"
+            "SELECT quantity FROM inventory WHERE tenant_id = 1 AND variant_id = :card_id"
         ),
         {"card_id": card_id},
     ).scalar()

@@ -28,7 +28,7 @@ class TestListSets:
             assert "id" in s
             assert "code" in s
             assert "name" in s
-            assert "has_unique_variant_numbers" in s
+            assert "is_base_set" in s
 
     def test_known_set_codes_present(self, client):
         codes = {s["code"] for s in client.get("/api/sets").json()}

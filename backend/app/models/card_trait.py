@@ -7,9 +7,9 @@ from app.models.base import Base
 class CardTrait(Base):
     __tablename__ = "card_traits"
 
-    card_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("cards.id"), primary_key=True
+    base_card_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("base_cards.id"), primary_key=True
     )
     trait: Mapped[str] = mapped_column(String(50), primary_key=True)
 
-    card: Mapped["Card"] = relationship("Card", back_populates="traits")
+    base_card: Mapped["BaseCard"] = relationship("BaseCard", back_populates="traits")

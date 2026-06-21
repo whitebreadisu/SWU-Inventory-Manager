@@ -685,7 +685,9 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Definition of done:** Migration adds `base_cards`/`card_variants` per the design above with `inventory` retargeted; BL-29's ingestion script populates both tables from swuapi keyed on `swuapi_id`; inventory snapshot regenerated and reload-tested; S6 built against `standard_variant_id`/`stamp_group`. Each numbered sequencing step can land as its own commit/PR rather than one large change.
 
-**Status:** 🔲 Open
+**Step 1 progress (2026-06-21):** Migration `0022_catalog_schema_redesign.py` landed — clean drop/recreate of `cards`/`card_details` into `base_cards`/`card_variants`, `sets` widened with `is_base_set`/`release_date`/`total_cards`/`swuapi_updated_at` (code column widened 3→4 chars for long-tail codes like `TS26`/`SORP`), `inventory.card_id` retargeted to `variant_id`. Full backend port (models/repositories/services/schemas/routers) landed in the same PR so the app boots; the F3/F4 CSV/Excel ingestion pipeline was retired outright (superseded by BL-29, not yet built) — see [`BL33_Step1_Test_Disposition_Log.md`](BL33_Step1_Test_Disposition_Log.md) for the full per-test disposition. The `variant_of_uuid` graph-invariant test (BL-34) was written test-first against a freshly captured full live export and found two corrections to `SWU_Standard_Variant_Mapping_Spec.md` itself: 143 real two-hop chains (not zero) and 15 standard-anchor exceptions (not 1) — both fixed in the mapping spec and exceptions file before the migration was written. 87/87 backend tests green. Frontend untouched (deferred to BL-25/27/S6). **Next:** BL-27 census (step 2) — handed to an Opus session per this item's original sequencing.
+
+**Status:** 🔲 Open — step 1 complete, step 2 (BL-27) next
 
 ---
 

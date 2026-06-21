@@ -56,9 +56,11 @@ SOR and JTL each have their own independent root. Nothing in JTL ever points to 
 
 Every SORP (Spark of Rebellion Weekly Play) card's `variant_of_uuid` points directly to a `uuid` in the **SOR** core set — never to another SORP row, never null. Spot-checked across 10 cards; pattern held for all of them. Confirmed structurally identical behavior for Convention Exclusive (C26) — see §5 Scenario G/H for the C26 table.
 
-### The integrity invariant this design depends on
+### The integrity invariant this design depends on — corrected 2026-06-21 against the full export
 
-**No multi-hop chains.** A non-root card's `variant_of_uuid` must always point directly to a root (a row whose own `variant_of_uuid` is `null`) — never to another non-root variant. Every example checked this session satisfies this, but it has not been verified across the *entire* export. This is the first assertion the large test in §8 must make, because if it's violated anywhere, the "root = base card" assumption underlying the whole schema breaks.
+**Multi-hop chains exist — resolution must walk to the ultimate root, not assume one hop.** The original wording here ("must always point directly to a root... never to another non-root variant") was written from a handful of spot-checked examples and is **factually wrong** against the full corpus. A full live capture of all 8,353 cards (2026-06-21, `backend/app/tests/fixtures/swuapi_export_2026-06-21.json`) found **143 two-hop chains**, concentrated in 6 Weekly Play/Promo container sets (P25: 44, P26: 23, LAWP: 20, SECP: 20, LOFP: 19, JTLP: 17), all following the same pattern: `"<X> Foil" → "<X>" → Standard root` — e.g. `JTLP_21 "Weekly Play Foil" → JTLP_1 "Weekly Play" → JTL_32 "Standard"`. The intermediate card (`JTLP_1`) is itself a non-root variant whose own `variant_of_uuid` correctly points to the JTL root; the foil sibling just points to the intermediate card instead of straight to the root.
+
+**The corrected invariant:** resolving any card's `base_card_id` requires **walking `variant_of_uuid` until reaching a row whose own `variant_of_uuid` is `null`** (the ultimate root) — not assuming a single hop. Zero hops beyond 2 were found in the full export; the invariant test (§8) should assert termination within a small bounded number of hops (and fail loudly if a cycle or an unexpectedly deep chain appears), not assume exactly one hop. This is a mechanism correction recorded here, not a vocabulary or product decision — it doesn't touch finish-vs-provenance modeling (§3.2) or `stamp_group` assignment, both still reserved for BL-27's Opus-level pass.
 
 ---
 
@@ -123,9 +125,9 @@ Five of six C26 cards are Scenario C (container-set variants of existing core-se
 Zam Wesell – "Not What She Seems" (C26, card #3) — the one row in the table above with `variant_of_uuid: null` whose own `variant_type` is `"Convention Exclusive"`, not `"Standard"`.
 **Assert:** this exact condition — root, non-`"Standard"` `variant_type` — is the precise, sole definition of "no standard anchor exists." See §6.
 
-### I. Chain-depth invariant
-All sets, all cards.
-**Assert:** no card's `variant_of_uuid` ever points to a row that is itself non-root (i.e., resolving any card's anchor takes at most one hop). See §3.
+### I. Chain-depth invariant — corrected 2026-06-21
+All sets, all cards. **143 real 2-hop chains exist**, all of the form `"<X> Foil" → "<X>" → Standard root`, concentrated in 6 Weekly Play/Promo container sets (P25, P26, LAWP, SECP, LOFP, JTLP) — see §3 for the corrected mechanism and confirmed examples.
+**Assert:** resolving any card's anchor terminates at a true root (`variant_of_uuid: null`) within a small bounded number of hops, with no cycles — not that it takes exactly one hop, which is false for 143 confirmed cards. See §3.
 
 ---
 
@@ -133,7 +135,7 @@ All sets, all cards.
 
 **Definition:** a card is a standard-anchor exception if and only if it is a root (`variant_of_uuid: null`) whose own `variant_type` is not `"Standard"`.
 
-This is intentionally narrow and structural — not "no card matched by name search," which was the (less precise) framing BL-28 originally used. As of 2026-06-20, exactly one card meets this definition: Zam Wesell – "Not What She Seems" (C26).
+This is intentionally narrow and structural — not "no card matched by name search," which was the (less precise) framing BL-28 originally used. **Corrected 2026-06-21:** the 2026-06-20 manual spot-check found only one example (Zam Wesell) because it sampled too few cards. A full census against the captured `/cards` export (8,353 records) finds **15** cards meeting this definition — see `swuapi_standard_variant_exceptions.md` for the current list and `swuapi_standard_variant_exceptions_review_2026-06-21.md` for the full diagnostic detail. Of the 15, **14 have a cross-set `(name, subtitle)` match to a real Standard-typed root elsewhere in the corpus** (most plausibly an unpopulated `variant_of_uuid` link on swuapi's side, not a true orphan) — these stay flagged exceptions regardless, per the philosophy below; `variant_of_uuid`, not name matching, is the authoritative mechanism, and name matching is not used to silently re-anchor them. Only **Zam Wesell** has no Standard match anywhere and remains the sole confirmed true orphan.
 
 **Philosophy:** exceptions are flagged, never block catalog inclusion, and are assumed to resolve over time as swuapi reveals more data (a future convention reveal, a future set, etc.) — not bugs in our ingestion logic to chase down. The C26 set itself (6 total cards, no release date, last-scraped today) and ASH (not yet released) are both examples of "in-development" containers; a card like this previewing unreleased content is expected behavior of a live, evolving data source, not a data-quality problem.
 
@@ -152,9 +154,9 @@ This is intentionally narrow and structural — not "no card matched by name sea
 
 - **Fixture-based, not live API calls in CI.** Capture the specific confirmed examples in §5 (and the full `/export/all` snapshot for the large test below) as test fixtures. Live `api.swuapi.com` queries are for occasional manual re-verification (confirming fixtures haven't drifted from reality), not part of the automated suite.
 - **The one large test:** load the captured full export, build the `variant_of_uuid` graph per set, and assert for every card:
-  1. It is either a root, or its `variant_of_uuid` resolves to exactly one root **within its own set** (§3, §5A-C).
-  2. No multi-hop chains exist anywhere in the dataset (§5I).
-  3. Every root either has `variant_type == "Standard"`, or is present in the current contents of `swuapi_standard_variant_exceptions.md` (§6).
+  1. It is either a root, or walking `variant_of_uuid` terminates at exactly one root **within its own set**, within a small bounded number of hops (§3, §5A-C, §5I — corrected 2026-06-21: chains up to 2 hops deep are real and expected, confirmed in 143 cards across 6 container sets; assert termination and boundedness, not single-hop).
+  2. No cycles exist anywhere in the dataset.
+  3. Every root either has `variant_type == "Standard"`, or is present in the current contents of `swuapi_standard_variant_exceptions.md` (§6 — currently 15 entries, not 1).
 - **Targeted tests per taxonomy row (§5B, D, E, F, G, H)** using the specific named examples in this document, so a regression in one scenario fails legibly and points at the right case, rather than only failing the one large test with no indication of which scenario broke.
 
 ---

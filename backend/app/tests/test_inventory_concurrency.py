@@ -2,9 +2,9 @@
 P7 Stage 2: concurrency-safe inventory updates.
 
 upsert_increment/upsert_decrement (app/repositories/inventory.py) now use a
-single atomic INSERT ... ON CONFLICT (tenant_id, card_id) DO UPDATE
+single atomic INSERT ... ON CONFLICT (tenant_id, variant_id) DO UPDATE
 statement, closing the lost-update race in the old SELECT-then-mutate-then-
-commit pattern: two concurrent requests for the same (tenant_id, card_id)
+commit pattern: two concurrent requests for the same (tenant_id, variant_id)
 could each read the same starting quantity, compute the same +1 in Python,
 and have one write clobber the other.
 
@@ -76,7 +76,9 @@ def test_concurrent_increments_are_not_lost(concurrency_tenant, db):
     moment (synchronized via a Barrier). Every increment must land --
     final quantity == NUM_WORKERS -- which the old read-then-write pattern
     could not guarantee under this kind of overlap."""
-    card_id = db.execute(text("SELECT id FROM cards ORDER BY id LIMIT 1")).scalar()
+    variant_id = db.execute(
+        text("SELECT id FROM card_variants ORDER BY id LIMIT 1")
+    ).scalar()
 
     app_engine = create_engine(os.environ["APP_DATABASE_URL"])
     AppSession = sessionmaker(bind=app_engine)
@@ -92,7 +94,7 @@ def test_concurrent_increments_are_not_lost(concurrency_tenant, db):
                 {"tid": str(concurrency_tenant)},
             )
             ready.wait()
-            inventory_repo.upsert_increment(session, card_id)
+            inventory_repo.upsert_increment(session, variant_id)
         except Exception as exc:  # pragma: no cover - surfaced via errors list
             errors.append(exc)
         finally:
@@ -109,9 +111,9 @@ def test_concurrent_increments_are_not_lost(concurrency_tenant, db):
 
     quantity = db.execute(
         text(
-            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"
+            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND variant_id = :vid"
         ),
-        {"tid": concurrency_tenant, "cid": card_id},
+        {"tid": concurrency_tenant, "vid": variant_id},
     ).scalar()
     db.rollback()
     assert quantity == NUM_WORKERS
@@ -122,7 +124,9 @@ def test_concurrent_decrements_clamp_at_zero(concurrency_tenant, db):
     the GREATEST(quantity - 1, 0) clause must keep every concurrent decrement
     from driving the row below zero (and from violating
     ck_inventory_quantity_non_negative)."""
-    card_id = db.execute(text("SELECT id FROM cards ORDER BY id DESC LIMIT 1")).scalar()
+    variant_id = db.execute(
+        text("SELECT id FROM card_variants ORDER BY id DESC LIMIT 1")
+    ).scalar()
 
     app_engine = create_engine(os.environ["APP_DATABASE_URL"])
     AppSession = sessionmaker(bind=app_engine)
@@ -138,7 +142,7 @@ def test_concurrent_decrements_clamp_at_zero(concurrency_tenant, db):
                 {"tid": str(concurrency_tenant)},
             )
             ready.wait()
-            inventory_repo.upsert_decrement(session, card_id)
+            inventory_repo.upsert_decrement(session, variant_id)
         except Exception as exc:  # pragma: no cover - surfaced via errors list
             errors.append(exc)
         finally:
@@ -155,9 +159,9 @@ def test_concurrent_decrements_clamp_at_zero(concurrency_tenant, db):
 
     quantity = db.execute(
         text(
-            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND card_id = :cid"
+            "SELECT quantity FROM inventory WHERE tenant_id = :tid AND variant_id = :vid"
         ),
-        {"tid": concurrency_tenant, "cid": card_id},
+        {"tid": concurrency_tenant, "vid": variant_id},
     ).scalar()
     db.rollback()
     assert quantity == 0

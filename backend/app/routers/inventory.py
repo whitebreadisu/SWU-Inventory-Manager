@@ -17,17 +17,17 @@ def list_inventory(db: Session = Depends(get_db)):
     return inventory_service.get_all_inventory(db)
 
 
-@router.post("/{card_id}/increment", response_model=IncrementResponse)
-def increment_card(card_id: int, db: Session = Depends(get_db)):
-    result = inventory_service.increment_card(db, card_id)
+@router.post("/{variant_id}/increment", response_model=IncrementResponse)
+def increment_card(variant_id: int, db: Session = Depends(get_db)):
+    result = inventory_service.increment_card(db, variant_id)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"Card {card_id} not found")
+        raise HTTPException(status_code=404, detail=f"Card {variant_id} not found")
     return result
 
 
-@router.post("/{card_id}/decrement", response_model=DecrementResponse)
-def decrement_card(card_id: int, db: Session = Depends(get_db)):
-    result = inventory_service.decrement_card(db, card_id)
+@router.post("/{variant_id}/decrement", response_model=DecrementResponse)
+def decrement_card(variant_id: int, db: Session = Depends(get_db)):
+    result = inventory_service.decrement_card(db, variant_id)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"Card {card_id} not found")
+        raise HTTPException(status_code=404, detail=f"Card {variant_id} not found")
     return result

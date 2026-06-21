@@ -2,6 +2,7 @@
 
 **Created:** 2026-06-20
 **Status:** Living target-design reference for the swuapi-first catalog/inventory rebuild. Authoritative for *what the redesigned system should be*; the work to get there is sequenced in `SWU_Backlog.md` BL-33.
+**Implementation status (2026-06-21):** Schema + ingestion (BL-33 steps 1–3, BL-27, BL-29) and the **frontend rewire + full UI redesign — §5 catalog/filters, popups (§5.3 / S6 / BL-31), inventory, two-axis Add Cards (§5.4) — are built and DEPLOYED TO PROD** (commits `e1832c0`..`8d33e86`, CI run 27910607802). Remaining: BL-33 step 4 (inventory snapshot regen). Open follow-ups surfaced post-ship: BL-44 (catalog perf at scale), BL-45 (popover polish), BL-46 (Add Cards UX rethink); still-deferred BL-32 / BL-39 / BL-40.
 **Origin:** Produced in the Opus design session called for by `SWU_Backlog.md` **Open Question E** ("swuapi-first counterfactual"). It captures the decisions made there so a later implementation session has a concrete spec to execute against rather than a conversation to re-derive.
 
 **Related:**

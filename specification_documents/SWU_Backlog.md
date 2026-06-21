@@ -35,9 +35,7 @@
 | BL-26 | Claude.ai design-system sync workflow — inspection needed      | 6 — Feature Enhancements  | The conversion layer (`components/*.jsx`, `screens/*/*.jsx`) that actually renders in claude.ai isn't covered by `source/src/` syncs; needs a dedicated session |
 | BL-27 | Additional card variant types (Judge, Showcase, Prerelease Promo, etc.) | 6 — Feature Enhancements  | Use swuapi.com to identify the full set of variant types beyond our existing 8; analyze and implement all touchpoints across the app |
 | BL-29 | Replace CSV-based catalog seed with swuapi.com | 6 — Feature Enhancements  | Build catalog creation (new environments / full rebuilds) directly from swuapi.com instead of the F3/F4 TCGPlayer CSV pipeline |
-| BL-30 | Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks) | 6 — Feature Enhancements  | Add every card in a precon product to inventory in one action instead of scanning each card; blocked on a decklist (card+quantity) data source swuapi doesn't provide |
-| BL-31 | Card detail popup — consolidated representation for stamp-only variants | 6 — Feature Enhancements  | Tournament/judge/prerelease variants that share one piece of art (differ only by a stamp) need one consolidated image on the popup, with per-variant inventory tracking preserved underneath |
-| BL-32 | Inline inventory editing — consolidated entry for tournament-tier variants | 6 — Feature Enhancements  | The flat per-variant +/- row pattern doesn't scale to cards with 5-6 tournament-tier variants; needs its own interaction pattern |
+| BL-30 | Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks) | 6 — Feature Enhancements  | Add every card in a precon product to inventory in one action instead of scanning each card; blocked on a decklist (card+quantity) data source swuapi doesn't provide || BL-32 | Inline inventory editing — consolidated entry for tournament-tier variants | 6 — Feature Enhancements  | The flat per-variant +/- row pattern doesn't scale to cards with 5-6 tournament-tier variants; needs its own interaction pattern |
 | BL-33 | Catalog schema redesign — `base_cards`/`card_variants` split, swuapi-id-keyed sync, scoped sequencing for BL-27/29/30/31/32/S6 | 6 — Feature Enhancements  | Replaces the flat boolean-flag `cards` table with an explicit base-card/variant model anchored on swuapi's own IDs; scopes BL-29 and orders the remaining swuapi-dependent backlog |
 | BL-34 | Standard variant mapping — test suite | 6 — Feature Enhancements  | Build the fixture-based test suite specified in `SWU_Standard_Variant_Mapping_Spec.md` §8, including the one large variant-graph invariant test |
 | BL-35 | Hard/soft inventory keep-limit mode (user override) | 6 — Feature Enhancements  | User-level preference toggling limit enforcement between hard cap (block adds past limit — today's behavior) and soft cap (commit over-limit cards with a visual over-limit warning). Universal rule, not per-variant |
@@ -52,6 +50,7 @@
 | BL-44 | Catalog performance at full scale | 4 — Operational Hardening | Catalog fetches all ~8,353 variant rows and renders all ~2,306 base-card rows at once (no virtualization/pagination) — render jank + heavy payload at full catalog size. Levers for later discussion: (1) virtualization/windowing (keep client-side filtering); (2) base-cards-with-nested-variants payload (~2.3k rows not 8.3k); (3) server-side pagination+filtering (heaviest, last resort) |
 | BL-45 | Bulletproof popover positioning (portal-based) | 5 — Opportunistic | Catalog Variants tooltip uses absolute positioning anchored to the button's right edge (good enough for the current right-edge column). For robustness against any column position / horizontal scroll / bottom-row vertical clipping, render the popover in a React portal with fixed positioning from the button's screen rect + edge detection. Polish; not urgent |
 | BL-46 | Add Cards experience — rethink with real-card exploration | 6 — Feature Enhancements | The two-axis (provenance × finish) Add Cards flow is functionally correct but the UX isn't satisfying at full catalog scale; needs hands-on exploration with real cards/examples to define the optimal add-to-inventory experience before redesigning |
+| BL-47 | Documentation reconnaissance & cleanup | 1 — Documentation Foundation | Audit the large, cross-referencing spec/doc set — decide per file keep/update/archive/consolidate and fix stale cross-references (e.g. ClaudeCode spec predates the catalog redesign); also rationalize the learning guide(s) |
 
 ### Completed
 
@@ -69,6 +68,7 @@
 | BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
 | BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
 | BL-28 | swuapi.com analysis — ongoing sync and schema alignment | 6 — Feature Enhancements | Five-phase analysis of swuapi.com's live export; produced BL-29/30/31/32 and a field-by-field schema delta |
+| BL-31 | Card detail popup — consolidated stamp-only variants | 6 — Feature Enhancements | Popup consolidates variants by `stamp_group` into one representative image with per-variant inventory underneath; shipped in the catalog redesign frontend rewire, deployed 2026-06-21 |
 
 ---
 
@@ -166,6 +166,18 @@ These come first because they fix the "two specs at different detail levels" pro
 **Definition of done:** Sections 6.4 and 7.5 reconciled with what S3/S4 actually built — either updated in place, or explicitly marked "superseded by [component] — see [file]" with a pointer. Any other mismatches found during the pass are each either fixed in place or recorded as their own backlog item.
 
 **Status:** ✅ Resolved 2026-06-15 — Seven fixes across Sections 6-9: (1) Section 6.4 opening callout rewritten from "this endpoint powers the core UX" to "Not implemented" with correct S4 pointer; (2) removed the stale "(S3)" implementation-decision note (decision was S4); (3) Section 7.4 intro updated from "card number lookup flow" to "Add Cards modal (Section 7.5)"; (4) Section 7.5 renamed from "Core Interaction: Card Number Lookup & Inventory Update" to "Add Cards Modal (S4)" and rewritten to describe the actual modal flow (button → modal → set bar → keypad → chip list → verification → commit) rather than a "persistent search/input field"; (5) Section 8.2 note updated `SWU_Platform_Learning_Guide.md` → `SWU_Learning_Guide.md`; (6) Section 9 table and (7) Section 9.1 header: "S6" → "S5" (pre-recount artifact).
+
+---
+
+### BL-47: Documentation reconnaissance & cleanup
+
+**What:** The documentation set has grown into a web of cross-referencing files — `SWU_ClaudeCode_Spec.md`, `SWU_Catalog_Redesign_Spec.md`, `SWU_Platform_Spec.md`, `SWU_Standard_Variant_Mapping_Spec.md`, `swuapi_standard_variant_exceptions.md`, this backlog, `SWU_Platform_Roadmap.md`, the learning guide(s), and `learning_journal/` — and it's no longer clear what is current, stale, superseded, or duplicative. Do a deliberate recon pass: inventory every doc, decide **keep / update / archive / consolidate** for each, then fix or remove stale cross-references and establish a clear "which doc is authoritative for what" map.
+
+**Why:** Raised by Jeremy 2026-06-21 after the catalog redesign shipped. Concrete drift example: `SWU_ClaudeCode_Spec.md` still describes the pre-redesign `cards` boolean-flag schema, the old OP-flag Add Cards resolver (§7.5 / S4), and S5/S6 as future slices — all superseded by `SWU_Catalog_Redesign_Spec.md` and the 2026-06-21 frontend rewire (only lightly patched in place so far, with pointers, pending this pass). The learning guide is also significantly out of date; for now a standalone per-session guide was created for the catalog-redesign session, to be integrated (or not) during this recon.
+
+**Definition of done:** A documented disposition for each spec/guide/journal file (keep/update/archive/consolidate + reason); stale cross-references resolved; an authoritative-source map (data model, platform, UX, variant mechanism, backlog). Likely an Opus analysis session.
+
+**Status:** 🔲 Open
 
 ---
 
@@ -708,7 +720,7 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Definition of done:** Not yet scoped — needs a decision on what "consolidated" looks like (one shared image per tier-family vs. a single image with a rendered badge/overlay) and how the popup's variant-selection UI surfaces per-variant inventory state without one button per stamp.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-21 — shipped in the catalog redesign frontend rewire (commit `bf5d95d`, deployed via CI run 27910607802). `CardDetailPopup` consolidates a base card's variants by `stamp_group` — the unstamped anchor (else the first member) stands in for the whole same-art/same-finish stamp family as one representative button — while per-variant inventory stays tracked underneath via the full variant list. The `stamp_group` column was populated at ingestion per BL-27 §10.5. Consolidated *inline* editing for tournament tiers is the separate, still-open BL-32.
 
 ---
 

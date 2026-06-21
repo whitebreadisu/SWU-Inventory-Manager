@@ -89,7 +89,12 @@ export function applyFilters(cards: BaseCard[], filters: FilterState): BaseCard[
       if (!card.aspects.some((a) => filters.aspects.has(a))) return false;
     }
 
-    if (filters.set.size && !filters.set.has(card.set_code)) return false;
+    if (filters.set.size) {
+      const matchesSet =
+        filters.set.has(card.set_code) ||
+        card.variants.some((v) => filters.set.has(v.source_set_code));
+      if (!matchesSet) return false;
+    }
     if (filters.type.size && !filters.type.has(card.type)) return false;
     if (filters.rarity.size && !filters.rarity.has(card.rarity)) return false;
 

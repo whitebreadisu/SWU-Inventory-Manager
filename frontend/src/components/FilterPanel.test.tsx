@@ -129,12 +129,65 @@ describe("applyFilters", () => {
     const result = applyFilters([nullCost], filters);
     expect(result).toHaveLength(0);
   });
+
+  // Change A (redesign spec §5.2): the Set filter is provenance-layered —
+  // a base card matches if its own set_code is selected, OR any of its
+  // variants' source_set_code is selected. This makes long-tail/container
+  // set selections (e.g. a Weekly Play set) return the base cards that have
+  // a promo variant sourced from that set, even though the base card's own
+  // set_code is a root set like SOR.
+  it("matches a base card on a long-tail container set via variant source_set_code", () => {
+    const rootOnly = makeCard({
+      base_card_number: "001",
+      set_code: "SOR",
+      variants: [makeVariant({ source_set_code: "SOR" })],
+    });
+    const withLongTailVariant = makeCard({
+      base_card_number: "002",
+      set_code: "SOR",
+      variants: [
+        makeVariant({ variant_id: 1, source_set_code: "SOR" }),
+        makeVariant({ variant_id: 2, source_set_code: "LOFP", card_number: "P1" }),
+      ],
+    });
+    const filters: FilterState = {
+      ...DEFAULT_FILTERS,
+      aspects: new Set(DEFAULT_FILTERS.aspects),
+      set: new Set(["LOFP"]),
+    };
+    const result = applyFilters([rootOnly, withLongTailVariant], filters);
+    expect(result).toHaveLength(1);
+    expect(result[0].base_card_number).toBe("002");
+  });
+
+  it("still matches a base card by its own set_code when no variant carries that source", () => {
+    const card = makeCard({ set_code: "SOR", variants: [makeVariant({ source_set_code: "SOR" })] });
+    const filters: FilterState = {
+      ...DEFAULT_FILTERS,
+      aspects: new Set(DEFAULT_FILTERS.aspects),
+      set: new Set(["SOR"]),
+    };
+    const result = applyFilters([card], filters);
+    expect(result).toHaveLength(1);
+  });
 });
 
 // ── FilterPanel set toggle (§5.1) ──────────────────────────────────────────
 
-const BASE_SET: CardSet = { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true };
-const LONG_TAIL_SET: CardSet = { id: 2, code: "PRM", name: "Promotional", is_base_set: false };
+const BASE_SET: CardSet = {
+  id: 1,
+  code: "SOR",
+  name: "Spark of Rebellion",
+  is_base_set: true,
+  release_date: "2024-03-08",
+};
+const LONG_TAIL_SET: CardSet = {
+  id: 2,
+  code: "PRM",
+  name: "Promotional",
+  is_base_set: false,
+  release_date: null,
+};
 
 describe("FilterPanel set toggle", () => {
   function setup() {

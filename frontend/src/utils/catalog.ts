@@ -54,7 +54,35 @@ export function parseCardDisplay(card: BaseCard): { displayName: string; subtitl
   return { displayName: card.name, subtitle: card.subtitle };
 }
 
-export function groupByBaseCard(cards: Card[]): BaseCard[] {
+/** set_code → release_date (nullable ISO date string), used to order sets by
+ * release for the standard sort (redesign spec §5.2/§5.3). Built by callers
+ * from `getSets()` so catalog.ts doesn't depend on the sets API directly. */
+export type SetOrderMap = Record<string, string | null>;
+
+/** Standard sort: (1) set in release order, nulls last tiebroken by
+ * set_code, (2) tokens last within a set, (3) base_card_number ascending
+ * (numeric). Shared by Catalog and Inventory so both screens render rows in
+ * the same order — see CatalogPage.tsx / InventoryPage.tsx. */
+export function sortBaseCards<T extends BaseCard>(cards: T[], setOrder: SetOrderMap = {}): T[] {
+  const setRank = (setCode: string): [number, string] => {
+    const releaseDate = setOrder[setCode];
+    if (releaseDate == null) return [1, setCode];
+    return [0, releaseDate];
+  };
+
+  return cards.slice().sort((a, b) => {
+    const [aHasDate, aKey] = setRank(a.set_code);
+    const [bHasDate, bKey] = setRank(b.set_code);
+    if (aHasDate !== bHasDate) return aHasDate - bHasDate;
+    if (aKey !== bKey) return aKey < bKey ? -1 : 1;
+
+    if (a.is_token !== b.is_token) return Number(a.is_token) - Number(b.is_token);
+
+    return a.base_card_number.localeCompare(b.base_card_number, undefined, { numeric: true });
+  });
+}
+
+export function groupByBaseCard(cards: Card[], setOrder: SetOrderMap = {}): BaseCard[] {
   const map = new Map<number, BaseCard>();
 
   for (const card of cards) {
@@ -84,8 +112,5 @@ export function groupByBaseCard(cards: Card[]): BaseCard[] {
     base.variants.push(toVariant(card));
   }
 
-  return Array.from(map.values()).sort((a, b) => {
-    if (a.set_code !== b.set_code) return a.set_code.localeCompare(b.set_code);
-    return a.base_card_number.localeCompare(b.base_card_number, undefined, { numeric: true });
-  });
+  return sortBaseCards(Array.from(map.values()), setOrder);
 }

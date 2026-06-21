@@ -102,17 +102,18 @@ def set_ids(db):
 
 
 BASE_SETS = [
-    # (code, name) -- in canonical release order; see CLAUDE.md's Set Codes
-    # table. Only relied on here and by test_sets_api.py's canonical-order
-    # assertions, now that catalog_seed.sql (which used to seed `sets` on a
-    # fresh DB) is retired with the CSV pipeline (BL-33 step 1).
-    ("SOR", "Spark of Rebellion"),
-    ("SHD", "Shadows of the Galaxy"),
-    ("TWI", "Twilight of the Republic"),
-    ("JTL", "Jump to Lightspeed"),
-    ("LOF", "Legends of the Force"),
-    ("SEC", "Secrets of Power"),
-    ("LAW", "A Lawless Time"),
+    # (code, name, release_date) -- in canonical release order; see CLAUDE.md's
+    # Set Codes table. Only relied on here and by test_sets_api.py's
+    # canonical-order / release-date assertions, now that catalog_seed.sql
+    # (which used to seed `sets` on a fresh DB) is retired with the CSV
+    # pipeline (BL-33 step 1).
+    ("SOR", "Spark of Rebellion", "2024-03-08"),
+    ("SHD", "Shadows of the Galaxy", "2024-08-02"),
+    ("TWI", "Twilight of the Republic", "2024-11-08"),
+    ("JTL", "Jump to Lightspeed", "2025-03-14"),
+    ("LOF", "Legends of the Force", "2025-06-06"),
+    ("SEC", "Secrets of Power", "2025-09-12"),
+    ("LAW", "A Lawless Time", "2025-12-05"),
 ]
 
 
@@ -134,14 +135,14 @@ def seed_minimal_catalog():
 
     db = SessionLocal()
     try:
-        for code, name in BASE_SETS:
+        for code, name, release_date in BASE_SETS:
             db.execute(
                 text(
-                    "INSERT INTO sets (code, name, is_base_set) "
-                    "VALUES (:code, :name, true) "
+                    "INSERT INTO sets (code, name, is_base_set, release_date) "
+                    "VALUES (:code, :name, true, :release_date) "
                     "ON CONFLICT (code) DO NOTHING"
                 ),
-                {"code": code, "name": name},
+                {"code": code, "name": name, "release_date": release_date},
             )
         db.commit()
 

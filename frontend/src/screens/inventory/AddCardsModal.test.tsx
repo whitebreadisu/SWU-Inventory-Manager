@@ -12,8 +12,20 @@ import type { CardWithQty } from "../../api/inventory";
 
 vi.mock("../../api/sets", () => ({
   getSets: vi.fn().mockResolvedValue([
-    { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true },
-    { id: 4, code: "JTL", name: "Jump to Lightspeed", is_base_set: true },
+    {
+      id: 1,
+      code: "SOR",
+      name: "Spark of Rebellion",
+      is_base_set: true,
+      release_date: "2024-03-08",
+    },
+    {
+      id: 4,
+      code: "JTL",
+      name: "Jump to Lightspeed",
+      is_base_set: true,
+      release_date: "2025-03-14",
+    },
   ]),
 }));
 vi.mock("../../api/inventory", () => ({

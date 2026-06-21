@@ -1,4 +1,5 @@
-import type { BaseCard, Variant } from "./catalog";
+import type { BaseCard, SetOrderMap, Variant } from "./catalog";
+import { sortBaseCards } from "./catalog";
 import type { CardWithQty } from "../api/inventory";
 
 export const PLAYSET_SIZE = 3;
@@ -30,7 +31,10 @@ export interface InventoryCard extends BaseCard {
   inventory: Record<number, number>;
 }
 
-export function groupWithInventory(cards: CardWithQty[]): InventoryCard[] {
+export function groupWithInventory(
+  cards: CardWithQty[],
+  setOrder: SetOrderMap = {}
+): InventoryCard[] {
   const map = new Map<number, InventoryCard>();
 
   for (const card of cards) {
@@ -74,10 +78,7 @@ export function groupWithInventory(cards: CardWithQty[]): InventoryCard[] {
     base.inventory[card.id] = card.quantity;
   }
 
-  return Array.from(map.values()).sort((a, b) => {
-    if (a.set_code !== b.set_code) return a.set_code.localeCompare(b.set_code);
-    return a.base_card_number.localeCompare(b.base_card_number, undefined, { numeric: true });
-  });
+  return sortBaseCards(Array.from(map.values()), setOrder);
 }
 
 export function cardOwnedTotalFromVariants(variants: InventoryVariant[]): number {

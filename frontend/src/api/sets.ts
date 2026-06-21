@@ -5,6 +5,7 @@ export interface CardSet {
   code: string;
   name: string;
   is_base_set: boolean;
+  release_date: string | null;
 }
 
 export async function getSets(): Promise<CardSet[]> {

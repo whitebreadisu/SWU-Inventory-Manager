@@ -49,8 +49,14 @@ function makeCard(overrides: Partial<Card> = {}): Card {
 }
 
 const SETS: CardSet[] = [
-  { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true },
-  { id: 2, code: "SHD", name: "Shadows of the Galaxy", is_base_set: true },
+  { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true, release_date: "2024-03-08" },
+  {
+    id: 2,
+    code: "SHD",
+    name: "Shadows of the Galaxy",
+    is_base_set: true,
+    release_date: "2024-08-02",
+  },
 ];
 
 function makeDetail(overrides: Partial<BaseCardDetail> = {}): BaseCardDetail {

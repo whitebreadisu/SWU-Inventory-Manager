@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { getInventory } from "../../api/inventory";
+import { getSets } from "../../api/sets";
 import { groupWithInventory, isPlaysetComplete } from "../../utils/inventory";
 import { InventorySummary } from "./InventorySummary";
 import { InventoryTable } from "./InventoryTable";
@@ -11,7 +12,7 @@ import { AddCardsModal } from "./AddCardsModal";
 import type { InventoryCard } from "../../utils/inventory";
 import type { CardWithQty } from "../../api/inventory";
 import type { FilterState } from "../../components/FilterPanel";
-import type { BaseCard } from "../../utils/catalog";
+import type { BaseCard, SetOrderMap } from "../../utils/catalog";
 import "./inventory.css";
 
 export function InventoryPage() {
@@ -24,11 +25,11 @@ export function InventoryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBaseCardId, setSelectedBaseCardId] = useState<number | null>(null);
   const [inventoryPopupBaseCardId, setInventoryPopupBaseCardId] = useState<number | null>(null);
+  const [setOrder, setSetOrder] = useState<SetOrderMap>({});
 
   const fetchInventory = useCallback(async () => {
     const raw = await getInventory();
     setRawCards(raw);
-    setCards(groupWithInventory(raw));
   }, []);
 
   useEffect(() => {
@@ -36,6 +37,22 @@ export function InventoryPage() {
       .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
   }, [fetchInventory]);
+
+  useEffect(() => {
+    getSets()
+      .then((sets) => {
+        const orderMap: SetOrderMap = {};
+        sets.forEach((s) => {
+          orderMap[s.code] = s.release_date;
+        });
+        setSetOrder(orderMap);
+      })
+      .catch((err) => console.error("Failed to load sets:", err));
+  }, []);
+
+  useEffect(() => {
+    setCards(groupWithInventory(rawCards, setOrder));
+  }, [rawCards, setOrder]);
 
   const filtered = useMemo(() => {
     let result = applyFilters(cards as BaseCard[], filters) as InventoryCard[];

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { getCards, type Card } from "../api/cards";
 import { getSets } from "../api/sets";
 import { groupByBaseCard, parseCardDisplay } from "../utils/catalog";
+import type { SetOrderMap } from "../utils/catalog";
 import { getRarityLabel } from "../utils/variants";
 import { AspectIcon } from "./AspectIcon";
 import { VariantsTooltip } from "./VariantsTooltip";
@@ -17,6 +18,7 @@ export function CatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [setNameByCode, setSetNameByCode] = useState<Record<string, string>>({});
+  const [setOrder, setSetOrder] = useState<SetOrderMap>({});
   const [selectedBaseCardId, setSelectedBaseCardId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -29,16 +31,19 @@ export function CatalogPage() {
   useEffect(() => {
     getSets()
       .then((sets) => {
-        const map: Record<string, string> = {};
+        const nameMap: Record<string, string> = {};
+        const orderMap: SetOrderMap = {};
         sets.forEach((s) => {
-          map[s.code] = s.name;
+          nameMap[s.code] = s.name;
+          orderMap[s.code] = s.release_date;
         });
-        setSetNameByCode(map);
+        setSetNameByCode(nameMap);
+        setSetOrder(orderMap);
       })
       .catch((err) => console.error("Failed to load sets:", err));
   }, []);
 
-  const baseCards = useMemo(() => groupByBaseCard(allCards), [allCards]);
+  const baseCards = useMemo(() => groupByBaseCard(allCards, setOrder), [allCards, setOrder]);
 
   const filtered = useMemo(() => applyFilters(baseCards, filters), [baseCards, filters]);
 

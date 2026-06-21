@@ -68,7 +68,9 @@ def _normalize(value: str | None) -> str:
     return (value or "").strip().lower()
 
 
-def _resolve_root(card: dict, by_uuid: dict[str, dict], max_hops: int = MAX_HOPS) -> dict:
+def _resolve_root(
+    card: dict, by_uuid: dict[str, dict], max_hops: int = MAX_HOPS
+) -> dict:
     """Walk variant_of_uuid until a root (variant_of_uuid: null) is found.
     Mapping spec §3/§8: must walk to the *ultimate* root, not assume one hop."""
     seen = {card["uuid"]}
@@ -274,14 +276,14 @@ def render_exceptions_doc(exceptions: list[dict]) -> str:
         "",
         "**Definition (refined 2026-06-21, per BL-27):** a card is a "
         "standard-anchor exception if and only if it is a root "
-        '(`variant_of_uuid: null`) whose own `variant_type` is **not** '
+        "(`variant_of_uuid: null`) whose own `variant_type` is **not** "
         '"Standard" **and** it has **no unique non-token `(name, subtitle)` '
         "match** to a Standard root elsewhere in the corpus (i.e. the "
         "fallback below cannot resolve it). See "
         "[`SWU_Standard_Variant_Mapping_Spec.md`](SWU_Standard_Variant_Mapping_Spec.md) "
         "§6 for the full definition and philosophy.",
         "",
-        "The 2026-06-21 census found **15** structural non-`\"Standard\"` "
+        'The 2026-06-21 census found **15** structural non-`"Standard"` '
         "roots. Per Jeremy's BL-27 decision, **14 are treated as swuapi "
         "data errors** (an unpopulated `variant_of_uuid` link) and "
         "**re-anchored** to their Standard printing via a case-insensitive "

@@ -49,7 +49,9 @@ def upsert_sets(db: Session, sets: list[dict]) -> None:
 
 
 def upsert_base_cards(db: Session, base_cards: list[dict]) -> dict[str, int]:
-    set_ids = {row.code: row.id for row in db.execute(text("SELECT id, code FROM sets"))}
+    set_ids = {
+        row.code: row.id for row in db.execute(text("SELECT id, code FROM sets"))
+    }
     base_card_ids: dict[str, int] = {}
     for bc in base_cards:
         params = {**bc, "set_id": set_ids[bc["set_code"]]}
@@ -179,9 +181,13 @@ def run_ingestion(export: dict, db: Session | None = None) -> IngestionResult:
         upsert_sets(db, result.sets)
         base_card_ids = upsert_base_cards(db, result.base_cards)
         variant_ids = upsert_card_variants(db, result.card_variants, base_card_ids)
-        update_standard_variant_ids(db, result.card_variants, base_card_ids, variant_ids)
+        update_standard_variant_ids(
+            db, result.card_variants, base_card_ids, variant_ids
+        )
         upsert_attributes(db, "card_aspects", "aspect", result.aspects, base_card_ids)
-        upsert_attributes(db, "card_keywords", "keyword", result.keywords, base_card_ids)
+        upsert_attributes(
+            db, "card_keywords", "keyword", result.keywords, base_card_ids
+        )
         upsert_attributes(db, "card_traits", "trait", result.traits, base_card_ids)
         db.commit()
         return result

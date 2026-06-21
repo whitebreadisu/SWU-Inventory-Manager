@@ -74,7 +74,9 @@ def test_non_token_non_standard_roots_are_reanchored_to_their_standard_match(res
         if cv["source_set_code"] == "C25" and cv["card_number"] == "2"
     )
     base_card = next(
-        bc for bc in result.base_cards if bc["swuapi_id"] == variant["base_card_swuapi_id"]
+        bc
+        for bc in result.base_cards
+        if bc["swuapi_id"] == variant["base_card_swuapi_id"]
     )
     assert base_card["set_code"] == "JTL"
     assert base_card["base_card_number"] == "145"
@@ -118,7 +120,8 @@ def test_serialized_prestige_collision_retained_as_distinct_variants(result):
     senator_variants = [
         cv
         for cv in result.card_variants
-        if cv["source_set_code"] == "SEC" and cv["variant_type"] == "Serialized Prestige"
+        if cv["source_set_code"] == "SEC"
+        and cv["variant_type"] == "Serialized Prestige"
     ]
     from collections import Counter
 
@@ -138,7 +141,9 @@ def test_identical_image_collisions_are_flagged(result):
 
 def test_card_variants_keyed_on_swuapi_id_not_base_card_and_variant_type(result):
     """§4.3/§10.8: (base_card_id, variant_type) must not be unique."""
-    keys = [(cv["base_card_swuapi_id"], cv["variant_type"]) for cv in result.card_variants]
+    keys = [
+        (cv["base_card_swuapi_id"], cv["variant_type"]) for cv in result.card_variants
+    ]
     assert len(keys) != len(set(keys))
 
 

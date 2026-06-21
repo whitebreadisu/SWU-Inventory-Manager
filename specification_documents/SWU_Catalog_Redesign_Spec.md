@@ -49,11 +49,11 @@ The original 8-variant model conflated two independent dimensions:
 
 "OP" and "OP Foil" in the old model were never finishes — they were *(provenance = Weekly Play) × (finish = Standard/Foil)*. The redesign models the two axes separately: `card_variants.variant_type` (finish) and `card_variants.source_set_code` (provenance).
 
-> **Caveat — must be confirmed by BL-27 before the vocabulary is frozen.** swuapi's `variant_type` is not *purely* a finish across the long tail — some values (e.g. "Prerelease Judge", "Showcase", "Prerelease Promo") read as provenance/treatment labels rather than finishes, and the precise relationship between swuapi's *set* and its *variant_type* for the long tail has not been exhaustively verified. This document models the **intent** (finish and provenance as separate, independently filterable axes); **BL-27's enumeration must resolve, against live swuapi data, exactly which `variant_type` values are finishes vs. provenance-bearing, and whether any need to be normalized into `source_set_code`.** Do not freeze the variant vocabulary or the §4.3 columns until that is done.
+> **Resolved by BL-27 (2026-06-21) — see §10.** The vocabulary is now frozen. `variant_type` is stored **raw** (swuapi's verbatim label), with a **curated classification** mapping each value to `finish` / `channel` / `stamped` / `stamp_family`. The 8 finishes are frozen (§10.3); provenance (`channel`) is **derived from `variant_type` + `source_set_code`** because the encoding is inconsistent (§10.4); nothing is normalized into `source_set_code`.
 
 ### 3.3 Standard anchor & exceptions
 
-Per the mapping spec: a **root** has `variant_of_uuid: null` and is the standard-bearing printing within its set. A **standard-anchor exception** is a root whose own `variant_type` is not `"Standard"` (currently only Zam Wesell — see the exceptions file). Consequently `base_cards.standard_variant_id` must be **nullable**. Exceptions are flagged, never block catalog inclusion.
+Per the mapping spec: a **root** has `variant_of_uuid: null` and is the standard-bearing printing within its set. A **standard-anchor exception** is a root whose own `variant_type` is not `"Standard"`. The full census found **15** such roots, but BL-27 determined **14 are swuapi null-errors** that resolve to a base-set Standard via a case-insensitive `(name, subtitle)` fallback (tokens exempt) — leaving **Zam Wesell as the sole genuine exception** (§10.6). `base_cards.standard_variant_id` must be **nullable** regardless. Exceptions are flagged, never block catalog inclusion.
 
 ### 3.4 Tokens — duplicate-per-set
 
@@ -87,14 +87,14 @@ One row per swuapi set, **base and long-tail container alike**.
 ### 4.3 `card_variants` — printings (replaces the old boolean flag columns)
 
 - `base_card_id` FK (resolved via `variant_of_uuid`)
-- **`variant_type`** — finish (open vocabulary; see §3.2 caveat and BL-27)
+- **`variant_type`** — swuapi's **raw** label, stored verbatim (58 values). A curated classification (§10.2) derives `finish` (8 frozen values, §10.3), `channel` (provenance, §10.4), and stamp metadata. Not normalized into `source_set_code`.
 - **`source_set_code`** — provenance (FK → `sets.code`; may be a base or container set)
 - `card_number`
 - `front_image_url`, `back_image_url`
 - `swuapi_id` (swuapi UUID, unique-indexed — the upsert key for the ongoing-sync thread)
-- `stamp_group` (nullable — consolidation key for stamp-only tournament-tier variants so the popup/inline-edit UI can group look-alikes as data; BL-31/BL-32)
+- `stamp_group` (nullable — consolidation key for same-art/same-finish stamp variants: `(base_card, finish)` with a stamped member, §10.5. Confirmed families: Prestige Foil (Foil Prestige + Serialized Prestige) and the PQ/SQ/RQ/GC/SS tournament tiers. Judge/Prerelease deferred to BL-39; a broader group-by-art model is BL-40.)
 
-**The `is_organized_play` boolean is retired** — OP becomes ordinary variants with `source_set_code` = a Weekly Play set, anchored by `variant_of_uuid`. This removes the old OP card-number-collision handling.
+**The `is_organized_play` boolean is retired** — OP becomes ordinary variants with `source_set_code` = a Weekly Play set, anchored by `variant_of_uuid`. This removes the old OP card-number-collision handling. **Keying:** `card_variants` is uniquely keyed on `swuapi_id` (uuid); `(base_card_id, variant_type)` is **not** unique — Serialized Prestige collides (§10.8).
 
 ### 4.4 `inventory`
 
@@ -210,7 +210,7 @@ Inventory is wiped and regenerated from the F5 snapshot against new `card_varian
 | Item | Role in this design |
 |------|---------------------|
 | **BL-33** | Master execution + sequencing: schema migration (§4), ingestion ordering, snapshot regeneration, cutover. Points here for the design. |
-| **BL-27** | Enumerate the full `variant_type` vocabulary and resolve the finish-vs-provenance mapping (§3.2 caveat) — **must precede freezing §4.3.** |
+| **BL-27** | ✅ Resolved 2026-06-21 — census + classification (§10): vocabulary frozen, finish/channel/stamp rules, exception resolution, `is_token`, keying. |
 | **BL-29** | Ingestion from swuapi, upsert-keyed on `swuapi_id`. |
 | **BL-24 / BL-25 / BL-35 / BL-22** | Keep-limits, settings UI, hard/soft mode, settings page (§4.5, §6). |
 | **BL-31 / BL-32** | `stamp_group` consolidation — popup (§5.3) and inline editing. |
@@ -220,11 +220,67 @@ Inventory is wiped and regenerated from the F5 snapshot against new `card_varian
 
 ---
 
-## 10. Open / not yet decided
+## 10. Variant Census & Classification (BL-27 — resolved 2026-06-21)
 
-- **Finish-vs-provenance vocabulary mapping** — exactly which `variant_type` values are finishes vs. provenance-bearing, and how provenance is encoded. **Live findings 2026-06-20:** provenance is *inconsistently* encoded — some variants live in a container set (Luke's Hyperspace → SORP, Showcase → P25) while the *same conceptual* variants are in-set for other cards (most SOR leaders have in-set SOR Hyperspace/Showcase at SOR_269+); and Judge/Promo exist *both* as in-set `variant_type`s ("Prerelease Judge/Promo" in SOR) *and* as separate sets (J24/25, P25/26). Weekly Play containers (SORP…LAWP) exist for **every** main set, not just early ones — so this is **not** an early-set-only artifact. **Implication:** provenance cannot be inferred from `variant_type` or `set_code` alone; both must be stored (as designed — the model is robust to the mess). BL-27 must derive the vocabulary + grouping rules from a **programmatic census of `/export/all`** — summarized API peeks are not precise enough. **Blocks freezing §4.3.**
-- **Aspect multiplicity — swuapi flattens it (confirmed 2026-06-20).** Some cards have two pips of the *same* aspect (physical examples: SEC_054 Exiled from the Force, SEC_107 Chancellor Valorum, SOR_153 Saw Gerrera, SHD_108 Enforced Loyalty, LOF_105 Oppo Rancisis — all double-pip in hand). The live API returns a **single-element `aspects` array for every one of them** and exposes **no `aspectDuplicates` field** (despite the docs listing it). So swuapi itself does not carry the second pip — **no schema sourced from swuapi can represent double-pip multiplicity.** *(High confidence; WebFetch summarizes, so the definitive raw-JSON confirmation belongs in BL-27's `/export/all` census.)* **Impact is low for our scope:** double-pip drives deckbuilding / aspect-penalty math, which is scoped out — for inventory tracking + catalog/popup display the only effect is visual fidelity (one vs. two same-aspect icons). **Decision (2026-06-20): accept swuapi's fidelity for now** (a double-pip card renders one icon); tracked for later revisit in `SWU_Backlog.md` BL-38.
-- **Token source field** — how swuapi marks a card as a token (to populate `is_token`, §4.2) — verify against live data in BL-27/BL-29. *(The shared-vs-duplicate identity question is **resolved** — duplicate-per-set, §3.4 — and is no longer open.)*
-- **Additional swuapi fields** beyond those in §4 (e.g. `rules`/`additionalRulings`) — deferred, no current consumer; revisit if a consumer appears.
-- **Limit configuration granularity** — per `variant_type` vs. per `stamp_group` family (§4.5; tied to BL-31/32).
+Resolved in an Opus session against the captured full export (`backend/app/tests/fixtures/swuapi_export_2026-06-21.json` — 8,353 cards, 27 sets), analyzed **programmatically** (not via WebFetch). This freezes the `variant_type` vocabulary and the §3.2 / §4.3 classification.
+
+### 10.1 The graph (base_cards count + resolution)
+
+**2,319 roots** (= `base_cards`). `variant_of_uuid` chains resolve in **≤2 hops** (5,891 one-hop, 143 two-hop), **0 cycles, 0 dangling**. Resolution must **walk to the ultimate root** (the mapping-spec 2026-06-21 correction); the invariant test asserts termination within a small bounded hop count.
+
+### 10.2 Variant model — raw + curated classification
+
+- `card_variants.variant_type` stores swuapi's **raw label verbatim** (58 values) — faithful, human-readable, clean uuid upsert. Not normalized into `source_set_code`.
+- A **curated classification** maps each `variant_type` → `finish`, `channel` (provenance), `stamped` (bool), `stamp_family`. This is the interpretation layer the app uses for grouping, limits, and consolidation; maintained centrally, grows as new variant_types appear.
+
+### 10.3 Finish vocabulary (8, frozen)
+
+Standard · Standard Foil · Hyperspace · Hyperspace Foil · Standard Prestige · Foil Prestige · Serialized Prestige · Showcase. (Overwhelmingly base-set; the remaining 50 variant_types are channel or tournament-tier labels.)
+
+### 10.4 Channel (provenance) — derived from `variant_type` + `source_set_code`
+
+Provenance is **inconsistently encoded** (confirmed): early Weekly Play sits in the base set as `variant_type` "Weekly Play" while `SORP/SHDP/TWIP` hold only 10 Hyperspace promos each; later Weekly Play sits in dedicated `*P` containers. So `channel` is derived from **both** signals:
+
+- `*P` set OR `variant_type` "Weekly Play"/"Weekly Play Foil" → **Weekly Play**
+- J24/J25 or "Judge Program"/"* Judge" → **Judge**
+- C24/C25/C26 or "Convention Exclusive" → **Convention**
+- P25/P26 → **Promo / Tournament-tier**
+- MV26 or "Movie Promo" → **Movie**; "Prerelease *" → **Prerelease**
+- else (a finish variant in a base set) → **Retail**
+
+### 10.5 `stamp_group` — finish + stamp
+
+A `stamp_group` consolidates variants sharing the **same base art AND the same finish**, differing **only by a stamp**, including the ≤1 same-finish *unstamped* variant. Mechanized: `stamp_group = (base_card, finish)` for any (base_card, finish) with a stamped member.
+
+- **Prestige Foil family (confirmed):** finish "Prestige Foil" → { **Foil Prestige** (unstamped anchor) + **Serialized Prestige** (stamped; Carbonite/Gold/Rose Gold tiers, distinguished by image-filename suffix `_Gold` / `_Rose_Gold` / plain — filenames decode `Carb_A`=Standard Prestige, `Carb_B`=Foil Prestige, `Carb_C`=Serialized) }. **Standard Prestige is separate** (non-foil — a finish difference, like Standard vs Foil).
+- **Tournament-tier family (confirmed):** each card's PQ/SQ/RQ/GC/SS tier set is one promo finish, all stamped, no unstamped anchor → one group. Presentation-only consolidation; per-`uuid` images and inventory are preserved, and selecting a tier shows its real image — so pixel-identity is *trusted* from BL-28's sampled inspection, not re-verified per card.
+- **Judge / Prerelease Judge / Prerelease Promo:** a varied lot (some stamped, some not) — **deferred to BL-39** (visual set-by-set analysis); **default ungrouped** for now.
+- **Group-by-art alternative:** the whole finish+stamp model is a deliberate *starting point*; a broader "group by base art regardless of finish" model (Standard+Foil, Hyperspace+HS Foil, all prestiges, …) is **deferred to BL-40**.
+
+### 10.6 Exceptions — structural 15 → fallback → Zam
+
+- **15 roots** have a non-`"Standard"` `variant_type` (the structural definition). The earlier "1 (Zam)" was the old name-match result.
+- **14 are swuapi null-errors** (the `variant_of_uuid` should not have been null): each resolves to a unique base-set Standard via case-insensitive `(name, subtitle)` fallback — confirmed in the census (e.g. C25 BB-8 → JTL_145, J25 Luke → JTL_94, Grogu → ASH_18). Ingestion applies this fallback to re-anchor them.
+- **Tokens are exempt** from the fallback: `GG_5 Experience` matched **7** base-set Standards (duplicate-per-set tokens) — it stays its own `base_card` per §3.4, not force-matched. **If the fallback ever returns 0 or >1 non-token matches for a future card, stop and decide manually** (don't guess).
+- **Zam Wesell (C26_3)** is the sole genuine no-anchor exception (0 matches). The exceptions file regenerates to just Zam.
+
+### 10.7 `is_token`
+
+Derived from the `type` field containing **"Token"** — `Token Unit` (21), `Token Upgrade` (28), `Credit Token` (2), `Force Token` (2). Drives §6 token treatment and the §10.6 fallback exemption.
+
+### 10.8 Keying & data-quality
+
+- `card_variants` is uniquely keyed on **`swuapi_id` (uuid)** — `(base_card_id, variant_type)` is **not** unique. Serialized Prestige collides: 23 `(set, number)` groups have multiple rows; SEC senators carry 3 same-`variant_type` rows distinguished only by image-filename suffix.
+- **Identical-image collisions** (e.g. LAW_865/866 Serialized Prestige ×2 with the same image hash) are flagged as **suspected swuapi duplicates** to surface at ingestion — not silently kept or merged.
+
+### 10.9 Aspect multiplicity — confirmed flattened
+
+**0 of 8,353 cards** carry a duplicated aspect; `aspectDuplicates` does not exist in live data. swuapi flattening confirmed on raw JSON (the 5 physical double-pip examples all return single-element `aspects`). Accepted; tracked in **BL-38**.
+
+### 10.10 Remaining open
+
+- **Judge / Prerelease stamp classification** — visual set-by-set analysis → **BL-39**.
+- **Group-by-art grouping revisit** — finish+stamp vs. broader art-based grouping → **BL-40** (BL-39's visual pass is an input).
+- **Limit configuration granularity** — per `variant_type` vs. per `stamp_group`/finish family (§4.5; tied to BL-31/32 and BL-40).
+- **Additional swuapi fields** beyond §4 (e.g. `rules`/`additionalRulings`) — deferred, no current consumer.
 - **Exact column types / constraints / indexes** — settled at BL-33 implementation.

@@ -44,6 +44,8 @@
 | BL-36 | New-set onboarding considerations (applying new cards/sets) | 6 — Feature Enhancements  | Enumerate everything beyond a raw upsert that applying a new set requires — set logo asset for the Add Cards modal, new variant-type vocabulary, new attributes, preview-vs-completion interaction; applies to gated and auto apply alike |
 | BL-37 | Convert ongoing catalog sync to full auto-apply | 6 — Feature Enhancements  | Future: remove the operator gate from the ongoing sync once the pipeline is validated and BL-36's onboarding considerations are automatable |
 | BL-38 | Aspect double-pip multiplicity — display fidelity gap | 5 — Opportunistic | swuapi flattens same-aspect double pips (no `aspectDuplicates`); accept its fidelity now, revisit if accurate pip display + a data source appear |
+| BL-39 | Judge/Prerelease variant stamp classification (visual analysis) | 6 — Feature Enhancements | Judge Program / Prerelease Judge / Prerelease Promo are a mixed bag (some stamps over a finish, some distinct art); needs visual set-by-set inspection to assign finish+stamped; ungrouped by default until done |
+| BL-40 | Revisit variant grouping model — finish+stamp vs. group-by-art | 6 — Feature Enhancements | Reconsider whether stamp_group should collapse by base art across finishes (Standard+Foil, Hyperspace+HS Foil, all prestiges) rather than the BL-27 finish+stamp rule; BL-39's visual pass is an input |
 
 ### Completed
 
@@ -518,7 +520,7 @@ Likely the right approach is to use the chat history to understand *what kinds o
 
 **Definition of done:** Full enumeration of variant types available via swuapi.com documented; a scoped plan exists identifying every touchpoint in the app that assumes the current fixed 8-variant set; either implemented or explicitly deferred per-variant-type with rationale.
 
-**Status:** 🔲 Open
+**Status:** ✅ Resolved 2026-06-21 (Opus) — full programmatic census of the captured 8,353-card export (`backend/app/tests/fixtures/swuapi_export_2026-06-21.json`); classification frozen in `SWU_Catalog_Redesign_Spec.md` §10. **58 variant_types** = 8 finishes (Standard, Standard Foil, Hyperspace, Hyperspace Foil, Standard Prestige, Foil Prestige, Serialized Prestige, Showcase) + channel labels + ~40 tournament-tier labels. Decisions: store `variant_type` **raw** + a curated `finish`/`channel`/`stamped`/`stamp_family` classification; `channel` (provenance) derived from `variant_type` + `source_set_code` (inconsistently encoded); `stamp_group` = `(base_card, finish)` with a stamped member (Prestige Foil + tournament-tier families confirmed); exceptions = 15 structural → 14 swuapi-null `(name,subtitle)` fallback re-anchors (tokens exempt) → **Zam the sole true exception**; `is_token` from `type` containing "Token"; `card_variants` keyed on `swuapi_id` (`(base_card,variant_type)` not unique); aspect double-pip flattening confirmed (0/8353). **Spun off BL-39** (judge/prerelease stamp visual analysis) and **BL-40** (group-by-art grouping revisit).
 
 ---
 
@@ -754,6 +756,34 @@ Applies whether application is **gated** (the initial mode) or **automatic** (fu
 **Definition of done:** The sync applies detected changes without a human gate; BL-36's considerations are handled automatically or safely defaulted; safeguards exist (e.g. hold/flag obviously-broken or preview-defective records) so auto-apply cannot publish bad data unattended.
 
 **Status:** 🔲 Open — future
+
+---
+
+### BL-39: Judge/Prerelease variant stamp classification (visual set-by-set analysis)
+
+**What:** The `Judge Program`, `Prerelease Judge`, and `Prerelease Promo` variant_types are a mixed bag — some are a *stamp over an existing finish* (so they belong in a `stamp_group` with that unstamped finish, per `SWU_Catalog_Redesign_Spec.md` §10.5), others are *genuinely distinct printings* (ungrouped). Which is which **cannot** be determined from the data or image filenames — it requires visual, set-by-set inspection of the actual card art. BL-27 left them **ungrouped by default**. This item does the visual classification and assigns each (per set) its correct `finish` + `stamped` flag, updating the curated classification and `stamp_group` assignments.
+
+**Why:** Raised 2026-06-21 during BL-27. The finish+stamp `stamp_group` rule needs each variant_type classified as stamped-over-a-finish vs. distinct; for these three it's genuinely varied (Jeremy, holding the physical cards, confirmed "some are stamps, some are not"), and only visual inspection resolves it.
+
+**Depends on:** BL-27 (the classification framework + `stamp_group` rule, resolved); feeds BL-31/BL-32; an input to BL-40.
+
+**Definition of done:** Each Judge Program / Prerelease Judge / Prerelease Promo variant (per set) classified via visual inspection as `(finish, stamped)`; the curated classification and `stamp_group` assignments updated from the ungrouped default; recorded in `SWU_Catalog_Redesign_Spec.md` §10.5.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-40: Revisit variant grouping model — finish+stamp vs. group-by-art
+
+**What:** BL-27 adopted a **finish + stamp** rule for `stamp_group` — consolidate variants sharing the same base art *and* the same finish, differing only by a stamp (`SWU_Catalog_Redesign_Spec.md` §10.5). This is a deliberate starting point. Jeremy wants to revisit whether a broader **group-by-base-art** model is better — collapsing *all* finishes of the same art together (Standard + Foil, Hyperspace + Hyperspace Foil, all prestige finishes, …) regardless of finish or stamp. That would reduce the popup/inline-edit button count further but changes the consolidation semantics.
+
+**Why:** Raised 2026-06-21. The finish+stamp model is the v1 grouping; an art-based grouping might serve the BL-31/BL-32 UI better but is a different philosophy. Jeremy wants to think it through, with BL-39's judge/prerelease visual pass as an input to the decision.
+
+**Depends on:** BL-27 (baseline grouping), BL-39 (visual input), BL-31/BL-32 (the UI surfaces this affects).
+
+**Definition of done:** A decision on whether to keep finish+stamp grouping, move to group-by-art, or a hybrid — documented in `SWU_Catalog_Redesign_Spec.md`; if changed, the `stamp_group` model and BL-31/BL-32 updated accordingly.
+
+**Status:** 🔲 Open — deferred (Jeremy thinking)
 
 ---
 

@@ -29,6 +29,7 @@ export function CardInventoryPopup({ baseCardId, onClose, onChanged }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [changed, setChanged] = useState(false);
   const [pending, setPending] = useState<Set<number>>(new Set());
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +40,7 @@ export function CardInventoryPopup({ baseCardId, onClose, onChanged }: Props) {
         if (cancelled) return;
         setDetail(data);
         setVariants(data.variants);
+        setSelectedVariantId(pickRepresentative(data.variants)?.variant_id ?? null);
         setLoading(false);
       })
       .catch((err) => {
@@ -110,7 +112,10 @@ export function CardInventoryPopup({ baseCardId, onClose, onChanged }: Props) {
     [setPendingFor]
   );
 
-  const representative = useMemo(() => pickRepresentative(variants), [variants]);
+  const displayedVariant = useMemo(
+    () => variants.find((v) => v.variant_id === selectedVariantId) ?? pickRepresentative(variants),
+    [variants, selectedVariantId]
+  );
 
   const handleBackdrop = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) close();
@@ -137,10 +142,16 @@ export function CardInventoryPopup({ baseCardId, onClose, onChanged }: Props) {
 
             <div className="cip-body">
               <div className="cip-left">
-                {representative?.front_image_url && (
+                {displayedVariant && (
+                  <div className="cip-caption">
+                    <div className="cip-caption__label">Currently displaying</div>
+                    <div className="cip-caption__value">{variantLabel(displayedVariant)}</div>
+                  </div>
+                )}
+                {displayedVariant?.front_image_url && (
                   <img
                     className="cip-image"
-                    src={representative.front_image_url}
+                    src={displayedVariant.front_image_url}
                     alt={`${detail.name}${detail.subtitle ? ` – ${detail.subtitle}` : ""}`}
                   />
                 )}
@@ -157,6 +168,14 @@ export function CardInventoryPopup({ baseCardId, onClose, onChanged }: Props) {
 
                     return (
                       <div className="cip-row" key={v.variant_id}>
+                        <input
+                          type="radio"
+                          className="cip-row__radio"
+                          name="cip-displayed-variant"
+                          aria-label={`Display ${variantLabel(v)}`}
+                          checked={v.variant_id === selectedVariantId}
+                          onChange={() => setSelectedVariantId(v.variant_id)}
+                        />
                         <span className="cip-row__label">{variantLabel(v)}</span>
                         <span className="cip-row__controls">
                           <button

@@ -205,6 +205,13 @@
   gap: 4px;
 }
 
+.cdp-aspects-text {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
 .cdp-text-block {
   display: flex;
   flex-direction: column;
@@ -222,4 +229,23 @@
 .cdp-text__label {
   font-weight: 700;
   color: var(--color-text-muted);
+}
+
+.cdp-text-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cdp-text-section__header {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.cdp-text-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
 }

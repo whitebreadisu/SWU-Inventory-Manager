@@ -97,6 +97,28 @@
 .cip-left {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.cip-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cip-caption__label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.cip-caption__value {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
 }
 
 .cip-image {
@@ -128,10 +150,17 @@
   border-radius: 3px;
 }
 
+.cip-row__radio {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
 .cip-row__label {
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--color-text);
+  flex: 1;
 }
 
 .cip-row__controls {

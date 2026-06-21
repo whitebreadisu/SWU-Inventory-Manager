@@ -148,7 +148,14 @@ describe("CardDetailPopup", () => {
     expect(img.src).toContain("back-1.png");
   });
 
-  it("variants sharing a stamp_group render as one consolidated button", async () => {
+  // Disposition: Replace (BL-29 popup polish, change 1). The component
+  // temporarily stopped consolidating by stamp_group for the variant button
+  // list -- each variant now renders its own button, including variants
+  // that share a stamp_group. consolidateByStampGroup itself is retained
+  // in the component (unused by this list) pending a future grouping
+  // decision; this test now asserts the un-consolidated behavior instead
+  // of the old "one button per group" assertion it replaces.
+  it("variants sharing a stamp_group each render their own button (un-consolidated)", async () => {
     const detail = makeDetail({
       variants: [
         makeVariant({
@@ -179,38 +186,10 @@ describe("CardDetailPopup", () => {
     });
     await renderPopup(detail);
 
-    // Consolidated group: only the unstamped representative's button shows.
+    // Each variant gets its own button now, even within a shared stamp_group.
     expect(screen.getByRole("button", { name: "Foil Prestige – #10 – ASH" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Serialized Prestige – #10 – ASH" })).toBeNull();
-
-    // Distinct (null stamp_group) variant gets its own button.
+    expect(screen.getByRole("button", { name: "Serialized Prestige – #10 – ASH" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Standard Foil – #11 – ASH" })).toBeTruthy();
-  });
-
-  it("picks the first member as representative when no unstamped member exists", async () => {
-    const detail = makeDetail({
-      variants: [
-        makeVariant({
-          variant_id: 1,
-          variant_type: "PQ",
-          finish: null,
-          card_number: "10",
-          stamp_group: "tourney-tier",
-          stamped: true,
-        }),
-        makeVariant({
-          variant_id: 2,
-          variant_type: "SQ",
-          finish: null,
-          card_number: "10",
-          stamp_group: "tourney-tier",
-          stamped: true,
-        }),
-      ],
-    });
-    await renderPopup(detail);
-    expect(screen.getByRole("button", { name: "PQ – #10 – ASH" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "SQ – #10 – ASH" })).toBeNull();
   });
 
   it("clicking a variant button updates the selection label and image", async () => {
@@ -249,7 +228,9 @@ describe("CardDetailPopup", () => {
     await renderPopup(makeDetail());
     expect(screen.getByTitle("Vigilance")).toBeTruthy();
     expect(screen.getByTitle("Villainy")).toBeTruthy();
-    expect(screen.getByText("Leader")).toBeTruthy();
+    // "Leader" also appears as the Front-side section header (change 3), so
+    // scope this assertion to the info grid's Type(s) field specifically.
+    expect(screen.getAllByText("Leader").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Ground")).toBeTruthy();
     expect(screen.getByText("Restore")).toBeTruthy();
     expect(screen.getAllByText("8").length).toBeGreaterThanOrEqual(1); // cost and/or hp
@@ -259,6 +240,27 @@ describe("CardDetailPopup", () => {
     expect(screen.getByText("Johnny Morrow")).toBeTruthy();
     expect(screen.getByText(/Epic Action:/)).toBeTruthy();
     expect(screen.getByText(/Back side text\./)).toBeTruthy();
+  });
+
+  it("renders an aspect-name text line in canonical order below the icons", async () => {
+    await renderPopup(makeDetail({ aspects: ["Villainy", "Vigilance"] }));
+    expect(document.querySelector(".cdp-aspects-text")?.textContent).toBe("Vigilance, Villainy");
+  });
+
+  it("shows Front/Back section headers with a divider for double-sided cards", async () => {
+    await renderPopup(makeDetail({ double_sided: true, back_text: "Back side text." }));
+    expect(document.querySelector(".cdp-text-divider")).toBeTruthy();
+    const headers = Array.from(document.querySelectorAll(".cdp-text-section__header")).map(
+      (el) => el.textContent
+    );
+    expect(headers).toEqual(["Leader", "Back"]);
+  });
+
+  it("renders rules text with no Front/Back cue for single-sided cards", async () => {
+    await renderPopup(makeDetail({ double_sided: false, back_text: null }));
+    expect(document.querySelector(".cdp-text-divider")).toBeNull();
+    expect(document.querySelector(".cdp-text-section__header")).toBeNull();
+    expect(screen.getByText(/Action \[Exhaust\]/)).toBeTruthy();
   });
 
   it("renders type2 joined with type when present", async () => {

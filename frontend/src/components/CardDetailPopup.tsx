@@ -15,10 +15,29 @@ function variantLabel(v: VariantDetail): string {
   return `${v.finish ?? v.variant_type} – #${v.card_number} – ${v.source_set_code}`;
 }
 
+/** Canonical aspect display order, shared across the app (see FilterPanel's
+ * ASPECT_LIST). Used here to render the aspect-name text line under the
+ * AspectIcon row in a stable, app-consistent order. */
+const ASPECT_ORDER = ["Vigilance", "Command", "Aggression", "Cunning", "Heroism", "Villainy"];
+
+function orderAspects(aspects: string[]): string[] {
+  return [...aspects].sort((a, b) => {
+    const ai = ASPECT_ORDER.indexOf(a);
+    const bi = ASPECT_ORDER.indexOf(b);
+    return (ai === -1 ? ASPECT_ORDER.length : ai) - (bi === -1 ? ASPECT_ORDER.length : bi);
+  });
+}
+
 /** Consolidates variants sharing a non-null stamp_group into one
  * representative entry (BL-31/§10.5/§5.3): pick the group member with
  * stamped === false if present, else the first member encountered.
- * Variants with a null stamp_group each remain their own entry. */
+ * Variants with a null stamp_group each remain their own entry.
+ *
+ * NOTE: temporarily unused by the variant button list (see
+ * orderedVariantButtons below) — kept defined, not deleted, because
+ * grouping is expected to return once the consolidation UX is decided.
+ * The `void` reference just below keeps both tsc's noUnusedLocals and
+ * eslint's no-unused-vars from flagging it while it sits dormant. */
 function consolidateByStampGroup(variants: VariantDetail[]): VariantDetail[] {
   const groups = new Map<string, VariantDetail[]>();
   const ungrouped: VariantDetail[] = [];
@@ -41,6 +60,7 @@ function consolidateByStampGroup(variants: VariantDetail[]): VariantDetail[] {
 
   return [...ungrouped, ...representatives];
 }
+void consolidateByStampGroup;
 
 /** Ordering for the variant button stack (§5.3 / mock): base set first
  * (the card's own set_code), then other source sets, then card_number
@@ -97,10 +117,12 @@ export function CardDetailPopup({ baseCardId, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Temporarily un-consolidated: render one button per variant (no
+  // stamp_group collapse). consolidateByStampGroup is retained above for
+  // when grouping returns; it is intentionally not called here.
   const orderedVariantButtons = useMemo(() => {
     if (!detail) return [];
-    const consolidated = consolidateByStampGroup(detail.variants);
-    return orderVariants(consolidated, detail.set_code);
+    return orderVariants(detail.variants, detail.set_code);
   }, [detail]);
 
   const selectedVariant = useMemo(
@@ -177,11 +199,16 @@ export function CardDetailPopup({ baseCardId, onClose }: Props) {
                 <div className="cdp-info-grid">
                   <InfoField label="Aspect(s)">
                     {detail.aspects.length > 0 ? (
-                      <span className="cdp-aspects">
-                        {detail.aspects.map((a) => (
-                          <AspectIcon key={a} aspect={a} size={20} />
-                        ))}
-                      </span>
+                      <>
+                        <span className="cdp-aspects">
+                          {detail.aspects.map((a) => (
+                            <AspectIcon key={a} aspect={a} size={20} />
+                          ))}
+                        </span>
+                        <div className="cdp-aspects-text">
+                          {orderAspects(detail.aspects).join(", ")}
+                        </div>
+                      </>
                     ) : (
                       "—"
                     )}
@@ -206,18 +233,35 @@ export function CardDetailPopup({ baseCardId, onClose }: Props) {
                   <InfoField label="Card Number">{selectedVariant.card_number}</InfoField>
                 </div>
 
-                <div className="cdp-text-block">
-                  {detail.front_text && <p className="cdp-text">{detail.front_text}</p>}
-                  {detail.epic_action && (
-                    <p className="cdp-text">
-                      <span className="cdp-text__label">Epic Action: </span>
-                      {detail.epic_action}
-                    </p>
-                  )}
-                  {detail.double_sided && detail.back_text && (
-                    <p className="cdp-text">{detail.back_text}</p>
-                  )}
-                </div>
+                {detail.double_sided && detail.back_text ? (
+                  <div className="cdp-text-block">
+                    <div className="cdp-text-section">
+                      <div className="cdp-text-section__header">{detail.type}</div>
+                      {detail.front_text && <p className="cdp-text">{detail.front_text}</p>}
+                      {detail.epic_action && (
+                        <p className="cdp-text">
+                          <span className="cdp-text__label">Epic Action: </span>
+                          {detail.epic_action}
+                        </p>
+                      )}
+                    </div>
+                    <div className="cdp-text-divider" />
+                    <div className="cdp-text-section">
+                      <div className="cdp-text-section__header">{detail.type2 ?? "Back"}</div>
+                      <p className="cdp-text">{detail.back_text}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="cdp-text-block">
+                    {detail.front_text && <p className="cdp-text">{detail.front_text}</p>}
+                    {detail.epic_action && (
+                      <p className="cdp-text">
+                        <span className="cdp-text__label">Epic Action: </span>
+                        {detail.epic_action}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>

@@ -88,7 +88,7 @@ describe("CardInventoryPopup", () => {
         ],
       })
     );
-    expect(screen.getByText("Standard – #12 – SOR")).toBeTruthy();
+    expect(screen.getAllByText("Standard – #12 – SOR").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Standard Foil – #13 – SOR")).toBeTruthy();
   });
 
@@ -219,5 +219,63 @@ describe("CardInventoryPopup", () => {
     const overlay = document.querySelector(".cip-overlay")!;
     fireEvent.mouseDown(overlay);
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("defaults the displayed variant/caption/image to the Standard representative", async () => {
+    await renderPopup(
+      makeDetail({
+        variants: [
+          makeVariant({
+            variant_id: 1,
+            finish: "Standard Foil",
+            card_number: "13",
+            front_image_url: "front-foil.png",
+          }),
+          makeVariant({
+            variant_id: 2,
+            finish: "Standard",
+            card_number: "12",
+            front_image_url: "front-standard.png",
+          }),
+        ],
+      })
+    );
+    expect(screen.getByText("Currently displaying")).toBeTruthy();
+    expect(document.querySelector(".cip-caption__value")?.textContent).toBe("Standard – #12 – SOR");
+    const img = document.querySelector(".cip-image") as HTMLImageElement;
+    expect(img.src).toContain("front-standard.png");
+    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
+    const checked = radios.find((r) => r.checked);
+    expect(checked?.getAttribute("aria-label")).toBe("Display Standard – #12 – SOR");
+  });
+
+  it("selecting a variant's radio updates the displayed image and caption", async () => {
+    await renderPopup(
+      makeDetail({
+        variants: [
+          makeVariant({
+            variant_id: 1,
+            finish: "Standard",
+            card_number: "12",
+            front_image_url: "front-standard.png",
+          }),
+          makeVariant({
+            variant_id: 2,
+            finish: "Standard Foil",
+            card_number: "13",
+            front_image_url: "front-foil.png",
+          }),
+        ],
+      })
+    );
+
+    const foilRadio = screen.getByRole("radio", { name: "Display Standard Foil – #13 – SOR" });
+    fireEvent.click(foilRadio);
+
+    expect(document.querySelector(".cip-caption__value")?.textContent).toBe(
+      "Standard Foil – #13 – SOR"
+    );
+    const img = document.querySelector(".cip-image") as HTMLImageElement;
+    expect(img.src).toContain("front-foil.png");
   });
 });

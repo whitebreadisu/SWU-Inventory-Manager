@@ -30,7 +30,7 @@
 | BL-21 | Disaster recovery — automated DB backup                      | 6 — Feature Enhancements  | Automated Cloud SQL backup and restore on behalf of users, removing the burden of manual exports for recovery                |
 | BL-22 | User settings page scaffolding                                | 6 — Feature Enhancements  | New account-menu entry and empty Settings route/container; infra for BL-23 and BL-25                                       |
 | BL-23 | Change password from settings                                 | 6 — Feature Enhancements  | Firebase client-side reauth + password update, surfaced in the Settings page                                                |
-| BL-24 | Per-tenant, per-variant inventory limit overrides (data model) | 6 — Feature Enhancements  | Configurable limits keyed by type-category x variant, replacing the hardcoded shared-pool playset cap with independent per-variant caps |
+| BL-24 | Per-tenant, per-variant inventory limit overrides (data model) | 6 — Feature Enhancements  | Configurable limits keyed by type-category × variant_type (open vocabulary per BL-33/BL-27), replacing the hardcoded shared-pool playset cap with independent per-variant caps; default-driven (per-category defaults + stored overrides) |
 | BL-25 | Settings UI for inventory limit overrides                     | 6 — Feature Enhancements  | Grid UI to edit BL-24's limit matrix; updates frontend constants to use tenant-specific values                              |
 | BL-26 | Claude.ai design-system sync workflow — inspection needed      | 6 — Feature Enhancements  | The conversion layer (`components/*.jsx`, `screens/*/*.jsx`) that actually renders in claude.ai isn't covered by `source/src/` syncs; needs a dedicated session |
 | BL-27 | Additional card variant types (Judge, Showcase, Prerelease Promo, etc.) | 6 — Feature Enhancements  | Use swuapi.com to identify the full set of variant types beyond our existing 8; analyze and implement all touchpoints across the app |
@@ -38,6 +38,12 @@
 | BL-30 | Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks) | 6 — Feature Enhancements  | Add every card in a precon product to inventory in one action instead of scanning each card; blocked on a decklist (card+quantity) data source swuapi doesn't provide |
 | BL-31 | Card detail popup — consolidated representation for stamp-only variants | 6 — Feature Enhancements  | Tournament/judge/prerelease variants that share one piece of art (differ only by a stamp) need one consolidated image on the popup, with per-variant inventory tracking preserved underneath |
 | BL-32 | Inline inventory editing — consolidated entry for tournament-tier variants | 6 — Feature Enhancements  | The flat per-variant +/- row pattern doesn't scale to cards with 5-6 tournament-tier variants; needs its own interaction pattern |
+| BL-33 | Catalog schema redesign — `base_cards`/`card_variants` split, swuapi-id-keyed sync, scoped sequencing for BL-27/29/30/31/32/S6 | 6 — Feature Enhancements  | Replaces the flat boolean-flag `cards` table with an explicit base-card/variant model anchored on swuapi's own IDs; scopes BL-29 and orders the remaining swuapi-dependent backlog |
+| BL-34 | Standard variant mapping — test suite | 6 — Feature Enhancements  | Build the fixture-based test suite specified in `SWU_Standard_Variant_Mapping_Spec.md` §8, including the one large variant-graph invariant test |
+| BL-35 | Hard/soft inventory keep-limit mode (user override) | 6 — Feature Enhancements  | User-level preference toggling limit enforcement between hard cap (block adds past limit — today's behavior) and soft cap (commit over-limit cards with a visual over-limit warning). Universal rule, not per-variant |
+| BL-36 | New-set onboarding considerations (applying new cards/sets) | 6 — Feature Enhancements  | Enumerate everything beyond a raw upsert that applying a new set requires — set logo asset for the Add Cards modal, new variant-type vocabulary, new attributes, preview-vs-completion interaction; applies to gated and auto apply alike |
+| BL-37 | Convert ongoing catalog sync to full auto-apply | 6 — Feature Enhancements  | Future: remove the operator gate from the ongoing sync once the pipeline is validated and BL-36's onboarding considerations are automatable |
+| BL-38 | Aspect double-pip multiplicity — display fidelity gap | 5 — Opportunistic | swuapi flattens same-aspect double pips (no `aspectDuplicates`); accept its fidelity now, revisit if accurate pip display + a data source appear |
 
 ### Completed
 
@@ -283,7 +289,9 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either (a) verification is enforced somewhere in the flow — e.g., the frontend calls `sendEmailVerification()` after signup and/or the backend checks `decoded.get("email_verified")` before allowing certain actions, with a regression test — or (b) the current "no verification required" behavior is confirmed and documented as an accepted trade-off in `SWU_Platform_Spec.md` Section 1 and `SWU_Platform_Security_Review.md`.
 
-**Status:** 🔲 Open
+**Decision (2026-06-20, Open Question D):** Path (a) — email verification *will* be implemented, but deliberately deferred to the **v1.0 milestone**. Until then the current "no verification required" behavior stands as an accepted *interim* trade-off (not the permanent path (b)). At v1.0, enforce via `sendEmailVerification()` after signup plus a backend `decoded.get("email_verified")` check gating inventory mutations, with a regression test.
+
+**Status:** 🔲 Open — decided (defer to v1.0)
 
 ---
 
@@ -299,7 +307,9 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **2026-06-17 update:** Discussed implement-vs-decide-against. Jeremy confirmed he intends to offer this app to other people for real ongoing use, not just as a portfolio piece — which means the "does a logged-out visitor benefit from browsing first" calculus is different than for a purely personal tool. He paused the decision here because he wants to think through the full intended user flow (auth, catalog, inventory) end-to-end before deciding this item in isolation — see Open Question D.
 
-**Status:** 🔲 Open — paused pending Open Question D
+**Decision (2026-06-20, Open Question D resolved):** **Implement** — the public catalog is wanted. A logged-out visitor browses the Catalog *and* the S6 card detail popup freely; `GET /api/inventory` and all inventory mutations stay authenticated and tenant-scoped exactly as today. The Inventory tab stays visible for anonymous users as a conversion hook and renders a value-prop empty state (lock icon + "Track your SWU collection" + Sign up / Log in) instead of the grid. The Catalog and popup are read-only for everyone, so there is no in-context "track" action to convert on — the Inventory tab is the single auth gate. **Implementation shape:** a second, non-authenticating DB dependency for the four catalog routes that opens a *tenant-less* session — RLS already fails safe here, a tenant-less session matches zero inventory rows by construction; `frontend/src/App.tsx` renders shell + Catalog when signed out (today it renders only `AuthScreen`); `SWU_Platform_Spec.md` §1/§5 and `SWU_Platform_Security_Review.md` A01 updated at implementation time to document the intentional catalog-vs-inventory asymmetry.
+
+**Status:** 🔲 Open — decided 2026-06-20 (implement public catalog); pending implementation
 
 ---
 
@@ -349,6 +359,30 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 **Definition of done:** Jeremy deletes locally whenever convenient.
 
 **Status:** 🔲 Open
+
+---
+
+### BL-38: Aspect double-pip multiplicity — display fidelity gap
+
+**What:** swuapi does not expose double-pip aspect multiplicity. Some cards carry two pips of the *same* aspect (e.g. double Vigilance), but swuapi's `aspects` array returns only the *distinct* set (a single element) and exposes **no `aspectDuplicates` field** — despite the docs listing one. Confirmed 2026-06-20 against five physically-verified double-pip cards, all of which returned a single-element `aspects` array via the live API:
+
+| Card | Set/№ | Physical pips | API `aspects` |
+|------|-------|---------------|---------------|
+| Exiled from the Force | SEC_054 | double Vigilance | `["Vigilance"]` |
+| Chancellor Valorum | SEC_107 | double Command | `["Command"]` |
+| Saw Gerrera | SOR_153 | double Aggression | `["Aggression"]` |
+| Enforced Loyalty | SHD_108 | double Command | `["Command"]` |
+| Oppo Rancisis | LOF_105 | double Command | `["Command"]` |
+
+Because the source flattens it, **no schema sourced from swuapi can represent double-pip multiplicity.** Decision (2026-06-20): **accept swuapi's fidelity for now** — a double-pip card renders one icon — and keep the distinct-aspect `card_aspects` model.
+
+**Why:** Double-pip multiplicity drives deckbuilding / aspect-penalty math, which is out of scope; for inventory tracking + catalog/popup display the only effect is visual fidelity (one vs. two same-aspect icons). Low impact, but a known fidelity gap worth tracking. Directly analogous to BL-10's unsourced-data gaps.
+
+**Depends on:** A non-swuapi source for double-pip data (none identified). The swuapi finding should be **definitively re-confirmed against raw `/export/all` JSON during BL-27's census** (the 2026-06-20 check used WebFetch, which summarizes — high confidence but not raw).
+
+**Definition of done:** Either a double-pip data source is found and a multiplicity-capable `card_aspects` model (ordered list or per-aspect count) is implemented so the catalog/popup render the correct pip count, or this is explicitly marked out of scope indefinitely. If pursued, BL-27's raw-JSON census first confirms swuapi truly omits the data.
+
+**Status:** 🔲 Open — deferred (swuapi fidelity accepted 2026-06-20)
 
 ---
 
@@ -424,13 +458,21 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 ### BL-24: Per-tenant, per-variant inventory limit overrides (data model)
 
-**What:** Replace the hardcoded inventory limits in `backend/app/services/inventory.py` (`PLAYSET_SIZE = 3`, `SINGLETON_TYPES = {"Leader", "Base"}`) with tenant-configurable limits keyed by **type-category × variant**: type-category is singleton (Leader/Base) vs. standard (everything else); variant is one of the eight keys already used on the frontend (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`). New table (e.g. `tenant_card_limits`), seeded with today's defaults (1 for every singleton×variant combination, 3 for every standard×variant combination) when a tenant is provisioned. New GET/PUT endpoint(s) to read and update a tenant's limit matrix.
+**What:** Replace the hardcoded inventory limits in `backend/app/services/inventory.py` (`PLAYSET_SIZE = 3`, `SINGLETON_TYPES = {"Leader", "Base"}`) with tenant-configurable limits keyed by **type-category × variant_type**:
+- *type-category* is singleton (Leader/Base) vs. standard (everything else);
+- *variant_type* is **any value in the open variant vocabulary** introduced by BL-33's `card_variants.variant_type` and enumerated by BL-27 — the full long tail (~58 types), **not** the fixed 8 frontend keys this item originally assumed (`standard`, `foil`, `hyperspace`, `hyperspaceFoil`, `prestige`, `prestigeFoil`, `op`, `opFoil`). *(Revised 2026-06-20: full-long-tail variant tracking confirmed as a product goal, so an 8-column matrix is no longer sufficient.)*
 
-**Why:** Requested by Jeremy: e.g. Standard Leader/Base capped at 1 but Hyperspace Leader/Base allowed up to 2, while non-singleton cards might allow 4 Standard / 5 Hyperspace / 3 Foil simultaneously. **Important behavior change uncovered during design:** today, non-singleton limits are enforced as a *shared pool* across all variants of a card (`inventory_repo.get_base_card_total` sums every variant toward one cap of 3 — `backend/app/services/inventory.py:70-88`). This item changes that to *independent per-variant caps*, matching how Leader/Base already work (each variant capped separately, `inventory.py:54-62`). This is a deliberate, necessary change to support the requested behavior, not an incidental side effect.
+Because the vocabulary is open and large, the store is **default-driven, not a dense grid**: a tenant gets per-category defaults (1 for singleton, 3 for standard) at provisioning and persists only the *overrides* that differ (e.g. "keep up to 5 Hyperspace"). New table (e.g. `tenant_card_limits`) holding overrides; new GET/PUT endpoint(s) to read/update the effective matrix (defaults merged with overrides).
 
-**Definition of done:** New migration adds the tenant limit table, seeded with current-equivalent defaults on tenant creation; `increment_card` checks the relevant tenant+category+variant limit independently (no cross-variant summing) for both singleton and standard categories; new settings endpoint(s) are authenticated and tenant-scoped; tests cover the new independent-per-variant enforcement and at least one non-default override.
+**Why:** Requested by Jeremy: e.g. Standard Leader/Base capped at 1 but Hyperspace Leader/Base allowed up to 2, while non-singleton cards might allow 4 Standard / 5 Hyperspace / 3 Foil simultaneously (per-variant limits for leaders/bases confirmed in scope 2026-06-20; default stays 1 for singleton variants, 3 for standard). **Important behavior change uncovered during design:** today, non-singleton limits are enforced as a *shared pool* across all variants of a card (`inventory_repo.get_base_card_total` sums every variant toward one cap of 3 — `backend/app/services/inventory.py:70-88`). This item changes that to *independent per-variant caps*, matching how Leader/Base already work (each variant capped separately, `inventory.py:54-62`). This is a deliberate, necessary change to support the requested behavior, not an incidental side effect.
 
-**Depends on:** None technically, but pairs with BL-25 to be usable end-to-end.
+**Relationship to this session's model (2026-06-20):** these limits are **advisory tenant policy**, deliberately decoupled from two other axes — they do *not* define *completion* (which stays base-card-level and variant-agnostic: playset = 3 total / owned = ≥1, already built into `InventorySummary`), and they do *not* set a DB constraint on `inventory.quantity` (which must always be free to exceed any limit). This item owns the *numbers*; **BL-35** owns the *enforcement style* (hard cap = block past the limit, soft cap = commit-and-flag).
+
+**Open consideration (resolve with BL-31/32):** with ~58 variant types, a separate limit per individual `variant_type` would be unusable in a settings UI and semantically odd for stamp-only tournament tiers (a user is unlikely to want a different keep-limit for "PQ Top 4" vs "PQ Top 8"). The likely answer is to set limits at the consolidated **`stamp_group` family** level for those variants, while keeping per-`variant_type` granularity for genuinely distinct variants — but that depends on BL-31/32's consolidation model and BL-33's `stamp_group`, so it's flagged here, not decided.
+
+**Definition of done:** New migration adds the tenant limit-override table keyed on `(tenant_id, type_category, variant_type)` (or `stamp_group` per the open consideration above), with per-category defaults applied at tenant creation; `increment_card` resolves a card's *effective* limit (default merged with any override) and checks it independently per variant (no cross-variant summing) for both singleton and standard categories; new settings endpoint(s) are authenticated and tenant-scoped; tests cover independent-per-variant enforcement, at least one non-default override, and a leader/base per-variant override.
+
+**Depends on:** BL-33 (open variant vocabulary / `card_variants` table the limits key against) and BL-27 (the enumeration that populates it). Pairs with BL-25 (settings UI) and BL-35 (hard/soft enforcement mode) to be usable end-to-end.
 
 **Status:** 🔲 Open
 
@@ -541,7 +583,9 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Spun-off backlog items from this analysis:** BL-29 (catalog creation), BL-30 (bulk-add precon products), BL-31 (popup stamp consolidation), BL-32 (inline editing consolidation).
 
-**Status:** ✅ Resolved 2026-06-20 — five-phase analysis complete; findings and recommendations above; BL-29/30/31/32 spun off as planned. No code changed by this item, per its own definition of done.
+**Addendum 2026-06-20 (later same day) — `variant_of_uuid` supersedes the recommended linking key above.** A follow-up check (prompted by revisiting the Zam Wesell exception, see below) found that swuapi exposes a structural `variant_of_uuid` field that wasn't surfaced during this analysis: every card has a `uuid`, and every non-root variant's `variant_of_uuid` points directly to its root (`variant_of_uuid: null`) **within the same set** — confirmed via live re-query on Corellian Freighter (SOR_250/JTL_258, independent roots, no cross-set merge), SORP Weekly Play (cross-set anchor into SOR), and C26 (5 of 6 cards anchor into core sets; Zam Wesell does not). This makes the `(setCode, name, subtitle, variantType)` text-matching key above unnecessary for **within-set base-card anchoring** — `variant_of_uuid` resolves it directly and more reliably (no case-sensitivity bugs, no ambiguity from the 47 cross-set name duplicates, which are confirmed genuine reprints with independent roots, not a matching hazard). Text matching is still relevant for the separate, deferred "show all reprints of this card across sets" feature. Full mechanism, scenario taxonomy, and exception handling now documented in **`SWU_Standard_Variant_Mapping_Spec.md`** (new standalone reference) and **`swuapi_standard_variant_exceptions.md`** (short, regenerated exception list — currently just Zam Wesell, precisely defined as "a root whose own `variant_type` isn't `Standard`"). Spawned **BL-33** (schema redesign — `base_cards`/`card_variants` split using `variant_of_uuid`, supersedes/scopes BL-29) and **BL-34** (test suite for the mapping spec, deferred — Jeremy wants the spec settled first).
+
+**Status:** ✅ Resolved 2026-06-20 — five-phase analysis complete; findings and recommendations above; BL-29/30/31/32 spun off as planned; addendum same day added BL-33/34 and superseded the linking-key recommendation for within-set anchoring. No code changed by this item, per its own definition of done.
 
 ---
 
@@ -553,9 +597,9 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Depends on:** BL-28's schema alignment thread should inform this (don't build against a schema that's about to change), but doesn't strictly block starting design work.
 
-**Definition of done:** Not yet scoped — decide build-or-defer once BL-28's schema findings land, then write the real definition of done.
+**Definition of done:** Superseded/scoped by BL-33 — the real definition of done is BL-33's "Schema redesign migration" + "BL-29 ingestion script" steps.
 
-**Status:** 🔲 Open
+**Status:** 🔲 Open — scoping moved to BL-33
 
 ---
 
@@ -605,6 +649,112 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 ---
 
+### BL-33: Catalog schema redesign — `base_cards`/`card_variants` split, swuapi-id-keyed sync, scoped sequencing
+
+**What:** Raised 2026-06-20, immediately after BL-28's analysis closed. Jeremy confirmed the app is pre-v1.0 and he's comfortable losing all current inventory and user data, as long as the ability to *reload* inventory from the F5 inventory-snapshot mechanism is preserved. That removes the one constraint (preserving `card_id` continuity for existing inventory rows) that would otherwise force BL-29's catalog rebuild to be additive-only — it can instead be a real schema redesign.
+
+**Current schema (confirmed via `backend/app/models/`, not assumed from the backlog's shorthand):** `cards` is flat — one row *per variant* — with boolean flag columns (`is_foil`, `is_hyperspace`, `is_prestige`, `is_showcase`, `is_organized_play`) distinguishing variants, grouped only by a `base_card_number` string column. `card_aspects`/`card_traits`/`card_keywords` are keyed on `card_id` (i.e., per variant), so identical aspect/trait/keyword data is duplicated across every variant row of the same printed card today. `inventory.card_id` FKs directly to a variant row. There is no `card_variants` table today — the backlog's references to "the eight variant keys" describe frontend/business-logic concepts, not a DB table.
+
+**Why the flat schema doesn't extend:** BL-27 found ~58 real `variantType` values in swuapi, not 8 — an unbounded set of boolean columns isn't viable, and a flag-based schema has no way to express BL-31/32's core problem ("these 6 tournament-tier variants are pixel-identical art, group them") without ad hoc string parsing at query time.
+
+**Proposed redesign (summary — the authoritative target design now lives in `SWU_Catalog_Redesign_Spec.md` §4):**
+- **`base_cards`** (new) — one row per root printing per base set; shared card data (name, subtitle, type/type2, double_sided, rarity, cost/power/hp/arena, is_unique, front/back/epic text, artist), `swuapi_id` (UUID, unique), nullable `standard_variant_id`; `card_aspects`/`card_traits`/`card_keywords` move here (keyed on `base_card_id`). *(No reprint column — live check 2026-06-20 confirmed swuapi exposes no reprint lineage; cross-set "all printings" is derived via name/subtitle matching. See redesign spec §4.2.)*
+- **`card_variants`** (replaces the boolean flag columns) — `base_card_id` FK, **`variant_type` (finish)**, **`source_set_code` (provenance — FK `sets.code`)**, `card_number`, `front_image_url`/`back_image_url`, `swuapi_id` (unique upsert key), nullable `stamp_group`.
+- **`sets`** — a single table for *all* sets (base + long-tail container), with a curated **`is_base_set`** flag; `base_cards.set_id` references a base set; `card_variants.source_set_code` references any set; add `release_date`, `total_cards`, `swuapi_updated_at`. **The `is_organized_play` boolean is retired** — OP becomes `source_set_code` = a Weekly Play set.
+- **`inventory`** — FK retargeted to `card_variants.id` (rename from `card_id`); unique `(tenant_id, variant_id)`.
+
+*Refined 2026-06-20 (swuapi-first redesign session): finish/provenance split on `card_variants`, single `sets` table with `is_base_set`, `is_organized_play` retirement. **See `SWU_Catalog_Redesign_Spec.md` for the full target design (schema + variant/provenance model + UX behaviors) — this item is now the execution/sequencing record pointing at it.** Note: §4.3's `variant_type` vocabulary must not be frozen until BL-27 resolves the finish-vs-provenance mapping against live data (a programmatic `/export/all` census — see redesign spec §10).*
+
+**Why this over patching the current schema:** Collapses aspect/trait/keyword duplication; gives S6's popup a natural default-render anchor (`standard_variant_id`) instead of no answer for "which variant renders before one is picked"; makes BL-27's variant long tail data instead of a schema migration; makes BL-28's ongoing-sync thread an ID upsert instead of re-running fuzzy text matching on every poll. Token-card sharing across sets (noted in BL-28's findings log) isn't solved by this split alone, but becomes a tractable follow-on (shared `base_cards` row vs. one per set) instead of a fight against a flag-based schema.
+
+**Zam Wesell re-check (2026-06-20):** BL-28 found one card with no Standard printing anywhere — "Zam Wesell - Not What She Seems" (C26, card #3, Convention Exclusive) — and guessed it might be an ASH preview. Re-checked directly against `GET /cards?set=TS26` (63 cards) and `GET /cards?set=IBH` (104 cards): absent from both. Re-confirmed absent from ASH (`[]`). `GET /sets/C26` shows that set itself has no release date, only 6 total cards, last scraped today — it's an in-development preview container, same situation as ASH, just not specifically ASH. The card remains the single confirmed no-Standard-anchor exception; `standard_variant_id` must stay nullable to handle it (and any future preview card like it) rather than being treated as a data bug to fix.
+
+**Testing mandate (per `SWU_Catalog_Redesign_Spec.md` §8):** each numbered step below lands **with its own tests in the same PR** — not deferred to the end. Every broken legacy test gets a **deliberate disposition — port / replace / retire (with a recorded reason for *retire*), never an unreasoned delete-to-go-green** (§8.1). The rewrite produces a **disposition log** (each legacy test area → disposition + reason) as the auditable record that coverage was preserved or deliberately reduced, never silently eroded — eliminating now-irrelevant tests happens *here, in this work*, not as a deferred cleanup item. Per-step: step 1 carries the migration plus the `variant_of_uuid` graph-invariant test, written test-first against captured swuapi fixtures (§8.2/§8.4); step 3's ingestion carries upsert-by-`swuapi_id` idempotency tests; **step 4 carries an explicit snapshot-reload test** proving the regenerated F5 snapshot restores correctly against the new `card_variants.id` values (§8.5); steps 5–6 carry the resolver / token / popup behavior tests (§8.2).
+
+**Revised sequencing (supersedes the prior BL-29-first ordering):**
+1. **Schema redesign migration** — `base_cards` + `card_variants` as above, `inventory` FK retargeted. Clean drop/recreate of the catalog tables, not an in-place ALTER chain — no data-preservation constraint per Jeremy's 2026-06-20 confirmation.
+2. **BL-27 enumeration** — now needed *before* ingestion to populate `variant_type`'s real vocabulary and assign `stamp_group` correctly, not just to "know what exists" for later.
+3. **BL-29 ingestion script** — builds the new tables from swuapi using `swuapi_id` as the upsert key. Folds in S5 (images), BL-10 (keywords/`is_unique`), IBH/TS26 (BL-19's new-set mechanism), and the `Special`-rarity gap (BL-30's prerequisite) in one pass, per BL-28's recommendation against duplicate passes.
+4. **Inventory snapshot regeneration** — the existing F5 snapshot file keys on the old `card_id`; needs a one-time regeneration against new `card_variants.id` values (matched by `set_code + card_number`, not raw ID) as part of cutover. This is the concrete task Jeremy's "comfortable losing inventory" tolerance buys: no remapping logic, just regenerate and reload.
+5. **S6 popup** — built against `standard_variant_id` (default render) and `stamp_group` (BL-31 consolidation) from day one instead of retrofitting.
+6. **BL-31/BL-32** — UI work, now straightforward data-wise since `stamp_group` already exists.
+7. **Ongoing sync job** (BL-28 thread 1) — upsert-by-`swuapi_id`, deferred until the rebuild has been live and correct for a while; automating an unvalidated pipeline just automates its bugs too. **Currency mechanism decided 2026-06-20:** Cloud Scheduler → Cloud Run, **daily detection** (cost ~$0 at any cadence) producing a reviewable diff via `swuapi_id` + `meta.lastScrapedAt` / per-set `updated_at`; **operator-gated apply** initially (one-click approve), converting to full auto-apply later (**BL-37**); the public catalog **shows pre-release/preview content** (spoilers), with the operator gate as the quality check on swuapi's preview-data warts. Per-new-set onboarding considerations (set logo assets, new variant vocabulary, preview-vs-completion interaction) tracked in **BL-36**. **Deletions (2026-06-20):** the sync also consumes swuapi `/deletions` tombstones (withdrawn/rejected cards), not just upserts, via the documented `since` + `after`/`next_cursor` contract; deletions are **surfaced in the operator gating review before apply**, with explicit attention to the edge case of deleting a card that already has inventory rows (must not silently orphan a tenant's inventory — flag for the operator to resolve). swuapi "card merges never emit," so no card-merge handling is needed for cards.
+8. **BL-30** — unaffected; still blocked on a decklist/quantity source unrelated to any of the above.
+
+**Depends on:** None technically blocking start; BL-27's enumeration should land before step 3's ingestion script is written (per the sequencing above).
+
+**Definition of done:** Migration adds `base_cards`/`card_variants` per the design above with `inventory` retargeted; BL-29's ingestion script populates both tables from swuapi keyed on `swuapi_id`; inventory snapshot regenerated and reload-tested; S6 built against `standard_variant_id`/`stamp_group`. Each numbered sequencing step can land as its own commit/PR rather than one large change.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-34: Standard variant mapping — test suite
+
+**What:** Build the test suite specified in `SWU_Standard_Variant_Mapping_Spec.md` §8: fixture-based (captured swuapi data, not live API calls in CI), covering each scenario in the taxonomy (§5, scenarios A-I) individually, plus the one large test asserting the full `variant_of_uuid` graph invariant across the entire captured export — every card is a root or resolves to exactly one root within its own set, no multi-hop chains, and every non-`"Standard"` root is accounted for in `swuapi_standard_variant_exceptions.md`.
+
+**Why:** Raised 2026-06-20 immediately after the reference spec was written. Jeremy wants the documentation in place and reviewed before committing to test code against it — the spec itself may still shift slightly once implementation starts (e.g. the open question on whether container sets get `sets` rows, or re-verification of the Serialized Prestige triple-finish case noted as unconfirmed in §5F).
+
+**Depends on:** `SWU_Standard_Variant_Mapping_Spec.md` (exists); informally pairs with BL-33's schema migration and BL-29's ingestion script, since the test suite's fixtures and assertions are most useful once `base_cards`/`card_variants` exist to test against — but the suite could also be written test-first, against the captured swuapi data alone, before the schema migration lands.
+
+**Definition of done:** Test suite exists covering all of §8's scenarios; the one large invariant test passes against the current captured export; any scenario found to behave differently than documented (e.g. the unverified Serialized Prestige case) is corrected in the spec doc as part of this work, not left silently mismatched.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-35: Hard/soft inventory keep-limit mode (user override)
+
+**What:** A user-level (per-tenant) preference that toggles inventory keep-limit enforcement between two modes:
+- **Hard cap (default — today's behavior):** at a card's keep-limit, the Add Cards modal and inline steppers refuse to add further copies — the existing `blocked: true, reason: "trade_sell"` path (`backend/app/services/inventory.py` increment rules; `AddCardsVerification`'s "at limit"/red split).
+- **Soft cap:** over-limit copies *are* committed to inventory. The Add Cards modal still shows a visual "this will put you over the limit" indicator on those rows, but they commit rather than being held back; inline steppers likewise allow incrementing past the limit.
+
+This is a **single universal per-user setting, not a per-variant configuration** — contrast BL-24's per-variant *limits* (the numbers themselves), which this mode governs the *enforcement style* of but is otherwise orthogonal to.
+
+**Why:** Raised 2026-06-20 during the swuapi-first redesign conversation (Open Question E). The hard cap encodes a "this tool tracks my keep-pile, not every card in hand" stance — coherent for a collector who sends surplus to a trade pile (and consistent with trading being out of scope). But some users will want the tool to record reality — the 6th hyperspace they actually opened — with the surplus merely flagged, not refused. Making this a user choice rather than a baked-in rule keeps both mental models valid. Reinforces the broader principle established this session: keep-limits are **advisory tenant policy**, fully decoupled from completion (base-card playset / owned, which stays variant-agnostic) and from what the database stores — `inventory.quantity` must never be capped at the limit by a DB constraint, only by application policy in hard mode.
+
+**Depends on:** BL-22 (settings page to host the toggle); pairs with BL-24/BL-25 (per-variant limit values share the same enforcement path).
+
+**Definition of done:** Tenant preference persisted (e.g. a `cap_mode` field in a tenant-settings store); `increment_card` honors the mode (block vs. commit-with-over-limit-flag) for both singleton and standard categories; Add Cards verification renders a third "over-limit, will commit" state in soft mode; inline steppers allow over-limit increments in soft mode; default remains hard cap; tests cover both modes including an over-limit commit in soft mode.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-36: New-set onboarding considerations (applying new cards/sets to the catalog)
+
+**What:** When the ongoing sync — or a manual run — applies new cards/sets, a series of concerns beyond a raw data upsert must be handled. Enumerated so far (2026-06-20):
+- **Set logo / image asset** used by the Add Cards modal's set bar (`AddCardsSetBar`) and anywhere set logos render. Not guaranteed to come from swuapi; historically a manually-sourced PNG per set — so a brand-new set has no logo until one is supplied.
+- **New variant types** entering the open vocabulary (BL-27) that need a `variant_type` value and, for stamp-only tournament tiers, a `stamp_group` assignment (BL-31/32, BL-33).
+- **New card attributes** swuapi may introduce that have no column yet.
+- **Preview-vs-completion interaction:** with pre-release/preview content now shown publicly (currency decision, BL-33 step 7), an unreleased, unownable card would otherwise count as "missing" and drag down set/playset completion %. Decide how preview cards are treated in the completion stats.
+
+Applies whether application is **gated** (the initial mode) or **automatic** (future — BL-37).
+
+**Why:** Raised 2026-06-20 while locking the catalog-currency mechanism. Applying a new set isn't a pure data operation — assets and UI conventions assume per-set human-curated inputs (set logos especially). These must be enumerated and, where possible, automated before full auto-apply (BL-37) is safe. Jeremy explicitly deferred the deep exploration of these impacts to a future date.
+
+**Depends on:** Pairs with BL-33/BL-29 (the ingestion these considerations wrap) and BL-19 (manual new-set path).
+
+**Definition of done:** A checklist/spec of every per-new-set consideration (assets, variant vocabulary, attributes, preview/completion interaction), each marked automatable-or-manual; the gated-apply flow surfaces the manual ones to the operator at apply time.
+
+**Status:** 🔲 Open — exploration deferred
+
+---
+
+### BL-37: Convert ongoing catalog sync to full auto-apply
+
+**What:** The 2026-06-20 currency decision (BL-33 step 7) starts the ongoing sync as **auto-detect + operator-gated apply** — a scheduled job detects changes and produces a reviewable diff, and the operator one-click approves before anything is written. This item is the future conversion to **full auto-apply** (no human gate), so the catalog stays current hands-off.
+
+**Why:** Requested by Jeremy when choosing the apply mode (2026-06-20): gated apply is the safe starting point; auto-apply is the eventual hands-off goal. Deferred because auto-applying before BL-36's onboarding considerations are automatable would inject un-curated data — and swuapi's known pre-release defects (the ASH `<uq>` placeholder, the Zam Wesell no-anchor card) — straight into the live, public, multi-tenant catalog.
+
+**Depends on:** BL-36 (onboarding considerations made automatable or safely defaulted); the gated sync (BL-33 step 7) being live and validated for a sustained period.
+
+**Definition of done:** The sync applies detected changes without a human gate; BL-36's considerations are handled automatically or safely defaulted; safeguards exist (e.g. hold/flag obviously-broken or preview-defective records) so auto-apply cannot publish bad data unattended.
+
+**Status:** 🔲 Open — future
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.
@@ -634,3 +784,26 @@ BL-3 retires the docx and renames the platform guide for *future* chapters, but 
 Raised 2026-06-17 while discussing BL-17. Jeremy confirmed the app is intended for real ongoing use by other people, not just himself/portfolio viewing — which means decisions like "can a logged-out visitor browse the catalog" shouldn't be made item-by-item, but as part of a deliberate end-to-end picture of how new/returning/anonymous users are meant to move through auth, catalog browsing, and inventory management.
 
 **How to apply:** Before resolving BL-17 (and likely BL-16, email verification), have a dedicated conversation mapping out the intended user flow — who can see what, when signup is required, what happens to an anonymous visitor's intent (e.g. do they get prompted to sign up after browsing?). Once that flow is decided, BL-16/BL-17 become implementation details of it rather than standalone judgment calls.
+
+**✅ Resolved 2026-06-20 (swuapi-first redesign session).** With product scope now fixed to *isolated collectors over one shared catalog* — no trading/sharing/social surfaces (confirmed this session) — the intended user flow is:
+- **Anonymous visitor:** browses the Catalog and the S6 card detail popup freely (both public, read-only). Sees the Inventory tab, but clicking it shows a value-prop empty state (lock + "Track your SWU collection" + Sign up / Log in), not the grid. No in-context "track" action exists, so the Inventory tab is the single, deliberate auth wall.
+- **New user:** signup auto-provisions a tenant (P5); lands in an empty inventory over the full catalog. No special onboarding needed (deferred as polish; no structural impact).
+- **Returning user:** unchanged — authenticated, tenant-scoped inventory exactly as today.
+- **Signup is required only to track inventory; catalog browsing never requires an account.**
+- **Email verification** deferred to v1.0 (see BL-16).
+
+BL-17 and BL-16 are now implementation details of this flow, each carrying its own decision note. Implementation-time doc updates (`SWU_Platform_Spec.md` §1/§5, `SWU_Platform_Security_Review.md` A01) are tracked under BL-17.
+
+### E. Swuapi-first counterfactual — where would app-goal-driven design choices actually land?
+
+Raised 2026-06-20, immediately after BL-28's addendum (the `variant_of_uuid` discovery) and alongside BL-33/BL-34. Jeremy plans to hold this conversation in a **separate Opus session** specifically because earlier Sonnet sessions analyzing swuapi.com missed a structurally important detail (`variant_of_uuid`) across multiple passes before finding it — see [[feedback_model_choice_deep_analysis]] in memory. The output of that Opus session should be **documented decisions** (in this backlog, in `SWU_Standard_Variant_Mapping_Spec.md`, or wherever the decision naturally belongs) that a later Sonnet session can then execute. This is a design/tradeoff conversation, not an implementation session.
+
+**If you are the Opus session reading this:** the question on the table is *"if swuapi.com had been the catalog data source from the very beginning instead of the TCGPlayer CSV pipeline, would this application's design have ended up differently — and if so, where?"* Jeremy has explicitly said he does **not** know the answer, and does **not** want the conversation pre-narrowed to one layer. Treat all three as equally live:
+
+- **Database/schema** — would the catalog model itself (tables, keys, the `base_cards`/`card_variants` split BL-33 proposes) have looked different if designed swuapi-first rather than retrofitted onto a CSV-shaped schema?
+- **Business-rule layer** — would things like per-tenant inventory limits (BL-24), variant-type handling (BL-27), or the standard/exception philosophy (this session's `SWU_Standard_Variant_Mapping_Spec.md`) have been modeled differently, independent of the underlying tables?
+- **UI/UX layer** — would catalog browsing, the card detail popup (S6/BL-31/32), or inventory editing (BL-32) have surfaced this data differently if the richer swuapi fields (images, structured text, variant graph) had been assumed available from the start rather than added incrementally?
+
+Jeremy's stated read going in (from the prior Sonnet session, worth treating as a hypothesis to test, not a conclusion): the variant-identity layer (root + `variant_of_uuid`) probably converges to roughly what BL-33 proposes regardless of source — CSV's flat shape is what *forced* the brittle boolean-flag intermediate design, and swuapi-first likely skips that generation entirely rather than landing somewhere truly different. The business-rule and UI layers are the genuinely open question — they're driven by what Jeremy wants the app to *do* for a collector, not by what shape the upstream data happens to come in, so there's no a priori reason they'd be the same regardless of source. Confirm, revise, or discard this hypothesis as the conversation actually develops — don't treat it as the answer.
+
+**How to apply:** Hold this as an open-ended design conversation, not a checklist to execute. Whatever falls out — schema changes, business-rule changes, UI changes, or "actually it converges and nothing changes" — gets written down explicitly (update BL-33 if schema-related, add new backlog items if new work surfaces, update `SWU_Standard_Variant_Mapping_Spec.md` if the standard/exception philosophy itself shifts) so the follow-up Sonnet session has a concrete spec to execute against rather than a conversation to re-derive.

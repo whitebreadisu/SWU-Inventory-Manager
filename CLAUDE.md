@@ -20,6 +20,15 @@ When the user refers to **"the backlog"**, they mean:
 When the user refers to **"the platform spec"**, they mean:
 `F:\Projects\swu-inventory-manager\specification_documents\SWU_Platform_Spec.md`
 
+When the user refers to **"the standard variant mapping spec"** or **"the variant mapping spec"**, they mean:
+`F:\Projects\swu-inventory-manager\specification_documents\SWU_Standard_Variant_Mapping_Spec.md`
+
+When the user refers to **"the variant exceptions report"** or **"the exceptions list"**, they mean:
+`F:\Projects\swu-inventory-manager\specification_documents\swuapi_standard_variant_exceptions.md`
+
+When the user refers to **"the redesign spec"** or **"the catalog redesign spec"**, they mean:
+`F:\Projects\swu-inventory-manager\specification_documents\SWU_Catalog_Redesign_Spec.md`
+
 ## Set Codes
 | Set | Code | File prefix |
 |-----|------|-------------|
@@ -30,3 +39,12 @@ When the user refers to **"the platform spec"**, they mean:
 | Legends of the Force | LOF | LegendsoftheForce |
 | Secrets of Power | SEC | SecretsofPower |
 | A Lawless Time | LAW | ALawlessTime |
+
+## Testing
+
+**Test disposition on schema/behavior changes.** When a change breaks existing tests, give each affected test a **deliberate disposition — port, replace, or retire** — never delete or `skip` a still-valid test just to make CI green:
+- **Port** — the behavior still exists; re-express the test against the new code/schema.
+- **Replace** — the behavior survives but changed; write a new test superseding the old assertion.
+- **Retire** — the behavior is designed away; delete the test **with a recorded reason** tying it to the change that eliminated it.
+
+The forbidden path is the unreasoned delete-to-go-green: abandoning a still-valid test because porting is effort silently erodes coverage. Coverage % is a floor, not proof — tests encode hard-won bug knowledge, so carry the *intent*, not just the shape. For larger rewrites, produce a disposition log (each test area → disposition + reason). See `SWU_Catalog_Redesign_Spec.md` §8 for the worked example.

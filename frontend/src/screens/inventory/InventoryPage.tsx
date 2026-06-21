@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { getInventory, incrementCard, decrementCard } from "../../api/inventory";
+import { getInventory } from "../../api/inventory";
 import { groupWithInventory, isPlaysetComplete } from "../../utils/inventory";
 import { InventorySummary } from "./InventorySummary";
 import { InventoryTable } from "./InventoryTable";
+import { CardDetailPopup } from "../../components/CardDetailPopup";
+import { CardInventoryPopup } from "./CardInventoryPopup";
 import { FilterPanel, applyFilters, DEFAULT_FILTERS } from "../../components/FilterPanel";
 import { SWUButton } from "../../components/SWUButton";
 import { AddCardsModal } from "./AddCardsModal";
@@ -20,7 +22,8 @@ export function InventoryPage() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [pendingCardIds, setPendingCardIds] = useState<Set<number>>(new Set());
+  const [selectedBaseCardId, setSelectedBaseCardId] = useState<number | null>(null);
+  const [inventoryPopupBaseCardId, setInventoryPopupBaseCardId] = useState<number | null>(null);
 
   const fetchInventory = useCallback(async () => {
     const raw = await getInventory();
@@ -39,65 +42,6 @@ export function InventoryPage() {
     if (incompleteOnly) result = result.filter((c) => !isPlaysetComplete(c.inventory, c.type));
     return result;
   }, [cards, filters, incompleteOnly]);
-
-  async function handleIncrement(card: InventoryCard, variantId: number) {
-    if (pendingCardIds.has(variantId)) return;
-    setPendingCardIds((prev) => new Set(prev).add(variantId));
-    try {
-      const result = await incrementCard(variantId);
-      if (result.blocked) return;
-      setCards((prev) =>
-        prev.map((c) =>
-          c.base_card_id === card.base_card_id
-            ? {
-                ...c,
-                inventory: { ...c.inventory, [variantId]: result.quantity },
-                variants: c.variants.map((v) =>
-                  v.variant_id === variantId ? { ...v, quantity: result.quantity } : v
-                ),
-              }
-            : c
-        )
-      );
-    } catch (err) {
-      console.error("Increment failed:", err);
-    } finally {
-      setPendingCardIds((prev) => {
-        const next = new Set(prev);
-        next.delete(variantId);
-        return next;
-      });
-    }
-  }
-
-  async function handleDecrement(card: InventoryCard, variantId: number) {
-    if (pendingCardIds.has(variantId)) return;
-    setPendingCardIds((prev) => new Set(prev).add(variantId));
-    try {
-      const result = await decrementCard(variantId);
-      setCards((prev) =>
-        prev.map((c) =>
-          c.base_card_id === card.base_card_id
-            ? {
-                ...c,
-                inventory: { ...c.inventory, [variantId]: result.quantity },
-                variants: c.variants.map((v) =>
-                  v.variant_id === variantId ? { ...v, quantity: result.quantity } : v
-                ),
-              }
-            : c
-        )
-      );
-    } catch (err) {
-      console.error("Decrement failed:", err);
-    } finally {
-      setPendingCardIds((prev) => {
-        const next = new Set(prev);
-        next.delete(variantId);
-        return next;
-      });
-    }
-  }
 
   if (error) return <p className="loading-text">Error: {error}</p>;
 
@@ -136,11 +80,25 @@ export function InventoryPage() {
           </FilterPanel>
           <InventoryTable
             cards={filtered}
-            onIncrement={handleIncrement}
-            onDecrement={handleDecrement}
-            pendingCardIds={pendingCardIds}
+            onSelectCard={setSelectedBaseCardId}
+            onSelectInventory={setInventoryPopupBaseCardId}
           />
         </>
+      )}
+      {selectedBaseCardId != null && (
+        <CardDetailPopup
+          baseCardId={selectedBaseCardId}
+          onClose={() => setSelectedBaseCardId(null)}
+        />
+      )}
+      {inventoryPopupBaseCardId != null && (
+        <CardInventoryPopup
+          baseCardId={inventoryPopupBaseCardId}
+          onClose={() => setInventoryPopupBaseCardId(null)}
+          onChanged={() => {
+            fetchInventory().catch(console.error);
+          }}
+        />
       )}
     </div>
   );

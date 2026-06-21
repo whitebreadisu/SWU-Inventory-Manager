@@ -44,6 +44,7 @@ def _to_response(variant: CardVariant) -> CardWithInventoryResponse:
         finish=classification.finish,
         channel=classification.channel,
         stamped=classification.stamped,
+        is_token=base_card.is_token,
         quantity=qty,
     )
 

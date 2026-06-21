@@ -141,7 +141,31 @@
   min-width: 360px;
 }
 
-/* ── VariantInventory chips + steppers ──────────────────────────────────── */
+/* ── Card name link (opens CardDetailPopup) ─────────────────────────────── */
+
+.card-name-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    color 0.15s,
+    text-decoration-color 0.15s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.card-name-link:hover,
+.card-name-link:focus-visible {
+  color: var(--color-primary);
+  text-decoration-color: currentColor;
+}
+
+/* ── VariantInventory: read-only owned-variants display ─────────────────── */
 
 .variant-inv {
   display: inline-flex;
@@ -164,11 +188,9 @@
   white-space: nowrap;
 }
 
-.variant-inv__chip--zero {
+.variant-inv__sep {
   color: var(--color-text-muted);
-}
-.variant-inv__chip--pending {
-  opacity: 0.5;
+  margin-right: 8px;
 }
 
 .variant-inv__label {
@@ -190,60 +212,14 @@
   color: inherit;
 }
 
-.variant-inv__step {
-  appearance: none;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  color: var(--color-text-muted);
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-ui);
-  font-size: 14px;
-  line-height: 1;
-  padding: 0;
+/* Inventory cell: clickable to open the CardInventoryPopup. */
+.td-inventory--clickable {
   cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity 0.12s ease,
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease;
+  border-radius: 3px;
+  transition: background 0.12s ease;
 }
-
-.data-table--inventory tbody tr:hover .variant-inv__step,
-.variant-inv__chip:hover .variant-inv__step,
-.variant-inv__chip:focus-within .variant-inv__step {
-  opacity: 1;
-}
-
-.variant-inv__step:hover {
-  background: var(--bg-surface);
-  border-color: var(--color-border);
-  color: var(--color-text);
-}
-
-.variant-inv__step:active {
-  background: rgba(37, 99, 235, 0.18);
-  border-color: var(--color-primary);
-  color: var(--color-text);
-}
-
-.variant-inv__step:disabled {
-  opacity: 0;
-  pointer-events: none;
-}
-.data-table--inventory tbody tr:hover .variant-inv__step:disabled {
-  opacity: 0.25;
-}
-
-/* Blocked state: + button for a completed playset */
-.variant-inv__step--blocked {
-  opacity: 0 !important;
-  pointer-events: none;
+.td-inventory--clickable:hover {
+  background: rgba(37, 99, 235, 0.12);
 }
 
 /* ── Playset cell ────────────────────────────────────────────────────────── */

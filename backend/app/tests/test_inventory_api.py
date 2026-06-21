@@ -40,6 +40,8 @@ class TestListInventory:
             assert "finish" in r
             assert "channel" in r
             assert "stamped" in r
+            assert "is_token" in r
+            assert isinstance(r["is_token"], bool)
 
     def test_quantity_zero_cards_are_included(self, client):
         records = client.get("/api/inventory").json()

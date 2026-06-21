@@ -51,6 +51,7 @@ export function groupWithInventory(cards: CardWithQty[]): InventoryCard[] {
         power: card.power,
         hp: card.hp,
         arena: card.arena,
+        is_token: card.is_token,
         variants: [],
         inventory: {},
       };

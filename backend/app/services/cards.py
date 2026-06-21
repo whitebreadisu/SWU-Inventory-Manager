@@ -41,6 +41,7 @@ def _to_response(variant: CardVariant) -> CardResponse:
         finish=classification.finish,
         channel=classification.channel,
         stamped=classification.stamped,
+        is_token=base_card.is_token,
     )
 
 

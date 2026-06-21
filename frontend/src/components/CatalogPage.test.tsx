@@ -31,6 +31,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     finish: "Foil",
     channel: "Retail",
     stamped: false,
+    is_token: false,
     source_set_code: "SOR",
     swuapi_id: "abc",
     front_image_url: null,

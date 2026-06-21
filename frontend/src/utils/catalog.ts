@@ -28,6 +28,7 @@ export interface BaseCard {
   power: number | null;
   hp: number | null;
   arena: string | null;
+  is_token: boolean;
   variants: Variant[];
 }
 
@@ -74,6 +75,7 @@ export function groupByBaseCard(cards: Card[]): BaseCard[] {
         power: card.power,
         hp: card.hp,
         arena: card.arena,
+        is_token: card.is_token,
         variants: [],
       };
       map.set(card.base_card_id, base);

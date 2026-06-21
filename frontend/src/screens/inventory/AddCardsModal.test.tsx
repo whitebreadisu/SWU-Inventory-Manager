@@ -35,6 +35,7 @@ function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
     finish: "Standard",
     channel: "Retail",
     stamped: false,
+    is_token: false,
     source_set_code: "SOR",
     swuapi_id: "uuid-1",
     front_image_url: null,

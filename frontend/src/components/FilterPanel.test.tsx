@@ -47,6 +47,7 @@ function makeCard(overrides: Partial<BaseCard> = {}): BaseCard {
     power: null,
     hp: null,
     arena: null,
+    is_token: false,
     variants: [makeVariant()],
     ...overrides,
   };

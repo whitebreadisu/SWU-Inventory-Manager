@@ -15,6 +15,7 @@ export interface Card {
   finish: string | null;
   channel: string;
   stamped: boolean;
+  is_token: boolean;
   source_set_code: string;
   swuapi_id: string;
   front_image_url: string | null;

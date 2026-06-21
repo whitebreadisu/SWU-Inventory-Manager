@@ -32,3 +32,4 @@ class CardResponse(BaseModel):
     finish: str | None
     channel: str
     stamped: bool
+    is_token: bool

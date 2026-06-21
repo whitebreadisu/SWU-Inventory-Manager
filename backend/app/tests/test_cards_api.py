@@ -43,6 +43,8 @@ class TestListCards:
             assert "finish" in card
             assert "channel" in card
             assert "stamped" in card
+            assert "is_token" in card
+            assert isinstance(card["is_token"], bool)
 
     def test_standard_variant_exposes_finish_channel_stamped(self, client):
         cards = client.get("/api/cards?set_code=SOR&variant_type=Standard").json()

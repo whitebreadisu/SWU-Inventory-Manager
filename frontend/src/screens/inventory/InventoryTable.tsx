@@ -9,12 +9,11 @@ const ASPECTS = ["Vigilance", "Command", "Aggression", "Cunning", "Heroism", "Vi
 
 interface Props {
   cards: InventoryCard[];
-  onIncrement: (card: InventoryCard, variantId: number) => void;
-  onDecrement: (card: InventoryCard, variantId: number) => void;
-  pendingCardIds: Set<number>;
+  onSelectCard: (baseCardId: number) => void;
+  onSelectInventory: (baseCardId: number) => void;
 }
 
-export function InventoryTable({ cards, onIncrement, onDecrement, pendingCardIds }: Props) {
+export function InventoryTable({ cards, onSelectCard, onSelectInventory }: Props) {
   if (cards.length === 0) {
     return <p className="placeholder">No cards match the current filters.</p>;
   }
@@ -48,16 +47,21 @@ export function InventoryTable({ cards, onIncrement, onDecrement, pendingCardIds
               <tr key={`${card.set_code}-${card.base_card_number}`}>
                 <td className="cell-muted td-cardnum">{card.base_card_number}</td>
                 <td className="td-name">
-                  {displayName}
+                  <button
+                    type="button"
+                    className="card-name-link"
+                    onClick={() => onSelectCard(card.base_card_id)}
+                  >
+                    {displayName}
+                  </button>
                   {subtitle && <span className="card-subtitle">{subtitle}</span>}
                 </td>
-                <td className="td-inventory">
-                  <VariantInventory
-                    card={card}
-                    onIncrement={onIncrement}
-                    onDecrement={onDecrement}
-                    pendingCardIds={pendingCardIds}
-                  />
+                <td
+                  className="td-inventory td-inventory--clickable"
+                  onClick={() => onSelectInventory(card.base_card_id)}
+                  title="Edit inventory"
+                >
+                  <VariantInventory card={card} />
                 </td>
                 <td className="td-playset">
                   <PlaysetCell card={card} />

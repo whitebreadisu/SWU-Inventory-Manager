@@ -94,9 +94,7 @@ export function applyFilters(cards: BaseCard[], filters: FilterState): BaseCard[
     if (filters.rarity.size && !filters.rarity.has(card.rarity)) return false;
 
     if (filters.finish.size) {
-      const hasFinish = card.variants.some((v) =>
-        filters.finish.has(v.finish ?? v.variant_type)
-      );
+      const hasFinish = card.variants.some((v) => filters.finish.has(v.finish ?? v.variant_type));
       if (!hasFinish) return false;
     }
 

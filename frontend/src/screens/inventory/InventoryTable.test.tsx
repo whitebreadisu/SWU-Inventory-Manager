@@ -91,7 +91,11 @@ describe("InventoryTable read-only inventory display", () => {
   it("clicking the inventory cell calls onSelectInventory with the base_card_id", () => {
     const onSelectInventory = vi.fn();
     const { container } = render(
-      <InventoryTable cards={[mockCard]} onSelectCard={vi.fn()} onSelectInventory={onSelectInventory} />
+      <InventoryTable
+        cards={[mockCard]}
+        onSelectCard={vi.fn()}
+        onSelectInventory={onSelectInventory}
+      />
     );
     fireEvent.click(container.querySelector("td.td-inventory")!);
     expect(onSelectInventory).toHaveBeenCalledWith(1);

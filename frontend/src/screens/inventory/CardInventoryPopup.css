@@ -1,0 +1,189 @@
+/* Card inventory popup — .cip-* styles. Editable variant +/- view
+   (SWU_Catalog_Redesign_Spec.md §5.3, mock annotation on the inventory popup).
+   Co-located with CardInventoryPopup.tsx. */
+
+.cip-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 9, 16, 0.74);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 64px 24px;
+  overflow-y: auto;
+}
+
+.cip-modal {
+  width: min(680px, 100%);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 32px 80px -16px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.cip-modal::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: var(--color-primary);
+}
+
+.cip-status {
+  padding: 60px 28px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.cip-status--error {
+  color: #f87171;
+}
+
+.cip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 22px 28px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.cip-title {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  margin: 0;
+}
+.cip-subtitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+.cip-close {
+  margin-left: auto;
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.cip-close:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.cip-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  padding: 22px 28px 28px;
+  max-height: min(72vh, 600px);
+  overflow-y: auto;
+}
+
+.cip-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.cip-image {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  display: block;
+  background: var(--bg-surface-alt);
+}
+
+.cip-right {
+  min-width: 0;
+}
+
+.cip-variant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.cip-row__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.cip-row__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cip-row__qty {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  min-width: 18px;
+  text-align: center;
+  color: var(--color-text);
+}
+
+.cip-step {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  color: var(--color-text-muted);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.cip-step:hover:not(:disabled) {
+  background: var(--bg-surface);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text);
+}
+
+.cip-step:active:not(:disabled) {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.cip-step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

@@ -44,7 +44,7 @@ export function InventoryTable({ cards, onSelectCard, onSelectInventory }: Props
             const { displayName, subtitle } = parseCardDisplay(card);
             const isBase = card.type === "Base";
             return (
-              <tr key={`${card.set_code}-${card.base_card_number}`}>
+              <tr key={card.base_card_id}>
                 <td className="cell-muted td-cardnum">{card.base_card_number}</td>
                 <td className="td-name">
                   <button

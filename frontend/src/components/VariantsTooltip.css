@@ -35,7 +35,7 @@
 .vt-popover {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  right: 0;
   z-index: 60;
   min-width: 220px;
   max-width: 360px;

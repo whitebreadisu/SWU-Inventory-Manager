@@ -47,6 +47,11 @@
 | BL-39 | Judge/Prerelease variant stamp classification (visual analysis) | 6 — Feature Enhancements | Judge Program / Prerelease Judge / Prerelease Promo are a mixed bag (some stamps over a finish, some distinct art); needs visual set-by-set inspection to assign finish+stamped; ungrouped by default until done |
 | BL-40 | Revisit variant grouping model — finish+stamp vs. group-by-art | 6 — Feature Enhancements | Reconsider whether stamp_group should collapse by base art across finishes (Standard+Foil, Hyperspace+HS Foil, all prestiges) rather than the BL-27 finish+stamp rule; BL-39's visual pass is an input |
 | BL-41 | Channel-rule quirk: base-set tournament-tier variants classify as Retail, not Promo | 6 — Feature Enhancements | §10.4's channel rule ties "Promo / Tournament-tier" to source_set_code P25/P26 only, not the PQ/RQ/SQ/GC/SS variant_type prefix itself — so the same tier label sourced from a base set (SOR/SHD/TWI) falls through to Retail instead. Found and implemented literally during BL-29; needs an analysis pass to decide if that's actually correct |
+| BL-42 | Upgrade local Node to ≥20.19 (vite 8 / vitest 4 requirement) | 3 — Tooling Investment | Local Node 20.12 is below vite 8 / vitest 4 / rolldown's ≥20.19 requirement, so the frontend dev server, vitest, and build only run via a `docker node:20` workaround; the frontend container's node_modules volume is also stale at vite 5. Upgrade host Node and rebuild the image so local dev/test work natively |
+| BL-43 | Cloud dev environment — robust dev→prod pipeline | 4 — Operational Hardening | Stand up a persistent deployed dev environment (likely on the existing `swu-sandbox` GCP project) between local and prod, with a branch→dev-deploy CI path, so changes are validated in a real cloud env before prod instead of going local→prod |
+| BL-44 | Catalog performance at full scale | 4 — Operational Hardening | Catalog fetches all ~8,353 variant rows and renders all ~2,306 base-card rows at once (no virtualization/pagination) — render jank + heavy payload at full catalog size. Levers for later discussion: (1) virtualization/windowing (keep client-side filtering); (2) base-cards-with-nested-variants payload (~2.3k rows not 8.3k); (3) server-side pagination+filtering (heaviest, last resort) |
+| BL-45 | Bulletproof popover positioning (portal-based) | 5 — Opportunistic | Catalog Variants tooltip uses absolute positioning anchored to the button's right edge (good enough for the current right-edge column). For robustness against any column position / horizontal scroll / bottom-row vertical clipping, render the popover in a React portal with fixed positioning from the button's screen rect + edge detection. Polish; not urgent |
+| BL-46 | Add Cards experience — rethink with real-card exploration | 6 — Feature Enhancements | The two-axis (provenance × finish) Add Cards flow is functionally correct but the UX isn't satisfying at full catalog scale; needs hands-on exploration with real cards/examples to define the optimal add-to-inventory experience before redesigning |
 
 ### Completed
 
@@ -232,6 +237,18 @@ No linting or formatting tooling exists anywhere in this repo today (confirmed v
 
 ---
 
+### BL-42: Upgrade local Node to ≥20.19 (vite 8 / vitest 4 requirement)
+
+**What:** The frontend pins vite `^8.0.16` and vitest `^4.1.8` (the BL-9 Dependabot bumps), which require Node ≥20.19, but the local host runs Node 20.12 — so `npm run dev`, `vitest`, and `npm run build` won't run natively and must go through a `docker run node:20` workaround (this is how the BL-33 catalog-rewire agents verified their work, 2026-06-21). Separately, the running frontend container's `node_modules` anonymous volume is stale (serving vite 5.4, not the pinned vite 8), so even the container isn't on the intended toolchain.
+
+**Why:** Surfaced during the catalog-redesign frontend rewire (2026-06-21). Not being able to run the dev server or tests locally slows the inner loop and means CI and the build agents run a different toolchain than the dev box — a drift risk.
+
+**Definition of done:** Host Node upgraded to ≥20.19 LTS; `npm run dev` / `vitest` / `build` run natively; the frontend image rebuilt so its `node_modules` matches the pinned vite 8 / vitest 4 (e.g. `docker compose build --no-cache frontend` plus renewing the anonymous `node_modules` volume).
+
+**Status:** 🔲 Open
+
+---
+
 ## Tier 4 — Operational Hardening
 
 ### BL-8: Backend Dockerfile / Cloud Run startup review
@@ -339,7 +356,46 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 ---
 
+### BL-43: Cloud dev environment — robust dev→prod pipeline
+
+**What:** Stand up a persistent, deployed **dev environment** in the cloud, sitting between the local Docker stack and prod, so changes are validated in a realistic cloud environment before they reach prod. Most likely built on the existing **`swu-sandbox`** GCP project (already in the Terraform module map — `SWU_Platform_Spec.md`), with its own Cloud Run + Cloud SQL + Firebase Auth config and a CI path that deploys to dev (e.g. a dedicated `dev` branch → dev deploy, or auto-deploy `main` to dev then promote to prod).
+
+**Why:** Today the pipeline is just local → prod (`SWU_Platform_Roadmap.md`). There's no shared cloud environment to catch environment-specific issues — auth/RLS behavior, Cloud Run cold starts, migrations against real Cloud SQL, Firebase config — before they hit prod, and nowhere to demo in-progress work. Jeremy wants a more robust development pipeline (raised 2026-06-21, while setting up the catalog-redesign smoke test exposed the local-vs-prod-only gap).
+
+**Decisions to make when picked up:** reuse `swu-sandbox` vs. a new project; branch/deploy strategy (dedicated `dev` branch → dev deploy, vs. promote-from-`main`); how the dev DB is seeded (swuapi ingestion against the dev DB); cost posture (scale-to-zero Cloud Run, smallest Cloud SQL tier); whether the custom-domain portal gets a `dev.` subdomain.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-44: Catalog performance at full scale
+
+**What:** The Catalog tab fetches the entire `GET /api/cards` payload (~8,353 variant rows) and renders every grouped base-card row (~2,306) at once, with no virtualization or pagination. At full catalog size this means a multi-MB JSON payload + parse on each load and a heavy single-pass DOM render that causes jank (it also surfaced a tooltip-clipping symptom during the 2026-06-21 smoke test).
+
+**Why:** With the 6-row fixture this was invisible; with the real catalog it's a genuine UX-performance concern. Flagged by Jeremy during smoke testing; deferred for dedicated discussion + implementation.
+
+**Levers (bang-for-buck order; discuss before building):**
+1. **Virtualization / windowing** — render only the visible rows (e.g. react-window). Keeps the single fetch and the existing rich *client-side* filtering (`applyFilters`) intact; targets the render jank directly. Likely the primary fix.
+2. **Payload shape** — a base-cards-with-nested-variants list endpoint so the client fetches ~2,306 rows instead of ~8,353 (the table groups to base cards anyway); cuts network + parse ~3.6×.
+3. **Server-side pagination + filtering** — the heavier architectural option; only warranted if the catalog grows much larger, and it requires moving filtering server-side (today's client-side filtering can't paginate what it hasn't fetched).
+
+**Status:** 🔲 Open — flagged 2026-06-21, deferred for later discussion
+
+---
+
 ## Tier 5 — Opportunistic / Low Priority
+
+### BL-45: Bulletproof popover positioning (portal-based)
+
+**What:** The Catalog "Variants" hover tooltip (`VariantsTooltip`) is `position: absolute`, anchored to the button's right edge (`right: 0`) so it grows inward and isn't clipped by the table wrapper's `overflow`. That works because the Variants column sits near the table's right edge. The robust general solution is to render the popover in a **React portal** (to `document.body`) with `position: fixed` computed from the button's `getBoundingClientRect()`, plus edge detection (flip side / clamp to viewport).
+
+**Why:** The current right-align fix is layout-specific — it would clip again if the column moved, the table scrolled horizontally, or for the bottom-row downward-clip edge case. A portal escapes every overflow/stacking container. Surfaced during the 2026-06-21 smoke test; the right-align fix was deemed good enough for now.
+
+**Definition of done:** `VariantsTooltip` (and any similar hover popovers) render via a portal with viewport-aware positioning; no clipping regardless of column/scroll position.
+
+**Status:** 🔲 Open — flagged 2026-06-21, deferred (right-align fix shipped)
+
+---
 
 ### BL-10: `card_keywords` / `sub_text` / `is_unique` data gaps
 
@@ -390,6 +446,18 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 ---
 
 ## Tier 6 — Feature Enhancements
+
+### BL-46: Add Cards experience — rethink with real-card exploration
+
+**What:** The Add Cards flow was rebuilt to the two-axis (provenance × finish) ambiguity-gated resolver (`SWU_Catalog_Redesign_Spec.md` §5.4) and is functionally correct, but the *experience* isn't satisfying now that the catalog holds the full set of cards/variants. Before redesigning, use the app with **real cards and concrete examples** to figure out the optimal add-to-inventory experience (entry method, ambiguity handling, source/set selection, bulk patterns).
+
+**Why:** Flagged by Jeremy during the 2026-06-21 smoke test ("not loving the add cards experience"). The optimal design isn't clear from analysis alone — it needs hands-on use against the real, much larger card set. This is a design-exploration item, not a defined build yet.
+
+**Related:** BL-30 (bulk-add precon products), BL-32 (consolidated entry for tournament-tier variants), redesign spec §5.4 (current resolver design).
+
+**Status:** 🔲 Open — design exploration (gather real-use feedback first)
+
+---
 
 ### BL-19: Add new card sets to catalog
 

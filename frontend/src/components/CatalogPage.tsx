@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { getCards, type Card } from "../api/cards";
+import { getSets } from "../api/sets";
 import { groupByBaseCard, parseCardDisplay } from "../utils/catalog";
 import { getRarityLabel } from "../utils/variants";
 import { AspectIcon } from "./AspectIcon";
-import { VariantCircles } from "./VariantCircles";
+import { VariantsTooltip } from "./VariantsTooltip";
+import { CardDetailPopup } from "./CardDetailPopup";
 import { FilterPanel, applyFilters, DEFAULT_FILTERS, type FilterState } from "./FilterPanel";
+import "./CatalogPage.css";
 
 const ASPECTS = ["Vigilance", "Command", "Aggression", "Cunning", "Heroism", "Villainy"] as const;
 
@@ -13,12 +16,26 @@ export function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [setNameByCode, setSetNameByCode] = useState<Record<string, string>>({});
+  const [selectedBaseCardId, setSelectedBaseCardId] = useState<number | null>(null);
 
   useEffect(() => {
     getCards()
       .then(setAllCards)
       .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getSets()
+      .then((sets) => {
+        const map: Record<string, string> = {};
+        sets.forEach((s) => {
+          map[s.code] = s.name;
+        });
+        setSetNameByCode(map);
+      })
+      .catch((err) => console.error("Failed to load sets:", err));
   }, []);
 
   const baseCards = useMemo(() => groupByBaseCard(allCards), [allCards]);
@@ -61,7 +78,13 @@ export function CatalogPage() {
                   <tr key={`${card.set_code}-${card.base_card_number}`}>
                     <td className="cell-muted td-cardnum">{card.base_card_number}</td>
                     <td>
-                      {displayName}
+                      <button
+                        type="button"
+                        className="card-name-link"
+                        onClick={() => setSelectedBaseCardId(card.base_card_id)}
+                      >
+                        {displayName}
+                      </button>
                       {subtitle && <span className="card-subtitle">{subtitle}</span>}
                     </td>
                     <td>{getRarityLabel(card.rarity)}</td>
@@ -91,7 +114,7 @@ export function CatalogPage() {
                     </td>
                     <td className={card.arena == null ? "cell-muted" : ""}>{card.arena ?? "—"}</td>
                     <td>
-                      <VariantCircles card={card} />
+                      <VariantsTooltip card={card} setNameByCode={setNameByCode} />
                     </td>
                     <td className="cell-muted">{card.set_code}</td>
                   </tr>
@@ -100,6 +123,13 @@ export function CatalogPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {selectedBaseCardId != null && (
+        <CardDetailPopup
+          baseCardId={selectedBaseCardId}
+          onClose={() => setSelectedBaseCardId(null)}
+        />
       )}
     </div>
   );

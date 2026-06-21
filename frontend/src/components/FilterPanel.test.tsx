@@ -1,8 +1,10 @@
-import { render, act } from "@testing-library/react";
+import { useState } from "react";
+import { render, act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { applyFilters, DEFAULT_FILTERS } from "./FilterPanel";
+import { applyFilters, DEFAULT_FILTERS, FilterPanel } from "./FilterPanel";
 import type { FilterState } from "./FilterPanel";
 import type { BaseCard, Variant } from "../utils/catalog";
+import type { CardSet } from "../api/sets";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -10,9 +12,8 @@ vi.mock("../api/cards", () => ({
   getCards: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock("../api/sets", () => ({
-  getSets: vi.fn(() => Promise.resolve([])),
-}));
+const { getSets } = vi.hoisted(() => ({ getSets: vi.fn() }));
+vi.mock("../api/sets", () => ({ getSets }));
 
 function makeVariant(overrides: Partial<Variant> = {}): Variant {
   return {
@@ -126,6 +127,58 @@ describe("applyFilters", () => {
     };
     const result = applyFilters([nullCost], filters);
     expect(result).toHaveLength(0);
+  });
+});
+
+// ── FilterPanel set toggle (§5.1) ──────────────────────────────────────────
+
+const BASE_SET: CardSet = { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true };
+const LONG_TAIL_SET: CardSet = { id: 2, code: "PRM", name: "Promotional", is_base_set: false };
+
+describe("FilterPanel set toggle", () => {
+  function setup() {
+    getSets.mockResolvedValue([BASE_SET, LONG_TAIL_SET]);
+    const Wrapper = () => {
+      const [filters, setFilters] = useState(DEFAULT_FILTERS);
+      return <FilterPanel filters={filters} setFilters={setFilters} cards={[]} />;
+    };
+    return Wrapper;
+  }
+
+  it("shows only base sets by default in the Set dropdown", async () => {
+    const Wrapper = setup();
+    await act(async () => {
+      render(<Wrapper />);
+    });
+    fireEvent.click(screen.getByText("Filters"));
+    await waitFor(() => expect(getSets).toHaveBeenCalled());
+    const setLabel = await screen.findByText("Set");
+    const setButton = setLabel.closest(".ifp-field")!.querySelector(".ifp-multi__button")!;
+    fireEvent.click(setButton);
+
+    expect(screen.getByText(/SOR/)).toBeTruthy();
+    expect(screen.queryByText(/PRM/)).toBeNull();
+  });
+
+  it("reveals long-tail sets after clicking the toggle, and hides them again on re-toggle", async () => {
+    const Wrapper = setup();
+    await act(async () => {
+      render(<Wrapper />);
+    });
+    fireEvent.click(screen.getByText("Filters"));
+    await waitFor(() => expect(getSets).toHaveBeenCalled());
+    const setLabel = await screen.findByText("Set");
+    const setButton = setLabel.closest(".ifp-field")!.querySelector(".ifp-multi__button")!;
+    fireEvent.click(setButton);
+
+    const toggleBtn = screen.getByText("Show all sets");
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByText(/SOR/)).toBeTruthy();
+    expect(screen.getByText(/PRM/)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Base sets only"));
+    expect(screen.queryByText(/PRM/)).toBeNull();
   });
 });
 

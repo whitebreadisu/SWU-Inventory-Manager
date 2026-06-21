@@ -154,6 +154,10 @@ interface MultiSelectProps {
   options: (string | SelectOption)[];
   placeholder?: string;
   searchable?: boolean;
+  /** Optional extra control rendered in the dropdown's menubar, alongside
+   * All/Clear (e.g. the base/long-tail set toggle, §5.1). Purely additive —
+   * existing callers that omit this prop are unaffected. */
+  menubarExtra?: React.ReactNode;
 }
 
 export function MultiSelect({
@@ -163,6 +167,7 @@ export function MultiSelect({
   options,
   placeholder = "All",
   searchable = false,
+  menubarExtra,
 }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -303,6 +308,7 @@ export function MultiSelect({
               >
                 Clear
               </button>
+              {menubarExtra}
             </div>
 
             <div className="ifp-multi__items">
@@ -442,6 +448,9 @@ interface FilterPanelProps {
 export function FilterPanel({ filters, setFilters, cards, children }: FilterPanelProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [sets, setSets] = useState<CardSet[]>([]);
+  // Base/long-tail set toggle (§5.1): defaults to base sets only; the
+  // header button inside the Set dropdown expands to all sets.
+  const [showAllSets, setShowAllSets] = useState(false);
 
   useEffect(() => {
     getSets()
@@ -470,6 +479,7 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
   };
 
   const setOptions = sets
+    .filter((s) => showAllSets || s.is_base_set)
     .slice()
     .sort((a, b) => Number(b.is_base_set) - Number(a.is_base_set))
     .map((s) => ({ value: s.code, label: `${s.code} — ${s.name}` }));
@@ -546,6 +556,18 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
               onChange={(v) => update({ set: v })}
               options={setOptions}
               placeholder="All sets"
+              menubarExtra={
+                <button
+                  type="button"
+                  className="ifp-multi__bar-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllSets((v) => !v);
+                  }}
+                >
+                  {showAllSets ? "Base sets only" : "Show all sets"}
+                </button>
+              }
             />
             <MultiSelect
               label="Type"

@@ -3,6 +3,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AddCardsModal } from "./AddCardsModal";
 import type { CardWithQty } from "../../api/inventory";
 
+// DISPOSITION (§5.4/§8.1 — see addCardsResolver.test.ts for the full log):
+// the one OP-specific scenario this file exercised ("needs_variant" for a
+// shared card_number) is REPLACED below with its two-axis analog
+// ("needs-finish hint when card_number is finish-ambiguous"); every other
+// test here (dialog chrome, set selection, willAdd/willSkip wiring) is
+// PORTed unchanged since the orchestration/props contract didn't change.
+
 vi.mock("../../api/sets", () => ({
   getSets: vi.fn().mockResolvedValue([
     { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true },
@@ -135,7 +142,7 @@ describe("AddCardsModal", () => {
     expect(screen.getByText("Cards in this batch")).toBeTruthy();
   });
 
-  it("shows verification title when proceeding to verify phase", async () => {
+  it("stays in editing with needs-finish hint when card_number is finish-ambiguous", async () => {
     await renderModal();
     await waitFor(() => screen.getByText(/Spark of Rebellion/i));
 
@@ -145,16 +152,18 @@ describe("AddCardsModal", () => {
       fireEvent.change(select, { target: { value: "SOR" } });
     });
 
-    // Enter a card number that resolves (card 12 exists in mockCatalog as SOR)
+    // Enter a card number that resolves to 2 finishes (card 12 in mockCatalog
+    // has both Standard and Standard Foil rows at source_set_code SOR) — the
+    // two-axis resolver surfaces needs_finish, not an auto-resolve.
     const input = screen.getByPlaceholderText("000");
     await act(async () => {
       fireEvent.change(input, { target: { value: "12" } });
     });
 
-    // For SOR (non-unique), we need to pick a variant. Check needs_variant state.
-    // The submit button should still be inactive (needs_variant).
-    // This test confirms the modal stays in editing with the hint.
+    // Submit button stays inactive until a finish is picked; the modal stays
+    // in editing with the "enter a card number" hint (no resolved rows yet).
     expect(screen.getByText(/Enter a card number/i)).toBeTruthy();
+    expect(screen.getByText(/select a finish/i)).toBeTruthy();
   });
 
   it("splitForVerification: willAdd vs willSkip reflected in verification view", async () => {

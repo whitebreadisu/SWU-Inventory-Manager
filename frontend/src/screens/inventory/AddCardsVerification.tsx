@@ -23,8 +23,8 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
           <tr>
             <th style={{ width: 70 }}>Card#</th>
             <th>Name</th>
-            <th style={{ width: 180 }}>Variant</th>
-            <th style={{ width: 60 }}>OP</th>
+            <th style={{ width: 140 }}>Finish</th>
+            <th style={{ width: 120 }}>Provenance</th>
             <th style={{ width: 100 }}>Inventory</th>
             {kind === "skip" && <th>Reason</th>}
           </tr>
@@ -50,13 +50,14 @@ function Section({ title, kind, count, items, reason }: SectionProps) {
                   </div>
                 )}
               </td>
-              <td>{resolved.variant}</td>
+              <td>{resolved.finish}</td>
               <td
                 style={{
-                  color: resolved.isOp ? "var(--variant-op)" : "var(--color-text-muted)",
+                  color:
+                    resolved.channel !== "Retail" ? "var(--variant-op)" : "var(--color-text-muted)",
                 }}
               >
-                {resolved.isOp ? "✓" : "—"}
+                {resolved.channel}
               </td>
               <td>
                 <span className="ac-dot-row">

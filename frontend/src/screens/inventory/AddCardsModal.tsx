@@ -22,7 +22,7 @@ interface ModalState {
 let _rowCounter = 0;
 function emptyRow(): Row {
   _rowCounter += 1;
-  return { id: `r${Date.now()}_${_rowCounter}`, cardNumber: "", op: false, variant: null };
+  return { id: `r${Date.now()}_${_rowCounter}`, cardNumber: "", channel: null, finish: null };
 }
 
 interface Props {
@@ -93,7 +93,9 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
 
     const resolvedRows = resolutions.filter((r) => r.status === "resolved");
     const hasErrors = resolutions.some((r) => r.status === "error");
-    const hasPending = resolutions.some((r) => r.status === "needs_variant");
+    const hasPending = resolutions.some(
+      (r) => r.status === "needs_provenance" || r.status === "needs_finish"
+    );
     const canSubmit = resolvedRows.length > 0 && !hasErrors && !hasPending;
 
     const { willAdd, willSkip } = splitForVerification(state.setCode!, state.rows, catalog);
@@ -116,7 +118,7 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
     setCommitting(true);
     try {
       for (const { resolved } of willAdd) {
-        await incrementCard(resolved.cardId);
+        await incrementCard(resolved.variantId);
       }
     } catch (err) {
       console.error("Commit failed:", err);

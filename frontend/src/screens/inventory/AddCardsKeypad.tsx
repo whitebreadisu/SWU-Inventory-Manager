@@ -25,69 +25,38 @@ function InventoryDot({ status }: { status: InventoryStatus | null }) {
   );
 }
 
-interface OPCheckboxProps {
-  checked: boolean;
-  hasOpOption: boolean;
+interface PickerProps {
+  label: string;
+  options: string[];
+  selected: string | null;
   disabled: boolean;
-  onChange: (checked: boolean) => void;
+  resolvedValue: string | null;
+  onChange: (value: string | null) => void;
 }
 
-function OPCheckbox({ checked, hasOpOption, disabled, onChange }: OPCheckboxProps) {
-  const isDisabled = disabled || !hasOpOption;
-  return (
-    <label
-      className={`ac-op${isDisabled ? " ac-op--disabled" : ""}`}
-      title={
-        hasOpOption
-          ? "This card has an OP printing — check to add the OP version"
-          : "No OP printing for this card"
-      }
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={isDisabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span className="ac-op__box" aria-hidden="true" />
-      <span>OP</span>
-    </label>
-  );
-}
-
-interface VariantControlProps {
-  resolved: ResolveResult;
-  variantOptions: string[];
-  selectedVariant: string | null;
-  disabled: boolean;
-  onChange: (variant: string | null) => void;
-}
-
-function VariantControl({
-  resolved,
-  variantOptions,
-  selectedVariant,
-  disabled,
-  onChange,
-}: VariantControlProps) {
-  if (resolved.status === "resolved") {
+// Shared control for both ambiguity-gated axes (provenance, finish): a plain
+// select that only has meaningful options once the row's status surfaces
+// them. When resolved, render the settled value as plain text instead.
+function AxisPicker({ label, options, selected, disabled, resolvedValue, onChange }: PickerProps) {
+  if (resolvedValue !== null) {
     return (
       <div className="ac-namefield">
-        <span className="ac-namefield__name">{resolved.variant}</span>
+        <span className="ac-namefield__name">{resolvedValue}</span>
       </div>
     );
   }
 
-  const isDisabled = disabled || variantOptions.length === 0;
+  const isDisabled = disabled || options.length === 0;
   return (
     <select
       className="ac-select"
-      value={selectedVariant || ""}
+      value={selected || ""}
       onChange={(e) => onChange(e.target.value || null)}
       disabled={isDisabled}
+      aria-label={label}
     >
-      <option value="">Select variant…</option>
-      {variantOptions.map((v) => (
+      <option value="">{`Select ${label.toLowerCase()}…`}</option>
+      {options.map((v) => (
         <option key={v} value={v}>
           {v}
         </option>
@@ -99,40 +68,41 @@ function VariantControl({
 export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRow }: Props) {
   const [draft, setDraft] = useState({
     cardNumber: "",
-    op: false,
-    variant: null as string | null,
+    channel: null as string | null,
+    finish: null as string | null,
   });
   const cardInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setDraft({ cardNumber: "", op: false, variant: null });
+    setDraft({ cardNumber: "", channel: null, finish: null });
   }, [setCode]);
 
   const draftRow: Row = useMemo(() => ({ id: "__draft__", ...draft }), [draft]);
 
-  const resolved = resolveRow(setCode, draftRow, catalog);
+  const resolved: ResolveResult = resolveRow(setCode, draftRow, catalog);
 
   const isResolved = resolved.status === "resolved";
-  const needsVariant = resolved.status === "needs_variant";
+  const needsProvenance = resolved.status === "needs_provenance";
+  const needsFinish = resolved.status === "needs_finish";
   const hasError = resolved.status === "error";
-
-  const hasOpOption =
-    resolved.status === "resolved" || resolved.status === "needs_variant"
-      ? resolved.hasOpOption
-      : false;
+  const isPending = needsProvenance || needsFinish;
 
   const name =
-    resolved.status === "resolved" || resolved.status === "needs_variant" ? resolved.name : null;
+    resolved.status === "resolved" ||
+    resolved.status === "needs_provenance" ||
+    resolved.status === "needs_finish"
+      ? resolved.name
+      : null;
 
   const subtitle =
-    resolved.status === "resolved" || resolved.status === "needs_variant"
+    resolved.status === "resolved" ||
+    resolved.status === "needs_provenance" ||
+    resolved.status === "needs_finish"
       ? resolved.subtitle
       : null;
 
-  const variantOptions = useMemo((): string[] => {
-    if (resolved.status === "needs_variant") return resolved.variants;
-    return [];
-  }, [resolved]);
+  const channelOptions = resolved.status === "needs_provenance" ? resolved.channels : [];
+  const finishOptions = resolved.status === "needs_finish" ? resolved.finishes : [];
 
   const draftInv =
     isResolved && resolved.status === "resolved"
@@ -143,8 +113,8 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
 
   function commitDraft() {
     if (!canCommit) return;
-    onAppendRow({ cardNumber: draft.cardNumber, op: draft.op, variant: draft.variant });
-    setDraft({ cardNumber: "", op: false, variant: null });
+    onAppendRow({ cardNumber: draft.cardNumber, channel: draft.channel, finish: draft.finish });
+    setDraft({ cardNumber: "", channel: null, finish: null });
     setTimeout(() => cardInputRef.current?.focus(), 0);
   }
 
@@ -171,7 +141,7 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
               autoFocus
               onChange={(e) => {
                 const v = e.target.value.replace(/[^\d]/g, "");
-                setDraft((d) => ({ ...d, cardNumber: v, variant: null }));
+                setDraft((d) => ({ ...d, cardNumber: v, channel: null, finish: null }));
               }}
             />
             <InventoryDot status={draftInv} />
@@ -186,7 +156,7 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
         <div className="ac-pad__resolve">
           <div
             className={`ac-pad__resolve-name${
-              isResolved || needsVariant ? "" : " ac-pad__resolve-name--empty"
+              isResolved || isPending ? "" : " ac-pad__resolve-name--empty"
             }`}
           >
             {name ?? "Card name will appear here"}
@@ -194,22 +164,30 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
           {subtitle && <div className="ac-pad__resolve-sub">{subtitle}</div>}
 
           <div className="ac-pad__resolve-controls">
-            <div className="ac-pad__resolve-op">
-              <OPCheckbox
-                checked={draft.op}
-                hasOpOption={hasOpOption}
-                disabled={!isResolved && !needsVariant}
-                onChange={(v) => setDraft((d) => ({ ...d, op: v, variant: null }))}
+            <div className="ac-pad__resolve-variant">
+              <span className="ac-pad__label">Provenance</span>
+              <AxisPicker
+                label="Provenance"
+                options={channelOptions}
+                selected={draft.channel}
+                disabled={!needsProvenance}
+                resolvedValue={
+                  resolved.status === "resolved" || resolved.status === "needs_finish"
+                    ? ((resolved as { channel?: string }).channel ?? null)
+                    : null
+                }
+                onChange={(v) => setDraft((d) => ({ ...d, channel: v, finish: null }))}
               />
             </div>
             <div className="ac-pad__resolve-variant">
-              <span className="ac-pad__label">Variant</span>
-              <VariantControl
-                resolved={resolved}
-                variantOptions={variantOptions}
-                selectedVariant={draft.variant}
-                disabled={!isResolved && !needsVariant}
-                onChange={(v) => setDraft((d) => ({ ...d, variant: v }))}
+              <span className="ac-pad__label">Finish</span>
+              <AxisPicker
+                label="Finish"
+                options={finishOptions}
+                selected={draft.finish}
+                disabled={!needsFinish}
+                resolvedValue={resolved.status === "resolved" ? resolved.finish : null}
+                onChange={(v) => setDraft((d) => ({ ...d, finish: v }))}
               />
             </div>
             <SWUButton size="sm" active={canCommit} onClick={canCommit ? commitDraft : undefined}>
@@ -230,9 +208,14 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
                 : `Headroom: ${Math.max(0, draftInv.max - draftInv.owned)} of ${draftInv.max}`}
             </div>
           )}
-          {needsVariant && (
+          {needsProvenance && (
             <div className="ac-pad__resolve-sub" style={{ color: "var(--color-primary)" }}>
-              Select a variant to enable Add Card.
+              Select a provenance to continue.
+            </div>
+          )}
+          {needsFinish && (
+            <div className="ac-pad__resolve-sub" style={{ color: "var(--color-primary)" }}>
+              Select a finish to enable Add Card.
             </div>
           )}
         </div>
@@ -268,10 +251,10 @@ export function AddCardsKeypad({ setCode, rows, catalog, onAppendRow, onDeleteRo
                 </span>
                 <span
                   className={`ac-chip__var${
-                    res.status === "resolved" && res.isOp ? " ac-chip__var--op" : ""
+                    res.status === "resolved" && res.channel !== "Retail" ? " ac-chip__var--op" : ""
                   }`}
                 >
-                  {res.status === "resolved" ? res.variant : ""}
+                  {res.status === "resolved" ? res.finish : ""}
                 </span>
                 <span
                   className={`ac-chip__ind${inv ? ` ac-chip__ind--${inv.color}` : ""}`}

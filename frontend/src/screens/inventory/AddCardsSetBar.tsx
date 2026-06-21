@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CardSet } from "../../api/sets";
 
 interface Props {
@@ -18,8 +19,19 @@ function SetMark({ code }: { code: string }) {
   );
 }
 
+// Source-set picker (§5.1 / §5.4): defaults to base sets only; a header
+// toggle (same idea as FilterPanel's Set dropdown) reveals all sets,
+// including long-tail container sets (Weekly Play, Judge, Convention, etc.)
+// as selectable source sets.
 export function AddCardsSetBar({ sets, setCode, onChoose, onChangeSet }: Props) {
+  const [showAllSets, setShowAllSets] = useState(false);
+
   if (!setCode) {
+    const visibleSets = sets
+      .filter((s) => showAllSets || s.is_base_set)
+      .slice()
+      .sort((a, b) => Number(b.is_base_set) - Number(a.is_base_set));
+
     return (
       <div className="ac-setbar">
         <span className="ac-setbar__label">Set</span>
@@ -31,13 +43,20 @@ export function AddCardsSetBar({ sets, setCode, onChoose, onChangeSet }: Props) 
             autoFocus
           >
             <option value="">Select a set to begin…</option>
-            {sets.map((s) => (
+            {visibleSets.map((s) => (
               <option key={s.code} value={s.code}>
                 {s.code} — {s.name}
               </option>
             ))}
           </select>
         </div>
+        <button
+          type="button"
+          className="ac-setbar__change"
+          onClick={() => setShowAllSets((v) => !v)}
+        >
+          {showAllSets ? "Base sets only" : "Show all sets"}
+        </button>
       </div>
     );
   }

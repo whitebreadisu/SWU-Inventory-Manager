@@ -61,13 +61,26 @@ describe("groupWithInventory", () => {
     expect(result.map((c) => c.base_card_id)).toEqual([2, 1]);
   });
 
-  it("falls back to null-release-date ordering when no setOrder is given", () => {
+  // DISPOSITION (REPLACE): SOR and SHD are both in CURATED_SET_ORDER
+  // (catalog.ts), so with no setOrder given the fallback is now the curated
+  // index, not an alphabetical set_code tiebreak — the previous assertion
+  // (["SHD", "SOR"]) no longer matches the new fallback tier.
+  it("falls back to curated set order when no setOrder is given", () => {
     const cards = [
       makeCard({ base_card_id: 1, set_code: "SHD", base_card_number: "1" }),
       makeCard({ base_card_id: 2, set_code: "SOR", base_card_number: "1" }),
     ];
     const result = groupWithInventory(cards);
-    expect(result.map((c) => c.set_code)).toEqual(["SHD", "SOR"]);
+    expect(result.map((c) => c.set_code)).toEqual(["SOR", "SHD"]);
+  });
+
+  it("falls back to set_code tiebreak when sets have no release_date and no curated entry", () => {
+    const cards = [
+      makeCard({ base_card_id: 1, set_code: "ZZZ", base_card_number: "1" }),
+      makeCard({ base_card_id: 2, set_code: "AAA", base_card_number: "1" }),
+    ];
+    const result = groupWithInventory(cards);
+    expect(result.map((c) => c.set_code)).toEqual(["AAA", "ZZZ"]);
   });
 
   it("still aggregates inventory quantities per variant correctly", () => {

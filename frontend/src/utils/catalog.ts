@@ -59,21 +59,44 @@ export function parseCardDisplay(card: BaseCard): { displayName: string; subtitl
  * from `getSets()` so catalog.ts doesn't depend on the sets API directly. */
 export type SetOrderMap = Record<string, string | null>;
 
-/** Standard sort: (1) set in release order, nulls last tiebroken by
- * set_code, (2) tokens last within a set, (3) base_card_number ascending
- * (numeric). Shared by Catalog and Inventory so both screens render rows in
- * the same order — see CatalogPage.tsx / InventoryPage.tsx. */
+/** Curated fallback release order for the 10 base sets, used when a set has
+ * no `release_date` in the data (swuapi doesn't currently supply dates, so
+ * as of this writing this is the order that actually governs). Spark of the
+ * Rebellion through 2026 Twin Suns. Sets absent from both `setOrder` and
+ * this list sort last, tiebroken by set_code. */
+export const CURATED_SET_ORDER = [
+  "SOR",
+  "SHD",
+  "TWI",
+  "JTL",
+  "LOF",
+  "SEC",
+  "LAW",
+  "ASH",
+  "IBH",
+  "TS26",
+];
+
+/** Standard sort: (1) set in release order — `release_date` when present,
+ * else the curated fallback order, else last (tiebroken by set_code) —
+ * (2) tokens last within a set, (3) base_card_number ascending (numeric).
+ * Shared by Catalog and Inventory so both screens render rows in the same
+ * order — see CatalogPage.tsx / InventoryPage.tsx. */
 export function sortBaseCards<T extends BaseCard>(cards: T[], setOrder: SetOrderMap = {}): T[] {
-  const setRank = (setCode: string): [number, string] => {
+  const setRank = (setCode: string): [number, string | number] => {
     const releaseDate = setOrder[setCode];
-    if (releaseDate == null) return [1, setCode];
-    return [0, releaseDate];
+    if (releaseDate != null) return [0, releaseDate];
+
+    const curatedIndex = CURATED_SET_ORDER.indexOf(setCode);
+    if (curatedIndex !== -1) return [1, curatedIndex];
+
+    return [2, setCode];
   };
 
   return cards.slice().sort((a, b) => {
-    const [aHasDate, aKey] = setRank(a.set_code);
-    const [bHasDate, bKey] = setRank(b.set_code);
-    if (aHasDate !== bHasDate) return aHasDate - bHasDate;
+    const [aTier, aKey] = setRank(a.set_code);
+    const [bTier, bKey] = setRank(b.set_code);
+    if (aTier !== bTier) return aTier - bTier;
     if (aKey !== bKey) return aKey < bKey ? -1 : 1;
 
     if (a.is_token !== b.is_token) return Number(a.is_token) - Number(b.is_token);

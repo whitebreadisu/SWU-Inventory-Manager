@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupByBaseCard, sortBaseCards } from "./catalog";
+import { CURATED_SET_ORDER, groupByBaseCard, sortBaseCards } from "./catalog";
 import type { BaseCard } from "./catalog";
 import type { Card } from "../api/cards";
 
@@ -66,9 +66,17 @@ function makeBaseCard(overrides: Partial<BaseCard> = {}): BaseCard {
 // (the old set_code-alphabetical-then-number behavior was only exercised
 // incidentally via the now-default sort path in groupByBaseCard /
 // groupWithInventory). This is a NEW test suite, not a port, covering the
-// new standard sort: (1) set in release order, nulls-last tiebroken by
-// set_code, (2) tokens last within a set, (3) base_card_number ascending
-// numeric.
+// new standard sort: (1) set in release order — release_date when present,
+// else curated fallback order, else last (tiebroken by set_code) —
+// (2) tokens last within a set, (3) base_card_number ascending numeric.
+//
+// DISPOSITION (REPLACE): the original "null release_date" and "absent from
+// setOrder" tests used SOR/SHD/PRM/PRZ/ZZZ and asserted set_code-tiebreak
+// ordering among them. SOR and SHD are now in CURATED_SET_ORDER, so those
+// fixtures no longer exercise the "no curated entry" path. Replaced with
+// sets outside CURATED_SET_ORDER (e.g. PRM/PRZ/ZZZ) to keep covering the
+// final tiebreak tier, and added new tests for the curated-order tier
+// itself plus the precedence of release_date over the curated index.
 
 describe("sortBaseCards", () => {
   const setOrder = { SOR: "2024-03-08", SHD: "2024-08-02" };
@@ -80,7 +88,24 @@ describe("sortBaseCards", () => {
     expect(result.map((c) => c.set_code)).toEqual(["SOR", "SHD"]);
   });
 
-  it("sorts sets with a null release_date last, tiebroken by set_code", () => {
+  it("falls back to curated set order when no release_date is present", () => {
+    const ts26 = makeBaseCard({ base_card_id: 1, set_code: "TS26", base_card_number: "1" });
+    const sor = makeBaseCard({ base_card_id: 2, set_code: "SOR", base_card_number: "1" });
+    const lof = makeBaseCard({ base_card_id: 3, set_code: "LOF", base_card_number: "1" });
+    const result = sortBaseCards([ts26, sor, lof]);
+    expect(result.map((c) => c.set_code)).toEqual(["SOR", "LOF", "TS26"]);
+  });
+
+  it("lets a present release_date take precedence over the curated index", () => {
+    // TS26 is last in CURATED_SET_ORDER, but an explicit early release_date
+    // should still win over SOR's curated (earlier) index.
+    const ts26 = makeBaseCard({ base_card_id: 1, set_code: "TS26", base_card_number: "1" });
+    const sor = makeBaseCard({ base_card_id: 2, set_code: "SOR", base_card_number: "1" });
+    const result = sortBaseCards([sor, ts26], { TS26: "2020-01-01", SOR: "2024-03-08" });
+    expect(result.map((c) => c.set_code)).toEqual(["TS26", "SOR"]);
+  });
+
+  it("sorts sets with no release_date and no curated entry last, tiebroken by set_code", () => {
     const noDateB = makeBaseCard({ base_card_id: 1, set_code: "PRZ", base_card_number: "1" });
     const noDateA = makeBaseCard({ base_card_id: 2, set_code: "PRM", base_card_number: "1" });
     const dated = makeBaseCard({ base_card_id: 3, set_code: "SOR", base_card_number: "1" });
@@ -88,11 +113,28 @@ describe("sortBaseCards", () => {
     expect(result.map((c) => c.set_code)).toEqual(["SOR", "PRM", "PRZ"]);
   });
 
-  it("treats a set absent from setOrder the same as a null release_date", () => {
+  it("treats a set absent from setOrder and curated order the same as a null release_date", () => {
     const unknown = makeBaseCard({ base_card_id: 1, set_code: "ZZZ", base_card_number: "1" });
     const dated = makeBaseCard({ base_card_id: 2, set_code: "SOR", base_card_number: "1" });
     const result = sortBaseCards([unknown, dated], setOrder);
     expect(result.map((c) => c.set_code)).toEqual(["SOR", "ZZZ"]);
+  });
+
+  it("ranks a curated-but-undated set ahead of a non-curated, non-dated set", () => {
+    const unknown = makeBaseCard({ base_card_id: 1, set_code: "ZZZ", base_card_number: "1" });
+    const curated = makeBaseCard({ base_card_id: 2, set_code: "LAW", base_card_number: "1" });
+    const result = sortBaseCards([unknown, curated]);
+    expect(result.map((c) => c.set_code)).toEqual(["LAW", "ZZZ"]);
+  });
+
+  it("orders all ten base sets per CURATED_SET_ORDER when none have a release_date", () => {
+    const cards = CURATED_SET_ORDER.slice()
+      .reverse()
+      .map((setCode, i) =>
+        makeBaseCard({ base_card_id: i, set_code: setCode, base_card_number: "1" })
+      );
+    const result = sortBaseCards(cards);
+    expect(result.map((c) => c.set_code)).toEqual(CURATED_SET_ORDER);
   });
 
   it("sorts tokens after non-tokens within the same set", () => {
@@ -142,12 +184,25 @@ describe("groupByBaseCard", () => {
     expect(result.map((c) => c.set_code)).toEqual(["SOR", "SHD"]);
   });
 
-  it("falls back to null-release-date ordering (set_code tiebreak) when no setOrder is given", () => {
+  // DISPOSITION (REPLACE): SOR and SHD are both in CURATED_SET_ORDER, so
+  // with no setOrder given the fallback is now the curated index, not a
+  // set_code tiebreak — the previous assertion (["SHD", "SOR"],
+  // alphabetical) is no longer correct given the new fallback tier.
+  it("falls back to curated set order when no setOrder is given", () => {
     const cards = [
       makeCard({ base_card_id: 1, set_code: "SHD", base_card_number: "1" }),
       makeCard({ base_card_id: 2, set_code: "SOR", base_card_number: "1" }),
     ];
     const result = groupByBaseCard(cards);
-    expect(result.map((c) => c.set_code)).toEqual(["SHD", "SOR"]);
+    expect(result.map((c) => c.set_code)).toEqual(["SOR", "SHD"]);
+  });
+
+  it("falls back to set_code tiebreak when sets have no release_date and no curated entry", () => {
+    const cards = [
+      makeCard({ base_card_id: 1, set_code: "ZZZ", base_card_number: "1" }),
+      makeCard({ base_card_id: 2, set_code: "AAA", base_card_number: "1" }),
+    ];
+    const result = groupByBaseCard(cards);
+    expect(result.map((c) => c.set_code)).toEqual(["AAA", "ZZZ"]);
   });
 });

@@ -46,6 +46,7 @@
 | BL-38 | Aspect double-pip multiplicity — display fidelity gap | 5 — Opportunistic | swuapi flattens same-aspect double pips (no `aspectDuplicates`); accept its fidelity now, revisit if accurate pip display + a data source appear |
 | BL-39 | Judge/Prerelease variant stamp classification (visual analysis) | 6 — Feature Enhancements | Judge Program / Prerelease Judge / Prerelease Promo are a mixed bag (some stamps over a finish, some distinct art); needs visual set-by-set inspection to assign finish+stamped; ungrouped by default until done |
 | BL-40 | Revisit variant grouping model — finish+stamp vs. group-by-art | 6 — Feature Enhancements | Reconsider whether stamp_group should collapse by base art across finishes (Standard+Foil, Hyperspace+HS Foil, all prestiges) rather than the BL-27 finish+stamp rule; BL-39's visual pass is an input |
+| BL-41 | Channel-rule quirk: base-set tournament-tier variants classify as Retail, not Promo | 6 — Feature Enhancements | §10.4's channel rule ties "Promo / Tournament-tier" to source_set_code P25/P26 only, not the PQ/RQ/SQ/GC/SS variant_type prefix itself — so the same tier label sourced from a base set (SOR/SHD/TWI) falls through to Retail instead. Found and implemented literally during BL-29; needs an analysis pass to decide if that's actually correct |
 
 ### Completed
 
@@ -601,7 +602,9 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Definition of done:** Superseded/scoped by BL-33 — the real definition of done is BL-33's "Schema redesign migration" + "BL-29 ingestion script" steps.
 
-**Status:** 🔲 Open — scoping moved to BL-33
+**Built 2026-06-21 (BL-33 step 3):** `backend/app/ingestion/swuapi_classify.py` (pure §10.2-10.5 finish/channel/stamp classification), `swuapi_transform.py` (pure variant_of_uuid root resolution + §10.6 fallback re-anchoring + row-building, DB-free, runnable on the host against the captured fixture), `swuapi_client.py` (thin live `/export/all` fetch, not exercised in CI), and `run_swuapi_ingestion.py` (the upsert-by-`swuapi_id` DB layer + CLI, `--file`/`--live`). Verified against the full captured export: 2,306 `base_cards` (2,319 structural roots minus the 13 non-token roots the §10.6 fallback collapses into existing anchors), 8,353 `card_variants`, exactly the one expected exception (Zam Wesell) — `swuapi_standard_variant_exceptions.md` regenerated from a real run and diffed clean against the hand-written version. 29 new tests (pure classification/transform against the fixture + a DB idempotency test with a small synthetic export, isolated from the shared test catalog) — 116/116 backend tests green, zero legacy tests touched (purely additive, no disposition-log entry needed). Not yet wired into app startup/CI (no migration or app-layer change was needed — BL-33 step 1 already built the schema and ported routers/services to it).
+
+**Status:** 🟡 In progress — ingestion script built and verified against the full export (step 3); not yet run against production or wired into `apply_seed`/CI
 
 ---
 
@@ -689,7 +692,9 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Step 1 progress (2026-06-21):** Migration `0022_catalog_schema_redesign.py` landed — clean drop/recreate of `cards`/`card_details` into `base_cards`/`card_variants`, `sets` widened with `is_base_set`/`release_date`/`total_cards`/`swuapi_updated_at` (code column widened 3→4 chars for long-tail codes like `TS26`/`SORP`), `inventory.card_id` retargeted to `variant_id`. Full backend port (models/repositories/services/schemas/routers) landed in the same PR so the app boots; the F3/F4 CSV/Excel ingestion pipeline was retired outright (superseded by BL-29, not yet built) — see [`BL33_Step1_Test_Disposition_Log.md`](BL33_Step1_Test_Disposition_Log.md) for the full per-test disposition. The `variant_of_uuid` graph-invariant test (BL-34) was written test-first against a freshly captured full live export and found two corrections to `SWU_Standard_Variant_Mapping_Spec.md` itself: 143 real two-hop chains (not zero) and 15 standard-anchor exceptions (not 1) — both fixed in the mapping spec and exceptions file before the migration was written. 87/87 backend tests green. Frontend untouched (deferred to BL-25/27/S6). **Next:** BL-27 census (step 2) — handed to an Opus session per this item's original sequencing.
 
-**Status:** 🔲 Open — step 1 complete, step 2 (BL-27) next
+**Step 3 progress (2026-06-21):** BL-29's ingestion script landed — see BL-29's own entry above for the build/verification detail. `base_cards`/`card_variants` can now be populated from a swuapi export (fixture or live), upserted idempotently by `swuapi_id`. **Not yet done:** running it for real against the dev/prod DB (currently empty post-step-1's truncate), wiring it into `apply_seed`/container startup, and step 4 (inventory snapshot regeneration) — the F5 snapshot still needs to be reloaded against whatever `card_variants.id` values a real run produces.
+
+**Status:** 🟡 Open — steps 1-3 complete (schema, BL-27 census, ingestion script); step 4 (snapshot regeneration) next
 
 ---
 
@@ -784,6 +789,36 @@ Applies whether application is **gated** (the initial mode) or **automatic** (fu
 **Definition of done:** A decision on whether to keep finish+stamp grouping, move to group-by-art, or a hybrid — documented in `SWU_Catalog_Redesign_Spec.md`; if changed, the `stamp_group` model and BL-31/BL-32 updated accordingly.
 
 **Status:** 🔲 Open — deferred (Jeremy thinking)
+
+---
+
+### BL-41: Channel-rule quirk — base-set tournament-tier variants classify as Retail, not Promo
+
+**What:** Found 2026-06-21 while building BL-29's ingestion script, executing `SWU_Catalog_Redesign_Spec.md` §10.4's channel-derivation rule literally. The rule's "Promo / Tournament-tier" branch is keyed only on `source_set_code` (`P25`/`P26`) — it has no `variant_type`-prefix clause, unlike every other branch in that rule (Weekly Play, Judge, Convention all check `variant_type` *or* set code). So a PQ/RQ/SQ/GC/SS-prefixed variant sourced from a base set instead of P25/P26 falls through to the `else → Retail` branch, even though it's the same tournament-tier label.
+
+This is real, not hypothetical — the captured export has both shapes for the same labels:
+
+| Set | Variant Type | Channel (as implemented) |
+|-----|---------------|---------------------------|
+| P25 | PQ Champion (×3) | Promo / Tournament-tier |
+| P26 | PQ Champion (×1) | Promo / Tournament-tier |
+| SOR | SS Champion (×1) | Retail |
+| SHD | PQ Champion (×1) | Retail |
+| SHD | PQ Top 16 (×1) | Retail |
+| TWI | PQ Champion (×1) | Retail |
+| TWI | SS Champion (×1) | Retail |
+
+(Full set: SOR/SHD/TWI each carry their own small set of `PQ */SS *` rows alongside `Prerelease Judge`/`Weekly Play` — these are the early sets, before the long tail moved into dedicated `P25`/`P26`/`*P` container sets per §10.4's own note that "early Weekly Play sits in the base set... later Weekly Play sits in dedicated `*P` containers." The same early/late split appears to apply to tournament tiers, but §10.4 only wrote the explicit dual rule for Weekly Play, not for PQ/RQ/SQ/GC/SS.)
+
+`stamp_group` consolidation is unaffected — `swuapi_classify.py`'s tournament-tier-prefix grouping is independent of channel and correctly merges a card's tiers into one `stamp_group` regardless of which set they're sourced from. This is purely a `channel` (provenance-label) inconsistency, not a data-integrity or grouping bug, and `channel` isn't even a persisted column today (BL-29 ingestion derives it on demand, not stored). Implemented literally per the spec and pinned by tests (`backend/app/tests/test_swuapi_classify.py::test_retail_channel_is_the_fallback`) rather than silently "fixed," since the kickoff scoped this session to execution against the frozen vocabulary, not re-opening §10.4.
+
+**Why:** Surfaced organically while writing `classify_variant()` (`backend/app/ingestion/swuapi_classify.py`) against the real `variant_type`/`source_set_code` pairs in the captured export, not from re-reading the spec in the abstract.
+
+**Depends on:** `SWU_Catalog_Redesign_Spec.md` §10.4 (the rule in question); BL-27 (the classification framework this lives in).
+
+**Definition of done:** Not yet scoped — needs a decision on whether SOR/SHD/TWI's own PQ/RQ/SQ/GC/SS rows should classify as Promo/Tournament-tier (extending the rule with a variant_type-prefix clause, mirroring the Weekly Play rule's dual check) or whether Retail is actually correct for them (e.g. if these specific early-set rows really were sold through retail channels rather than tournament prize support). Likely needs the same kind of visual/provenance inspection BL-39 does for Judge/Prerelease, since the prefix alone doesn't say which is true.
+
+**Status:** 🔲 Open
 
 ---
 

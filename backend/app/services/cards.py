@@ -1,12 +1,19 @@
 from sqlalchemy.orm import Session
 
+from app.ingestion.swuapi_classify import classify_variant
+from app.models.base_card import BaseCard
 from app.models.card_variant import CardVariant
 from app.repositories import cards as card_repo
+from app.schemas.base_card_detail_schema import (
+    BaseCardDetailResponse,
+    CardVariantDetailResponse,
+)
 from app.schemas.card_schema import CardResponse
 
 
 def _to_response(variant: CardVariant) -> CardResponse:
     base_card = variant.base_card
+    classification = classify_variant(variant.variant_type, variant.source_set_code)
     return CardResponse(
         id=variant.id,
         base_card_id=base_card.id,
@@ -31,6 +38,9 @@ def _to_response(variant: CardVariant) -> CardResponse:
         power=base_card.power,
         hp=base_card.hp,
         arena=base_card.arena,
+        finish=classification.finish,
+        channel=classification.channel,
+        stamped=classification.stamped,
     )
 
 
@@ -52,3 +62,60 @@ def get_card_by_id(db: Session, variant_id: int) -> CardResponse | None:
     if variant is None:
         return None
     return _to_response(variant)
+
+
+def _to_variant_detail(variant: CardVariant) -> CardVariantDetailResponse:
+    classification = classify_variant(variant.variant_type, variant.source_set_code)
+    qty = variant.inventory.quantity if variant.inventory else 0
+    return CardVariantDetailResponse(
+        variant_id=variant.id,
+        variant_type=variant.variant_type,
+        finish=classification.finish,
+        channel=classification.channel,
+        stamped=classification.stamped,
+        source_set_code=variant.source_set_code,
+        source_set_name=variant.source_set.name,
+        card_number=variant.card_number,
+        front_image_url=variant.front_image_url,
+        back_image_url=variant.back_image_url,
+        stamp_group=variant.stamp_group,
+        quantity=qty,
+    )
+
+
+def _to_base_card_detail(base_card: BaseCard) -> BaseCardDetailResponse:
+    return BaseCardDetailResponse(
+        id=base_card.id,
+        set_code=base_card.set.code,
+        set_name=base_card.set.name,
+        base_card_number=base_card.base_card_number,
+        name=base_card.name,
+        subtitle=base_card.subtitle,
+        type=base_card.type,
+        type2=base_card.type2,
+        double_sided=base_card.double_sided,
+        rarity=base_card.rarity,
+        cost=base_card.cost,
+        power=base_card.power,
+        hp=base_card.hp,
+        arena=base_card.arena,
+        is_unique=base_card.is_unique,
+        front_text=base_card.front_text,
+        back_text=base_card.back_text,
+        epic_action=base_card.epic_action,
+        artist=base_card.artist,
+        is_token=base_card.is_token,
+        aspects=[a.aspect for a in base_card.aspects],
+        keywords=[k.keyword for k in base_card.keywords],
+        traits=[t.trait for t in base_card.traits],
+        variants=[_to_variant_detail(v) for v in base_card.variants],
+    )
+
+
+def get_base_card_detail(
+    db: Session, base_card_id: int
+) -> BaseCardDetailResponse | None:
+    base_card = card_repo.get_base_card_with_variants(db, base_card_id)
+    if base_card is None:
+        return None
+    return _to_base_card_detail(base_card)

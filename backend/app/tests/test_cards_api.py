@@ -40,6 +40,17 @@ class TestListCards:
             assert "type" in card
             assert "variant_type" in card
             assert "source_set_code" in card
+            assert "finish" in card
+            assert "channel" in card
+            assert "stamped" in card
+
+    def test_standard_variant_exposes_finish_channel_stamped(self, client):
+        cards = client.get("/api/cards?set_code=SOR&variant_type=Standard").json()
+        assert len(cards) > 0
+        for card in cards:
+            assert card["finish"] == "Standard"
+            assert card["channel"] == "Retail"
+            assert card["stamped"] is False
 
     def test_set_code_filter_returns_only_that_set(self, client):
         cards = client.get("/api/cards?set_code=SOR").json()

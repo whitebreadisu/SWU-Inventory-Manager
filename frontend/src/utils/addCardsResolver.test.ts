@@ -9,23 +9,37 @@ import {
 import type { CardWithQty } from "../api/inventory";
 import type { Row } from "./addCardsResolver";
 
+// NOTE: this suite is ported (not rewritten) against the minimal field-mapping
+// shim described in addCardsResolver.ts. The old `is_organized_play` boolean
+// is approximated as `channel === "Weekly Play"`, and the old finish booleans
+// (is_foil/is_hyperspace/...) are approximated as `finish`. This preserves the
+// original OP-card-number-collision bug-knowledge (the reason these tests
+// exist) until the real two-axis provenance+finish resolver (BL-33 / Add Cards
+// rewrite, SWU_Catalog_Redesign_Spec.md §5.4) replaces this shim outright.
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
   return {
     id: 1,
+    base_card_id: 1,
     set_id: 1,
     set_code: "SOR",
     base_card_number: "1",
     card_number: "1",
     name: "Test Card",
+    subtitle: null,
     rarity: "C",
     type: "Unit",
-    is_foil: false,
-    is_hyperspace: false,
-    is_prestige: false,
-    is_showcase: false,
-    is_organized_play: false,
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    stamped: false,
+    source_set_code: "SOR",
+    swuapi_id: "uuid-1",
+    front_image_url: null,
+    back_image_url: null,
+    stamp_group: null,
     aspects: [],
     keywords: [],
     traits: [],
@@ -66,120 +80,143 @@ function makeRow(overrides: Partial<Row> = {}): Row {
 // SOR #20 — Capital City (single non-OP) + General Veers OP Std/Foil
 const sorCapCity = makeCard({
   id: 1,
+  base_card_id: 1,
   set_code: "SOR",
   base_card_number: "20",
   card_number: "20",
   type: "Base",
   name: "Capital City",
+  subtitle: null,
   quantity: 0,
 });
 const sorVeersOp = makeCard({
   id: 2,
+  base_card_id: 2,
   set_code: "SOR",
   base_card_number: "230",
   card_number: "20",
   type: "Unit",
-  name: "General Veers - Blizzard Force Commander",
-  is_organized_play: true,
+  name: "General Veers",
+  subtitle: "Blizzard Force Commander",
+  channel: "Weekly Play",
+  source_set_code: "SORP",
   quantity: 0,
 });
 const sorVeersOpFoil = makeCard({
   id: 3,
+  base_card_id: 2,
   set_code: "SOR",
   base_card_number: "230",
   card_number: "20",
   type: "Unit",
-  name: "General Veers - Blizzard Force Commander",
-  is_organized_play: true,
-  is_foil: true,
+  name: "General Veers",
+  subtitle: "Blizzard Force Commander",
+  channel: "Weekly Play",
+  source_set_code: "SORP",
+  finish: "Standard Foil",
   quantity: 0,
 });
 
 // SOR #286 — Capital City Hyperspace (single non-OP, no OP at this number)
 const sorCapCityHyper = makeCard({
   id: 4,
+  base_card_id: 1,
   set_code: "SOR",
   base_card_number: "20",
   card_number: "286",
   type: "Base",
   name: "Capital City",
-  is_hyperspace: true,
+  subtitle: null,
+  finish: "Hyperspace",
   quantity: 0,
 });
 
 // SOR #69 — Resilient Standard + Foil (two non-OP share this number)
 const sorResilient = makeCard({
   id: 5,
+  base_card_id: 5,
   set_code: "SOR",
   base_card_number: "69",
   card_number: "69",
   type: "Upgrade",
   name: "Resilient",
+  subtitle: null,
   quantity: 0,
 });
 const sorResilientFoil = makeCard({
   id: 6,
+  base_card_id: 5,
   set_code: "SOR",
   base_card_number: "69",
   card_number: "69",
   type: "Upgrade",
   name: "Resilient",
-  is_foil: true,
+  subtitle: null,
+  finish: "Standard Foil",
   quantity: 2,
 });
 
 // SOR #334 — Resilient Hyperspace + Hyperspace Foil (two non-OP share this number)
 const sorResilientHyper = makeCard({
   id: 7,
+  base_card_id: 5,
   set_code: "SOR",
   base_card_number: "69",
   card_number: "334",
   type: "Upgrade",
   name: "Resilient",
-  is_hyperspace: true,
+  subtitle: null,
+  finish: "Hyperspace",
   quantity: 0,
 });
 const sorResilientHyperFoil = makeCard({
   id: 8,
+  base_card_id: 5,
   set_code: "SOR",
   base_card_number: "69",
   card_number: "334",
   type: "Upgrade",
   name: "Resilient",
-  is_hyperspace: true,
-  is_foil: true,
+  subtitle: null,
+  finish: "Hyperspace Foil",
   quantity: 0,
 });
 
 // SOR #10 — Leader at limit
 const sorLeader = makeCard({
   id: 10,
+  base_card_id: 10,
   set_code: "SOR",
   base_card_number: "10",
   card_number: "10",
   type: "Leader",
-  name: "Luke Skywalker - Faithful Friend",
+  name: "Luke Skywalker",
+  subtitle: "Faithful Friend",
   quantity: 1,
 });
 
 // SEC — Bail Organa: card_number ≠ base_card_number (unique-variant-number set pattern)
 const secStandard = makeCard({
   id: 20,
+  base_card_id: 20,
   set_code: "SEC",
   base_card_number: "8",
   card_number: "8",
   type: "Leader",
-  name: "Bail Organa - Doing Everything He Can",
+  name: "Bail Organa",
+  subtitle: "Doing Everything He Can",
   quantity: 0,
 });
 const secHyperspace = makeCard({
   id: 21,
+  base_card_id: 20,
   set_code: "SEC",
   base_card_number: "8",
   card_number: "272",
   type: "Leader",
-  name: "Bail Organa - Doing Everything He Can",
-  is_hyperspace: true,
+  name: "Bail Organa",
+  subtitle: "Doing Everything He Can",
+  finish: "Hyperspace",
   quantity: 0,
 });
 
@@ -204,9 +241,9 @@ describe("variantLabelNoOp", () => {
     expect(variantLabelNoOp(sorCapCity)).toBe("Standard");
   });
   it("returns Foil for a foil card", () => {
-    expect(variantLabelNoOp(sorResilientFoil)).toBe("Foil");
+    expect(variantLabelNoOp(sorResilientFoil)).toBe("Standard Foil");
   });
-  it("excludes OP from the label", () => {
+  it("returns the finish label for an OP card too (no OP-specific suffix)", () => {
     expect(variantLabelNoOp(sorVeersOp)).toBe("Standard");
   });
   it("returns Hyperspace for a hyperspace card", () => {
@@ -273,7 +310,7 @@ describe("resolveRow", () => {
     expect(result.status).toBe("needs_variant");
     if (result.status === "needs_variant") {
       expect(result.variants).toContain("Standard");
-      expect(result.variants).toContain("Foil");
+      expect(result.variants).toContain("Standard Foil");
       expect(result.variants).toHaveLength(2);
     }
   });
@@ -281,7 +318,7 @@ describe("resolveRow", () => {
   it("resolves to the chosen OP variant when variant is picked", () => {
     const result = resolveRow(
       "SOR",
-      makeRow({ cardNumber: "20", op: true, variant: "Foil" }),
+      makeRow({ cardNumber: "20", op: true, variant: "Standard Foil" }),
       catalog
     );
     expect(result.status).toBe("resolved");
@@ -334,17 +371,21 @@ describe("resolveRow", () => {
     expect(result.status).toBe("needs_variant");
     if (result.status === "needs_variant") {
       expect(result.variants).toContain("Standard");
-      expect(result.variants).toContain("Foil");
+      expect(result.variants).toContain("Standard Foil");
       expect(result.variants).toHaveLength(2);
     }
   });
 
   it("resolves when variant is picked from a multi-match card_number", () => {
-    const result = resolveRow("SOR", makeRow({ cardNumber: "69", variant: "Foil" }), catalog);
+    const result = resolveRow(
+      "SOR",
+      makeRow({ cardNumber: "69", variant: "Standard Foil" }),
+      catalog
+    );
     expect(result.status).toBe("resolved");
     if (result.status === "resolved") {
       expect(result.cardId).toBe(sorResilientFoil.id);
-      expect(result.variant).toBe("Foil");
+      expect(result.variant).toBe("Standard Foil");
       expect(result.hasOpOption).toBe(false);
     }
   });
@@ -371,7 +412,7 @@ describe("resolveRow", () => {
 
   // ── Name/subtitle parsing ──
 
-  it("parses name/subtitle from hyphen-split card name", () => {
+  it("uses the real subtitle field directly (no hyphen-splitting)", () => {
     const result = resolveRow("SOR", makeRow({ cardNumber: "10" }), catalog);
     expect(result.status).toBe("resolved");
     if (result.status === "resolved") {
@@ -386,7 +427,7 @@ describe("resolveRow", () => {
 describe("inventoryStatus", () => {
   it("returns green when owned + pending is under max", () => {
     // sorResilientFoil has quantity=2, max=3. Adding 1 → 3, not over max.
-    const row = makeRow({ cardNumber: "69", variant: "Foil" });
+    const row = makeRow({ cardNumber: "69", variant: "Standard Foil" });
     const rows = [row];
     const resolved = resolveRow("SOR", row, catalog);
     expect(resolved.status).toBe("resolved");
@@ -399,8 +440,8 @@ describe("inventoryStatus", () => {
 
   it("returns red when owned + pending exceeds max", () => {
     // sorResilientFoil quantity=2, two pending rows for same card → 2+2=4 > 3.
-    const row1 = makeRow({ id: "r1", cardNumber: "69", variant: "Foil" });
-    const row2 = makeRow({ id: "r2", cardNumber: "69", variant: "Foil" });
+    const row1 = makeRow({ id: "r1", cardNumber: "69", variant: "Standard Foil" });
+    const row2 = makeRow({ id: "r2", cardNumber: "69", variant: "Standard Foil" });
     const rows = [row1, row2];
     const resolved = resolveRow("SOR", row2, catalog);
     expect(resolved.status).toBe("resolved");
@@ -443,7 +484,7 @@ describe("inventoryStatus", () => {
 describe("splitForVerification", () => {
   it("puts green rows in willAdd and red rows in willSkip", () => {
     // sorResilientFoil quantity=2, adding 1→3: green
-    const rowFoil = makeRow({ id: "f", cardNumber: "69", variant: "Foil" });
+    const rowFoil = makeRow({ id: "f", cardNumber: "69", variant: "Standard Foil" });
     // sorLeader quantity=1, adding 1→2: red (over max=1)
     const rowLeader = makeRow({ id: "l", cardNumber: "10" });
     const rows = [rowFoil, rowLeader];

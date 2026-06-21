@@ -9,8 +9,8 @@ const ASPECTS = ["Vigilance", "Command", "Aggression", "Cunning", "Heroism", "Vi
 
 interface Props {
   cards: InventoryCard[];
-  onIncrement: (card: InventoryCard, invKey: string) => void;
-  onDecrement: (card: InventoryCard, invKey: string) => void;
+  onIncrement: (card: InventoryCard, variantId: number) => void;
+  onDecrement: (card: InventoryCard, variantId: number) => void;
   pendingCardIds: Set<number>;
 }
 

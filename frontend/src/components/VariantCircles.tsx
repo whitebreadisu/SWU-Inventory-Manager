@@ -1,46 +1,43 @@
 import type { BaseCard } from "../utils/catalog";
 
-type VariantKey =
-  | "hasStandard"
-  | "hasFoil"
-  | "hasHyperspace"
-  | "hasHyperspaceFoil"
-  | "hasPrestige"
-  | "hasPrestigeFoil"
-  | "hasOp"
-  | "hasOpFoil";
-
 interface Props {
   card: BaseCard;
 }
 
-const VARIANTS: { key: VariantKey; label: string; color: string; solid: boolean }[] = [
-  { key: "hasStandard", label: "Standard", color: "#6b7280", solid: true },
-  { key: "hasFoil", label: "Foil", color: "#9ca3af", solid: false },
-  { key: "hasHyperspace", label: "Hyperspace", color: "#2563eb", solid: true },
-  { key: "hasHyperspaceFoil", label: "Hyperspace Foil", color: "#60a5fa", solid: false },
-  { key: "hasPrestige", label: "Prestige", color: "#d97706", solid: true },
-  { key: "hasPrestigeFoil", label: "Prestige Foil", color: "#fbbf24", solid: false },
-  { key: "hasOp", label: "OP", color: "#dc2626", solid: true },
-  { key: "hasOpFoil", label: "OP Foil", color: "#f87171", solid: false },
-];
+// Simple deterministic color assignment per finish label. This circle UX is
+// a placeholder slated for replacement by the popup-based variant picker
+// (see SWU_Catalog_Redesign_Spec.md §5.3) — kept minimal intentionally.
+const FINISH_COLORS: Record<string, { color: string; solid: boolean }> = {
+  Standard: { color: "#6b7280", solid: true },
+  "Standard Foil": { color: "#9ca3af", solid: false },
+  Hyperspace: { color: "#2563eb", solid: true },
+  "Hyperspace Foil": { color: "#60a5fa", solid: false },
+  "Standard Prestige": { color: "#d97706", solid: true },
+  "Foil Prestige": { color: "#fbbf24", solid: false },
+  "Serialized Prestige": { color: "#f59e0b", solid: false },
+  Showcase: { color: "#7c3aed", solid: true },
+};
+
+const DEFAULT_COLOR = { color: "#dc2626", solid: true };
 
 export function VariantCircles({ card }: Props) {
   return (
     <span className="variant-circles">
-      {VARIANTS.map(({ key, label, color, solid }) =>
-        card[key] ? (
+      {card.variants.map((variant) => {
+        const label = variant.finish ?? variant.variant_type;
+        const { color, solid } = FINISH_COLORS[label] ?? DEFAULT_COLOR;
+        return (
           <span
-            key={key}
+            key={variant.variant_id}
             className="variant-circle"
-            title={label}
+            title={`${label} – ${variant.card_number} – ${variant.source_set_code}`}
             style={{
               background: solid ? color : "transparent",
               border: `2px solid ${color}`,
             }}
           />
-        ) : null
-      )}
+        );
+      })}
     </span>
   );
 }

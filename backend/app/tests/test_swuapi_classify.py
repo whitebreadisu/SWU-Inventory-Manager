@@ -92,3 +92,53 @@ def test_judge_and_prerelease_default_ungrouped():
     assert classify_variant("Judge Program", "J25").stamp_family is None
     assert classify_variant("Prerelease Judge", "SOR").stamp_family is None
     assert classify_variant("Prerelease Promo", "SOR").stamp_family is None
+
+
+# --- BL-29/S6: finish/channel/stamped, as exposed on CardResponse/
+# BaseCardDetailResponse, for the representative variant_types named in
+# the implementation brief. Same classify_variant() the API services call.
+
+
+def test_standard_finish_channel_stamped():
+    result = classify_variant("Standard", "SOR")
+    assert result.finish == "Standard"
+    assert result.channel == CHANNEL_RETAIL
+    assert result.stamped is False
+
+
+def test_standard_foil_finish_channel_stamped():
+    result = classify_variant("Standard Foil", "SOR")
+    assert result.finish == "Standard Foil"
+    assert result.channel == CHANNEL_RETAIL
+    assert result.stamped is False
+
+
+def test_hyperspace_finish_channel_stamped():
+    result = classify_variant("Hyperspace", "SOR")
+    assert result.finish == "Hyperspace"
+    assert result.channel == CHANNEL_RETAIL
+    assert result.stamped is False
+
+
+def test_weekly_play_case_finish_channel_stamped():
+    """Weekly Play is a channel (provenance), not a finish -- §3.2."""
+    result = classify_variant("Weekly Play", "SORP")
+    assert result.finish is None
+    assert result.channel == CHANNEL_WEEKLY_PLAY
+    assert result.stamped is False
+
+
+def test_tournament_tier_finish_channel_stamped():
+    """RQ/SQ/PQ tiers are stamped promo finishes, channel Promo/Tournament
+    when sourced from a P25/P26 container set."""
+    result = classify_variant("RQ Top 4", "P25")
+    assert result.finish is None
+    assert result.channel == CHANNEL_PROMO_TOURNAMENT
+    assert result.stamped is True
+
+
+def test_serialized_prestige_finish_channel_stamped():
+    result = classify_variant("Serialized Prestige", "SEC")
+    assert result.finish == "Serialized Prestige"
+    assert result.channel == CHANNEL_RETAIL
+    assert result.stamped is True

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { AspectIcon } from "./AspectIcon";
-import { VARIANT_DEFS } from "../utils/inventory";
 import { parseCardDisplay } from "../utils/catalog";
 import type { BaseCard } from "../utils/catalog";
+import { getSets } from "../api/sets";
+import type { CardSet } from "../api/sets";
 import "./FilterPanel.css";
 
 // ── Domain constants ──────────────────────────────────────────────────────
@@ -14,16 +15,6 @@ const ASPECT_LIST = [
   "Cunning",
   "Heroism",
   "Villainy",
-] as const;
-
-const SET_LIST = [
-  { code: "SOR", name: "Spark of Rebellion" },
-  { code: "SHD", name: "Shadows of the Galaxy" },
-  { code: "TWI", name: "Twilight of the Republic" },
-  { code: "JTL", name: "Jump to Lightspeed" },
-  { code: "LOF", name: "Legends of the Force" },
-  { code: "SEC", name: "Secrets of Power" },
-  { code: "LAW", name: "A Lawless Time" },
 ] as const;
 
 const TYPE_OPTIONS = ["Leader", "Base", "Unit", "Event", "Upgrade"];
@@ -50,7 +41,7 @@ export interface FilterState {
   set: Set<string>;
   type: Set<string>;
   rarity: Set<string>;
-  variant: Set<string>;
+  finish: Set<string>;
   keyword: Set<string>;
   trait: Set<string>;
   arena: Set<string>;
@@ -65,7 +56,7 @@ export const DEFAULT_FILTERS: FilterState = {
   set: new Set(),
   type: new Set(),
   rarity: new Set(),
-  variant: new Set(),
+  finish: new Set(),
   keyword: new Set(),
   trait: new Set(),
   arena: new Set(),
@@ -102,9 +93,11 @@ export function applyFilters(cards: BaseCard[], filters: FilterState): BaseCard[
     if (filters.type.size && !filters.type.has(card.type)) return false;
     if (filters.rarity.size && !filters.rarity.has(card.rarity)) return false;
 
-    if (filters.variant.size) {
-      const hasVariant = [...filters.variant].some((k) => card[k as keyof BaseCard]);
-      if (!hasVariant) return false;
+    if (filters.finish.size) {
+      const hasFinish = card.variants.some((v) =>
+        filters.finish.has(v.finish ?? v.variant_type)
+      );
+      if (!hasFinish) return false;
     }
 
     if (filters.keyword.size && !hasAnyOf(filters.keyword, card.keywords)) return false;
@@ -143,6 +136,12 @@ function normOpt(opt: string | SelectOption): SelectOption {
 function distinctMulti(cards: BaseCard[], field: "keywords" | "traits"): string[] {
   const out = new Set<string>();
   cards.forEach((c) => c[field].forEach((v) => out.add(v)));
+  return [...out].sort();
+}
+
+function distinctFinishes(cards: BaseCard[]): string[] {
+  const out = new Set<string>();
+  cards.forEach((c) => c.variants.forEach((v) => out.add(v.finish ?? v.variant_type)));
   return [...out].sort();
 }
 
@@ -442,6 +441,13 @@ interface FilterPanelProps {
 
 export function FilterPanel({ filters, setFilters, cards, children }: FilterPanelProps) {
   const [collapsed, setCollapsed] = useState(true);
+  const [sets, setSets] = useState<CardSet[]>([]);
+
+  useEffect(() => {
+    getSets()
+      .then(setSets)
+      .catch((err) => console.error("Failed to load sets:", err));
+  }, []);
 
   const update = (patch: Partial<FilterState>) => setFilters((prev) => ({ ...prev, ...patch }));
 
@@ -463,8 +469,11 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
     });
   };
 
-  const setOptions = SET_LIST.map((s) => ({ value: s.code, label: `${s.code} — ${s.name}` }));
-  const variantOptions = VARIANT_DEFS.map((v) => ({ value: v.key as string, label: v.label }));
+  const setOptions = sets
+    .slice()
+    .sort((a, b) => Number(b.is_base_set) - Number(a.is_base_set))
+    .map((s) => ({ value: s.code, label: `${s.code} — ${s.name}` }));
+  const finishOptions = distinctFinishes(cards);
   const keywordOptions = distinctMulti(cards, "keywords");
   const traitOptions = distinctMulti(cards, "traits");
 
@@ -553,11 +562,11 @@ export function FilterPanel({ filters, setFilters, cards, children }: FilterPane
               placeholder="All rarities"
             />
             <MultiSelect
-              label="Variant"
-              values={filters.variant}
-              onChange={(v) => update({ variant: v })}
-              options={variantOptions}
-              placeholder="All variants"
+              label="Finish"
+              values={filters.finish}
+              onChange={(v) => update({ finish: v })}
+              options={finishOptions}
+              placeholder="All finishes"
             />
           </div>
 

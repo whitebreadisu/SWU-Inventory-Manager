@@ -2,18 +2,24 @@ import { authedFetch } from "./authedFetch";
 
 export interface Card {
   id: number;
+  base_card_id: number;
   set_id: number;
   set_code: string;
   base_card_number: string;
   card_number: string;
   name: string;
+  subtitle: string | null;
   rarity: string;
   type: string;
-  is_foil: boolean;
-  is_hyperspace: boolean;
-  is_prestige: boolean;
-  is_showcase: boolean;
-  is_organized_play: boolean;
+  variant_type: string;
+  finish: string | null;
+  channel: string;
+  stamped: boolean;
+  source_set_code: string;
+  swuapi_id: string;
+  front_image_url: string | null;
+  back_image_url: string | null;
+  stamp_group: string | null;
   aspects: string[];
   keywords: string[];
   traits: string[];
@@ -25,7 +31,7 @@ export interface Card {
 
 export interface CardFilters {
   set_code?: string;
-  variant?: string;
+  variant_type?: string;
   type?: string;
   rarity?: string;
 }

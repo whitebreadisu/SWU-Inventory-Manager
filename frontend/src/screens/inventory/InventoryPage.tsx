@@ -40,17 +40,22 @@ export function InventoryPage() {
     return result;
   }, [cards, filters, incompleteOnly]);
 
-  async function handleIncrement(card: InventoryCard, invKey: string) {
-    const cardId = card.cardIds[invKey];
-    if (cardId == null || pendingCardIds.has(cardId)) return;
-    setPendingCardIds((prev) => new Set(prev).add(cardId));
+  async function handleIncrement(card: InventoryCard, variantId: number) {
+    if (pendingCardIds.has(variantId)) return;
+    setPendingCardIds((prev) => new Set(prev).add(variantId));
     try {
-      const result = await incrementCard(cardId);
+      const result = await incrementCard(variantId);
       if (result.blocked) return;
       setCards((prev) =>
         prev.map((c) =>
-          c.set_code === card.set_code && c.base_card_number === card.base_card_number
-            ? { ...c, inventory: { ...c.inventory, [invKey]: result.quantity } }
+          c.base_card_id === card.base_card_id
+            ? {
+                ...c,
+                inventory: { ...c.inventory, [variantId]: result.quantity },
+                variants: c.variants.map((v) =>
+                  v.variant_id === variantId ? { ...v, quantity: result.quantity } : v
+                ),
+              }
             : c
         )
       );
@@ -59,22 +64,27 @@ export function InventoryPage() {
     } finally {
       setPendingCardIds((prev) => {
         const next = new Set(prev);
-        next.delete(cardId);
+        next.delete(variantId);
         return next;
       });
     }
   }
 
-  async function handleDecrement(card: InventoryCard, invKey: string) {
-    const cardId = card.cardIds[invKey];
-    if (cardId == null || pendingCardIds.has(cardId)) return;
-    setPendingCardIds((prev) => new Set(prev).add(cardId));
+  async function handleDecrement(card: InventoryCard, variantId: number) {
+    if (pendingCardIds.has(variantId)) return;
+    setPendingCardIds((prev) => new Set(prev).add(variantId));
     try {
-      const result = await decrementCard(cardId);
+      const result = await decrementCard(variantId);
       setCards((prev) =>
         prev.map((c) =>
-          c.set_code === card.set_code && c.base_card_number === card.base_card_number
-            ? { ...c, inventory: { ...c.inventory, [invKey]: result.quantity } }
+          c.base_card_id === card.base_card_id
+            ? {
+                ...c,
+                inventory: { ...c.inventory, [variantId]: result.quantity },
+                variants: c.variants.map((v) =>
+                  v.variant_id === variantId ? { ...v, quantity: result.quantity } : v
+                ),
+              }
             : c
         )
       );
@@ -83,7 +93,7 @@ export function InventoryPage() {
     } finally {
       setPendingCardIds((prev) => {
         const next = new Set(prev);
-        next.delete(cardId);
+        next.delete(variantId);
         return next;
       });
     }

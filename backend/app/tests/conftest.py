@@ -156,6 +156,9 @@ def seed_minimal_catalog():
             ("test-0003", "9003", "Test Trooper Alpha", "Unit", "Common"),
             ("test-0004", "9004", "Test Trooper Beta", "Unit", "Common"),
             ("test-0005", "9005", "Test Officer Alpha", "Unit", "Rare"),
+            # Detail-endpoint fixture (BL-29/S6): a richer variant long tail
+            # incl. a stamp_group, for the base-card detail popup tests.
+            ("test-0006", "9006", "Test Champion Gamma", "Unit", "Rare"),
         ]
         base_card_ids = {}
         for swuapi_id, number, name, type_, rarity in base_cards:
@@ -186,22 +189,39 @@ def seed_minimal_catalog():
             ("test-v0004", "test-0004", "9004", "Standard"),
             ("test-v0005", "test-0004", "9104", "Foil"),
             ("test-v0006", "test-0005", "9005", "Standard"),
+            ("test-v0007", "test-0006", "9006", "Standard"),
+            ("test-v0008", "test-0006", "9106", "Standard Foil"),
+            ("test-v0009", "test-0006", "9206", "PQ Champion"),
+            ("test-v0010", "test-0006", "9207", "PQ Judge"),
         ]
+        # stamp_group for the PQ tier siblings (test-v0009/test-v0010) --
+        # mirrors swuapi_classify.classify_variant's pq_tier stamp_family,
+        # keyed on this fixture's own base_card_id once known below.
+        STAMP_GROUPED_SWUAPI_IDS = {"test-v0009", "test-v0010"}
         variant_ids = {}
         for swuapi_id, base_swuapi_id, card_number, variant_type in variants:
+            base_card_id = base_card_ids[base_swuapi_id]
+            stamp_group = (
+                f"{base_card_id}:pq_tier"
+                if swuapi_id in STAMP_GROUPED_SWUAPI_IDS
+                else None
+            )
             row = db.execute(
                 text(
                     "INSERT INTO card_variants "
-                    "(base_card_id, variant_type, source_set_code, card_number, swuapi_id) "
-                    "VALUES (:base_card_id, :variant_type, 'SOR', :card_number, :swuapi_id) "
+                    "(base_card_id, variant_type, source_set_code, card_number, "
+                    "swuapi_id, stamp_group) "
+                    "VALUES (:base_card_id, :variant_type, 'SOR', :card_number, "
+                    ":swuapi_id, :stamp_group) "
                     "ON CONFLICT (swuapi_id) DO UPDATE SET card_number = EXCLUDED.card_number "
                     "RETURNING id"
                 ),
                 {
-                    "base_card_id": base_card_ids[base_swuapi_id],
+                    "base_card_id": base_card_id,
                     "variant_type": variant_type,
                     "card_number": card_number,
                     "swuapi_id": swuapi_id,
+                    "stamp_group": stamp_group,
                 },
             ).first()
             variant_ids[swuapi_id] = row.id
@@ -215,6 +235,7 @@ def seed_minimal_catalog():
             ("test-v0004", 2),  # Trooper Beta, Standard
             ("test-v0003", 0),  # Trooper Alpha, Standard (solo variant)
             ("test-v0005", 0),  # Trooper Beta, Foil
+            ("test-v0008", 1),  # Champion Gamma, Standard Foil
         ]
         for swuapi_id, quantity in seed_inventory:
             db.execute(

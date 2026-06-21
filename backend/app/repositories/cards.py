@@ -51,3 +51,23 @@ def get_variant_by_id(db: Session, variant_id: int) -> CardVariant | None:
         .filter(CardVariant.id == variant_id)
         .first()
     )
+
+
+def get_base_card_with_variants(db: Session, base_card_id: int) -> BaseCard | None:
+    """Loads one base card with its full variant long tail eager-loaded
+    (each variant's source_set + tenant-scoped inventory row, per the RLS
+    `db` session passed in), plus shared aspects/keywords/traits. Backs
+    the card detail / card-inventory popups (redesign spec §5.3)."""
+    return (
+        db.query(BaseCard)
+        .options(
+            selectinload(BaseCard.set),
+            selectinload(BaseCard.aspects),
+            selectinload(BaseCard.keywords),
+            selectinload(BaseCard.traits),
+            selectinload(BaseCard.variants).selectinload(CardVariant.source_set),
+            selectinload(BaseCard.variants).selectinload(CardVariant.inventory),
+        )
+        .filter(BaseCard.id == base_card_id)
+        .first()
+    )

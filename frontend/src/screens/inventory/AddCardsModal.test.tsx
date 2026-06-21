@@ -5,13 +5,13 @@ import type { CardWithQty } from "../../api/inventory";
 
 vi.mock("../../api/sets", () => ({
   getSets: vi.fn().mockResolvedValue([
-    { id: 1, code: "SOR", name: "Spark of Rebellion", has_unique_variant_numbers: false },
-    { id: 4, code: "JTL", name: "Jump to Lightspeed", has_unique_variant_numbers: true },
+    { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true },
+    { id: 4, code: "JTL", name: "Jump to Lightspeed", is_base_set: true },
   ]),
 }));
 vi.mock("../../api/inventory", () => ({
   incrementCard: vi.fn().mockResolvedValue({
-    card_id: 1,
+    variant_id: 1,
     quantity: 1,
     playset_complete: false,
     blocked: false,
@@ -22,18 +22,24 @@ vi.mock("../../api/inventory", () => ({
 function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
   return {
     id: 1,
+    base_card_id: 1,
     set_id: 1,
     set_code: "SOR",
     base_card_number: "1",
     card_number: "1",
     name: "IG-88",
+    subtitle: null,
     rarity: "R",
     type: "Unit",
-    is_foil: false,
-    is_hyperspace: false,
-    is_prestige: false,
-    is_showcase: false,
-    is_organized_play: false,
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    stamped: false,
+    source_set_code: "SOR",
+    swuapi_id: "uuid-1",
+    front_image_url: null,
+    back_image_url: null,
+    stamp_group: null,
     aspects: [],
     keywords: [],
     traits: [],
@@ -47,8 +53,15 @@ function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
 }
 
 const mockCatalog: CardWithQty[] = [
-  makeCard({ id: 1, base_card_number: "12", card_number: "12", quantity: 0 }),
-  makeCard({ id: 2, base_card_number: "12", card_number: "12", is_foil: true, quantity: 1 }),
+  makeCard({ id: 1, base_card_id: 1, base_card_number: "12", card_number: "12", quantity: 0 }),
+  makeCard({
+    id: 2,
+    base_card_id: 1,
+    base_card_number: "12",
+    card_number: "12",
+    finish: "Standard Foil",
+    quantity: 1,
+  }),
 ];
 
 async function renderModal(onClose = vi.fn(), onCommitted = vi.fn()) {
@@ -148,17 +161,21 @@ describe("AddCardsModal", () => {
     const limitedCatalog: CardWithQty[] = [
       makeCard({
         id: 10,
+        base_card_id: 2,
         set_code: "JTL",
         base_card_number: "12",
         card_number: "12",
+        source_set_code: "JTL",
         type: "Unit",
         quantity: 3,
       }),
       makeCard({
         id: 11,
+        base_card_id: 3,
         set_code: "JTL",
         base_card_number: "55",
         card_number: "55",
+        source_set_code: "JTL",
         type: "Unit",
         quantity: 0,
       }),
@@ -168,7 +185,7 @@ describe("AddCardsModal", () => {
     });
     await waitFor(() => screen.getByText(/Jump to Lightspeed/i));
 
-    // Select JTL (unique-variant-numbers)
+    // Select JTL
     const select = screen.getByRole("combobox");
     await act(async () => {
       fireEvent.change(select, { target: { value: "JTL" } });

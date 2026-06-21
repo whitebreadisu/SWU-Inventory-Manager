@@ -4,7 +4,10 @@ import { InventoryPage } from "./InventoryPage";
 import type { CardWithQty } from "../../api/inventory";
 
 vi.mock("../../api/sets", () => ({
-  getSets: vi.fn().mockResolvedValue([]),
+  getSets: vi.fn().mockResolvedValue([
+    { id: 1, code: "SOR", name: "Spark of Rebellion", is_base_set: true },
+    { id: 2, code: "SHD", name: "Shadows of the Galaxy", is_base_set: true },
+  ]),
 }));
 
 const mockGetInventory = vi.fn();
@@ -12,25 +15,31 @@ const mockIncrementCard = vi.fn();
 const mockDecrementCard = vi.fn();
 vi.mock("../../api/inventory", () => ({
   getInventory: () => mockGetInventory(),
-  incrementCard: (cardId: number) => mockIncrementCard(cardId),
-  decrementCard: (cardId: number) => mockDecrementCard(cardId),
+  incrementCard: (variantId: number) => mockIncrementCard(variantId),
+  decrementCard: (variantId: number) => mockDecrementCard(variantId),
 }));
 
 function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
   return {
     id: 1,
+    base_card_id: 1,
     set_id: 1,
     set_code: "SOR",
     base_card_number: "1",
     card_number: "1",
     name: "Card",
+    subtitle: null,
     rarity: "C",
     type: "Unit",
-    is_foil: false,
-    is_hyperspace: false,
-    is_prestige: false,
-    is_showcase: false,
-    is_organized_play: false,
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    stamped: false,
+    source_set_code: "SOR",
+    swuapi_id: "uuid-1",
+    front_image_url: null,
+    back_image_url: null,
+    stamp_group: null,
     aspects: [],
     keywords: [],
     traits: [],
@@ -43,10 +52,11 @@ function makeCard(overrides: Partial<CardWithQty>): CardWithQty {
   };
 }
 
-// 4 unique cards: 2 in SOR (one playset-complete), 2 in SHD (one partially owned).
+// 4 unique base cards: 2 in SOR (one playset-complete), 2 in SHD (one partially owned).
 const mockInventory: CardWithQty[] = [
   makeCard({
     id: 1,
+    base_card_id: 1,
     set_id: 1,
     set_code: "SOR",
     base_card_number: "1",
@@ -56,6 +66,7 @@ const mockInventory: CardWithQty[] = [
   }),
   makeCard({
     id: 2,
+    base_card_id: 2,
     set_id: 1,
     set_code: "SOR",
     base_card_number: "2",
@@ -65,19 +76,23 @@ const mockInventory: CardWithQty[] = [
   }),
   makeCard({
     id: 3,
+    base_card_id: 3,
     set_id: 2,
     set_code: "SHD",
     base_card_number: "1",
     card_number: "1",
+    source_set_code: "SHD",
     name: "SHD Card One",
     quantity: 1,
   }),
   makeCard({
     id: 4,
+    base_card_id: 4,
     set_id: 2,
     set_code: "SHD",
     base_card_number: "2",
     card_number: "2",
+    source_set_code: "SHD",
     name: "SHD Card Two",
     quantity: 0,
   }),
@@ -148,7 +163,7 @@ describe("InventoryPage in-flight guard (P7 stage 2)", () => {
 
   it("disables the + button while an increment request is in flight and ignores a second click", async () => {
     let resolveIncrement!: (value: {
-      card_id: number;
+      variant_id: number;
       quantity: number;
       playset_complete: boolean;
       blocked: boolean;
@@ -174,7 +189,7 @@ describe("InventoryPage in-flight guard (P7 stage 2)", () => {
 
     await act(async () => {
       resolveIncrement({
-        card_id: 2,
+        variant_id: 2,
         quantity: 1,
         playset_complete: false,
         blocked: false,
@@ -187,7 +202,7 @@ describe("InventoryPage in-flight guard (P7 stage 2)", () => {
   });
 
   it("disables the - button while a decrement request is in flight and ignores a second click", async () => {
-    let resolveDecrement!: (value: { card_id: number; quantity: number }) => void;
+    let resolveDecrement!: (value: { variant_id: number; quantity: number }) => void;
     mockDecrementCard.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -207,7 +222,7 @@ describe("InventoryPage in-flight guard (P7 stage 2)", () => {
     expect(mockDecrementCard).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      resolveDecrement({ card_id: 1, quantity: 2 });
+      resolveDecrement({ variant_id: 1, quantity: 2 });
     });
 
     expect(decButton).not.toBeDisabled();

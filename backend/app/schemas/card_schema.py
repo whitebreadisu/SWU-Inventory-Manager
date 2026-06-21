@@ -25,3 +25,10 @@ class CardResponse(BaseModel):
     power: int | None
     hp: int | None
     arena: str | None
+    # Curated classification (SWU_Catalog_Redesign_Spec.md §10.2-10.5),
+    # derived on read from variant_type + source_set_code via
+    # app.ingestion.swuapi_classify.classify_variant -- the same function
+    # ingestion uses, so there is one source of truth. Not stored columns.
+    finish: str | None
+    channel: str
+    stamped: bool

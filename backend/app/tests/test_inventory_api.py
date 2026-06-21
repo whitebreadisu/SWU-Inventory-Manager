@@ -37,6 +37,9 @@ class TestListInventory:
             assert "quantity" in r
             assert isinstance(r["quantity"], int)
             assert r["quantity"] >= 0
+            assert "finish" in r
+            assert "channel" in r
+            assert "stamped" in r
 
     def test_quantity_zero_cards_are_included(self, client):
         records = client.get("/api/inventory").json()

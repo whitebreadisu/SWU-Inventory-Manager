@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.ingestion.swuapi_classify import classify_variant
 from app.models.card_variant import CardVariant
 from app.repositories import inventory as inventory_repo
 from app.schemas.inventory_schema import (
@@ -15,6 +16,7 @@ SINGLETON_TYPES = frozenset({"Leader", "Base"})
 def _to_response(variant: CardVariant) -> CardWithInventoryResponse:
     base_card = variant.base_card
     qty = variant.inventory.quantity if variant.inventory else 0
+    classification = classify_variant(variant.variant_type, variant.source_set_code)
     return CardWithInventoryResponse(
         id=variant.id,
         base_card_id=base_card.id,
@@ -39,6 +41,9 @@ def _to_response(variant: CardVariant) -> CardWithInventoryResponse:
         power=base_card.power,
         hp=base_card.hp,
         arena=base_card.arena,
+        finish=classification.finish,
+        channel=classification.channel,
+        stamped=classification.stamped,
         quantity=qty,
     )
 

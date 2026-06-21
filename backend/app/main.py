@@ -8,6 +8,7 @@ from app.ingestion.apply_inventory_snapshot import apply_inventory_snapshot
 from app.ingestion.apply_seed import apply_seed
 from app.logging_config import configure_logging
 from app.middleware import log_requests
+from app.routers import base_cards as base_cards_router
 from app.routers import cards as cards_router
 from app.routers import inventory as inventory_router
 from app.routers import sets as sets_router
@@ -55,6 +56,7 @@ app.middleware("http")(log_requests)
 
 app.include_router(sets_router.router)
 app.include_router(cards_router.router)
+app.include_router(base_cards_router.router)
 app.include_router(inventory_router.router)
 
 

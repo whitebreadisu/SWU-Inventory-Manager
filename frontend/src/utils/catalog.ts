@@ -1,11 +1,26 @@
 import type { Card } from "../api/cards";
 
+export interface Variant {
+  variant_id: number;
+  variant_type: string;
+  finish: string | null;
+  channel: string;
+  stamped: boolean;
+  source_set_code: string;
+  card_number: string;
+  front_image_url: string | null;
+  back_image_url: string | null;
+  stamp_group: string | null;
+}
+
 export interface BaseCard {
+  base_card_id: number;
   set_code: string;
   base_card_number: string;
   name: string;
-  rarity: string;
+  subtitle: string | null;
   type: string;
+  rarity: string;
   aspects: string[];
   keywords: string[];
   traits: string[];
@@ -13,40 +28,45 @@ export interface BaseCard {
   power: number | null;
   hp: number | null;
   arena: string | null;
-  hasStandard: boolean;
-  hasFoil: boolean;
-  hasHyperspace: boolean;
-  hasHyperspaceFoil: boolean;
-  hasPrestige: boolean;
-  hasPrestigeFoil: boolean;
-  hasOp: boolean;
-  hasOpFoil: boolean;
+  variants: Variant[];
+}
+
+function toVariant(card: Card): Variant {
+  return {
+    variant_id: card.id,
+    variant_type: card.variant_type,
+    finish: card.finish,
+    channel: card.channel,
+    stamped: card.stamped,
+    source_set_code: card.source_set_code,
+    card_number: card.card_number,
+    front_image_url: card.front_image_url,
+    back_image_url: card.back_image_url,
+    stamp_group: card.stamp_group,
+  };
 }
 
 export function parseCardDisplay(card: BaseCard): { displayName: string; subtitle: string | null } {
-  if (card.type === "Base") {
+  if (card.subtitle == null && card.type === "Base") {
     return { displayName: card.name, subtitle: card.traits[0] ?? null };
   }
-  const sep = card.name.indexOf(" - ");
-  if (sep !== -1) {
-    return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
-  }
-  return { displayName: card.name, subtitle: null };
+  return { displayName: card.name, subtitle: card.subtitle };
 }
 
 export function groupByBaseCard(cards: Card[]): BaseCard[] {
-  const map = new Map<string, BaseCard>();
+  const map = new Map<number, BaseCard>();
 
   for (const card of cards) {
-    const key = `${card.set_code}::${card.base_card_number}`;
-
-    if (!map.has(key)) {
-      map.set(key, {
+    let base = map.get(card.base_card_id);
+    if (!base) {
+      base = {
+        base_card_id: card.base_card_id,
         set_code: card.set_code,
         base_card_number: card.base_card_number,
         name: card.name,
-        rarity: card.rarity,
+        subtitle: card.subtitle,
         type: card.type,
+        rarity: card.rarity,
         aspects: card.aspects,
         keywords: card.keywords,
         traits: card.traits,
@@ -54,33 +74,12 @@ export function groupByBaseCard(cards: Card[]): BaseCard[] {
         power: card.power,
         hp: card.hp,
         arena: card.arena,
-        hasStandard: false,
-        hasFoil: false,
-        hasHyperspace: false,
-        hasHyperspaceFoil: false,
-        hasPrestige: false,
-        hasPrestigeFoil: false,
-        hasOp: false,
-        hasOpFoil: false,
-      });
+        variants: [],
+      };
+      map.set(card.base_card_id, base);
     }
 
-    const base = map.get(key)!;
-
-    if (card.is_organized_play) {
-      if (card.is_foil) base.hasOpFoil = true;
-      else base.hasOp = true;
-    } else if (card.is_prestige) {
-      if (card.is_foil) base.hasPrestigeFoil = true;
-      else base.hasPrestige = true;
-    } else if (card.is_hyperspace) {
-      if (card.is_foil) base.hasHyperspaceFoil = true;
-      else base.hasHyperspace = true;
-    } else if (card.is_foil) {
-      base.hasFoil = true;
-    } else {
-      base.hasStandard = true;
-    }
+    base.variants.push(toVariant(card));
   }
 
   return Array.from(map.values()).sort((a, b) => {

@@ -6,7 +6,7 @@ export interface CardWithQty extends Card {
 }
 
 export interface IncrementResult {
-  card_id: number;
+  variant_id: number;
   quantity: number;
   playset_complete: boolean;
   blocked: boolean;
@@ -14,7 +14,7 @@ export interface IncrementResult {
 }
 
 export interface DecrementResult {
-  card_id: number;
+  variant_id: number;
   quantity: number;
 }
 
@@ -24,14 +24,14 @@ export async function getInventory(): Promise<CardWithQty[]> {
   return res.json();
 }
 
-export async function incrementCard(cardId: number): Promise<IncrementResult> {
-  const res = await authedFetch(`/api/inventory/${cardId}/increment`, { method: "POST" });
-  if (!res.ok) throw new Error(`Increment failed for card ${cardId}: ${res.status}`);
+export async function incrementCard(variantId: number): Promise<IncrementResult> {
+  const res = await authedFetch(`/api/inventory/${variantId}/increment`, { method: "POST" });
+  if (!res.ok) throw new Error(`Increment failed for variant ${variantId}: ${res.status}`);
   return res.json();
 }
 
-export async function decrementCard(cardId: number): Promise<DecrementResult> {
-  const res = await authedFetch(`/api/inventory/${cardId}/decrement`, { method: "POST" });
-  if (!res.ok) throw new Error(`Decrement failed for card ${cardId}: ${res.status}`);
+export async function decrementCard(variantId: number): Promise<DecrementResult> {
+  const res = await authedFetch(`/api/inventory/${variantId}/decrement`, { method: "POST" });
+  if (!res.ok) throw new Error(`Decrement failed for variant ${variantId}: ${res.status}`);
   return res.json();
 }

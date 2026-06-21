@@ -1,5 +1,4 @@
 import type { CardWithQty } from "../api/inventory";
-import type { Card } from "../api/cards";
 
 export type RowId = string;
 
@@ -43,13 +42,19 @@ export interface VerificationItem {
   inv: InventoryStatus;
 }
 
-export function variantLabelNoOp(card: Card): string {
-  const parts: string[] = [];
-  if (card.is_hyperspace) parts.push("Hyperspace");
-  if (card.is_prestige) parts.push("Prestige");
-  if (card.is_showcase) parts.push("Showcase");
-  if (card.is_foil) parts.push("Foil");
-  return parts.length > 0 ? parts.join(" ") : "Standard";
+// NOTE (BL-33/redesign): this is a minimal field-mapping shim, not the real
+// two-axis (provenance x finish) resolver called for by
+// SWU_Catalog_Redesign_Spec.md §5.4. The old "OP" boolean is approximated
+// here as `channel === "Weekly Play"`, and the old finish booleans are
+// approximated as `finish ?? variant_type`. This keeps the build/tests
+// green; the real provenance-pickers-only-when-ambiguous rewrite is a later
+// phase (see BL-33 step 3+ / the Add Cards two-axis rewrite).
+export function variantLabelNoOp(card: CardWithQty): string {
+  return card.finish ?? card.variant_type;
+}
+
+function isOpCard(card: CardWithQty): boolean {
+  return card.channel === "Weekly Play";
 }
 
 export function maxCopies(type: string): number {
@@ -57,14 +62,7 @@ export function maxCopies(type: string): number {
 }
 
 function cardNameParts(card: CardWithQty): { displayName: string; subtitle: string | null } {
-  if (card.type === "Base") {
-    return { displayName: card.name, subtitle: card.traits[0] ?? null };
-  }
-  const sep = card.name.indexOf(" - ");
-  if (sep !== -1) {
-    return { displayName: card.name.slice(0, sep), subtitle: card.name.slice(sep + 3) };
-  }
-  return { displayName: card.name, subtitle: null };
+  return { displayName: card.name, subtitle: card.subtitle };
 }
 
 export function resolveRow(setCode: string, row: Row, catalog: CardWithQty[]): ResolveResult {
@@ -74,8 +72,8 @@ export function resolveRow(setCode: string, row: Row, catalog: CardWithQty[]): R
     (c) => c.set_code === setCode && c.card_number === row.cardNumber
   );
 
-  const opMatches = filtered.filter((c) => c.is_organized_play);
-  const baseMatches = filtered.filter((c) => !c.is_organized_play);
+  const opMatches = filtered.filter(isOpCard);
+  const baseMatches = filtered.filter((c) => !isOpCard(c));
   const hasOpOption = opMatches.length > 0;
   const activeSet = row.op ? opMatches : baseMatches;
 

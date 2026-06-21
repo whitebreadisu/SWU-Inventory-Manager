@@ -2,7 +2,7 @@ import { render, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { applyFilters, DEFAULT_FILTERS } from "./FilterPanel";
 import type { FilterState } from "./FilterPanel";
-import type { BaseCard } from "../utils/catalog";
+import type { BaseCard, Variant } from "../utils/catalog";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -10,11 +10,33 @@ vi.mock("../api/cards", () => ({
   getCards: vi.fn(() => Promise.resolve([])),
 }));
 
+vi.mock("../api/sets", () => ({
+  getSets: vi.fn(() => Promise.resolve([])),
+}));
+
+function makeVariant(overrides: Partial<Variant> = {}): Variant {
+  return {
+    variant_id: 1,
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    stamped: false,
+    source_set_code: "SOR",
+    card_number: "001",
+    front_image_url: null,
+    back_image_url: null,
+    stamp_group: null,
+    ...overrides,
+  };
+}
+
 function makeCard(overrides: Partial<BaseCard> = {}): BaseCard {
   return {
+    base_card_id: 1,
     set_code: "SOR",
     base_card_number: "001",
     name: "Test Unit",
+    subtitle: null,
     rarity: "C",
     type: "Unit",
     aspects: [],
@@ -24,14 +46,7 @@ function makeCard(overrides: Partial<BaseCard> = {}): BaseCard {
     power: null,
     hp: null,
     arena: null,
-    hasStandard: true,
-    hasFoil: false,
-    hasHyperspace: false,
-    hasHyperspaceFoil: false,
-    hasPrestige: false,
-    hasPrestigeFoil: false,
-    hasOp: false,
-    hasOpFoil: false,
+    variants: [makeVariant()],
     ...overrides,
   };
 }
@@ -69,13 +84,19 @@ describe("applyFilters", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("returns only cards that have the selected variant", () => {
-    const standard = makeCard({ base_card_number: "001", hasStandard: true, hasFoil: false });
-    const foil = makeCard({ base_card_number: "002", hasStandard: false, hasFoil: true });
+  it("returns only cards that have the selected finish", () => {
+    const standard = makeCard({
+      base_card_number: "001",
+      variants: [makeVariant({ finish: "Standard" })],
+    });
+    const foil = makeCard({
+      base_card_number: "002",
+      variants: [makeVariant({ variant_id: 2, finish: "Standard Foil" })],
+    });
     const filters: FilterState = {
       ...DEFAULT_FILTERS,
       aspects: new Set(DEFAULT_FILTERS.aspects),
-      variant: new Set(["hasFoil"]),
+      finish: new Set(["Standard Foil"]),
     };
     const result = applyFilters([standard, foil], filters);
     expect(result).toHaveLength(1);

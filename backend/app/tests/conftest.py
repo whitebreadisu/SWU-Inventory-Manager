@@ -101,16 +101,32 @@ def set_ids(db):
     return {s.code: s.id for s in db.query(CardSet).all()}
 
 
+BASE_SETS = [
+    # (code, name) -- in canonical release order; see CLAUDE.md's Set Codes
+    # table. Only relied on here and by test_sets_api.py's canonical-order
+    # assertions, now that catalog_seed.sql (which used to seed `sets` on a
+    # fresh DB) is retired with the CSV pipeline (BL-33 step 1).
+    ("SOR", "Spark of Rebellion"),
+    ("SHD", "Shadows of the Galaxy"),
+    ("TWI", "Twilight of the Republic"),
+    ("JTL", "Jump to Lightspeed"),
+    ("LOF", "Legends of the Force"),
+    ("SEC", "Secrets of Power"),
+    ("LAW", "A Lawless Time"),
+]
+
+
 @pytest.fixture(scope="session", autouse=True)
 def seed_minimal_catalog():
     """BL-33 step 1: the production CSV-sourced catalog seed is retired
-    (BL-29 will repopulate base_cards/card_variants from swuapi, blocked on
-    BL-27's vocabulary census). Tests can no longer rely on a bulk-seeded
-    catalog with known counts (the old "977 SOR cards" pattern) — this
-    inserts a small, self-contained fixture catalog instead, scoped to SOR
-    (already is_base_set=true from the redesign migration). Idempotent via
-    ON CONFLICT DO NOTHING on swuapi_id, so it's safe across repeated runs
-    against a persistent dev database."""
+    (BL-29 now repopulates base_cards/card_variants from swuapi for real
+    environments, but CI's fresh ephemeral DB has no seed step of its own).
+    Tests can no longer rely on a bulk-seeded catalog with known counts (the
+    old "977 SOR cards" pattern) — this seeds the 7 base sets (idempotent via
+    ON CONFLICT DO NOTHING on code) plus a small, self-contained fixture
+    catalog scoped to SOR. Idempotent via ON CONFLICT DO NOTHING on
+    swuapi_id too, so it's safe across repeated runs against a persistent
+    dev database."""
     if "DATABASE_URL" not in os.environ:
         return
 
@@ -118,6 +134,17 @@ def seed_minimal_catalog():
 
     db = SessionLocal()
     try:
+        for code, name in BASE_SETS:
+            db.execute(
+                text(
+                    "INSERT INTO sets (code, name, is_base_set) "
+                    "VALUES (:code, :name, true) "
+                    "ON CONFLICT (code) DO NOTHING"
+                ),
+                {"code": code, "name": name},
+            )
+        db.commit()
+
         sor_id = db.execute(text("SELECT id FROM sets WHERE code = 'SOR'")).scalar()
         if sor_id is None:
             return

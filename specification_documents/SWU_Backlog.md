@@ -51,6 +51,7 @@
 | BL-45 | Bulletproof popover positioning (portal-based) | 5 — Opportunistic | Catalog Variants tooltip uses absolute positioning anchored to the button's right edge (good enough for the current right-edge column). For robustness against any column position / horizontal scroll / bottom-row vertical clipping, render the popover in a React portal with fixed positioning from the button's screen rect + edge detection. Polish; not urgent |
 | BL-46 | Add Cards experience — rethink with real-card exploration | 6 — Feature Enhancements | The two-axis (provenance × finish) Add Cards flow is functionally correct but the UX isn't satisfying at full catalog scale; needs hands-on exploration with real cards/examples to define the optimal add-to-inventory experience before redesigning |
 | BL-47 | Documentation reconnaissance & cleanup | 1 — Documentation Foundation | Audit the large, cross-referencing spec/doc set — decide per file keep/update/archive/consolidate and fix stale cross-references (e.g. ClaudeCode spec predates the catalog redesign); also rationalize the learning guide(s) |
+| BL-48 | Learning guide rationalization | 1 — Documentation Foundation | Reconcile the stale main `SWU_Learning_Guide.md` and the accumulated per-session standalone guides into a coherent set; split out from BL-47 because the guide is personal/gitignored and a distinct effort |
 
 ### Completed
 
@@ -176,6 +177,18 @@ These come first because they fix the "two specs at different detail levels" pro
 **Why:** Raised by Jeremy 2026-06-21 after the catalog redesign shipped. Concrete drift example: `SWU_ClaudeCode_Spec.md` still describes the pre-redesign `cards` boolean-flag schema, the old OP-flag Add Cards resolver (§7.5 / S4), and S5/S6 as future slices — all superseded by `SWU_Catalog_Redesign_Spec.md` and the 2026-06-21 frontend rewire (only lightly patched in place so far, with pointers, pending this pass). The learning guide is also significantly out of date; for now a standalone per-session guide was created for the catalog-redesign session, to be integrated (or not) during this recon.
 
 **Definition of done:** A documented disposition for each spec/guide/journal file (keep/update/archive/consolidate + reason); stale cross-references resolved; an authoritative-source map (data model, platform, UX, variant mechanism, backlog). Likely an Opus analysis session.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-48: Learning guide rationalization
+
+**What:** Reconcile the learning-guide set. The main `SWU_Learning_Guide.md` is significantly out of date (it predates the catalog redesign and later platform work), and several per-session standalone guides have accumulated (`SWU_Learning_Guide_CatalogRedesign_Frontend_2026-06-21.md`, `SWU_Learning_Guide_Documentation_2026-06-23.md`, plus the gitignored `Frontend_Fix_Triage_Rubric.md`). Decide per guide: integrate into the main guide, keep standalone, or retire — and bring the main guide current.
+
+**Why:** Split out from BL-47 (documentation recon) during the 2026-06-23 planning session. BL-47 scopes the *tracked, repo-facing* spec/doc set; the learning guides are **personal and gitignored** (Jeremy's teaching record and future blog/talk source material), so they're a distinct effort with a different audience and shouldn't be conflated with the portfolio-facing doc cleanup. Several per-session guides were intentionally written self-contained with a "integrate or discard during the recon" banner, deferring exactly this reconciliation.
+
+**Definition of done:** A disposition for each learning-guide file (integrate / keep standalone / retire + reason); the main `SWU_Learning_Guide.md` brought current or explicitly restructured (e.g. as an index over standalone per-topic guides); still-open items from `Frontend_Fix_Triage_Rubric.md` graduated to backlog entries (handled in BL-47's backlog-consolidation phase) so the rubric can be retired or kept purely as working scratch.
 
 **Status:** 🔲 Open
 

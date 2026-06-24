@@ -3,7 +3,7 @@
 
 **Version 1.0 | May 2026**
 
-> ⚠️ **FROZEN — historical original-design spec.** Retained as a historical record. **Superseded by [`SWU_Application_Spec.md`](SWU_Application_Spec.md)** for the catalog/variant/inventory **data model** (§4), the **catalog / inventory / Add-Cards UX** (§7.3–§7.5), and the **slice roadmap** (§8–§9) — these describe pre-redesign designs that the 2026-06-21 swuapi-first rebuild replaced. Still useful as the original-design reference for **objectives, tech stack, architecture, ingestion, and the API surface** (§1–§3, §5–§6, §10), but specifics may have drifted — treat `SWU_Application_Spec.md` and the code as authoritative for current behavior. Section-by-section reconciliation: BL-47 / BL-49.
+> ⚠️ **FROZEN — historical original-design spec.** Retained only as a historical record of the original V1 design. **Fully superseded by [`SWU_Application_Spec.md`](SWU_Application_Spec.md)** — the authoritative as-built reference for the data model (§4), UX (§7), API (§6), ingestion (§5), architecture (§2–§3), and environment (§10). **Nothing here is the live reference for any domain;** specifics predate the 2026-06-21 swuapi-first redesign and have drifted from the code. Read it only for original-design context. (BL-47 / BL-49, complete 2026-06-24.)
 
 ---
 

@@ -1,8 +1,8 @@
 # BL-47 — Documentation Reconciliation Plan
 
-> **Status:** Approved, not yet executed (drafted 2026-06-23). This is the auditable disposition record for BL-47. A future session can execute directly from it.
+> **Status:** ✅ Executed 2026-06-24 — phases 0–5 complete (branch `docs/bl47-recon-phases-0-1-4`). This is the auditable disposition record for BL-47. Spillover tracked as BL-48 (learning-guide rationalization) and BL-49 (absorb API/ingestion/architecture into the Application Spec); memory cleanup is the remaining deferred follow-up.
 > **Owner decisions:** all dispositions below were reviewed and accepted by Jeremy in the planning conversation of 2026-06-23.
-> **On completion:** this doc moves to `specification_documents/analysis/` as the BL-47 disposition log, and BL-47 is closed.
+> **Location:** moved to `specification_documents/analysis/` as the BL-47 disposition log; BL-47 closed in `SWU_Backlog.md`.
 
 ---
 

@@ -3,7 +3,7 @@
 ## File Aliases
 
 When the user refers to **"the spec"** or **"spec file"** or **"SWU spec"**, they mean:
-`F:\Projects\swu-inventory-manager\specification_documents\SWU_ClaudeCode_Spec.md`
+`F:\Projects\swu-inventory-manager\specification_documents\SWU_Application_Spec.md`
 
 When the user refers to **"the journal"** or **"learning journal"** or **"journal entries"**, they mean the folder:
 `F:\Projects\swu-inventory-manager\learning_journal`
@@ -28,6 +28,21 @@ When the user refers to **"the variant exceptions report"** or **"the exceptions
 
 When the user refers to **"the application spec"**, **"the app spec"**, **"the redesign spec"**, or **"the catalog redesign spec"**, they mean:
 `F:\Projects\swu-inventory-manager\specification_documents\SWU_Application_Spec.md`
+
+When the user refers to **"the original spec"**, **"the V1 spec"**, or **"the frozen spec"**, they mean:
+`F:\Projects\swu-inventory-manager\specification_documents\SWU_ClaudeCode_Spec.md`
+
+## Authoritative Docs (where to look)
+
+Single source of truth per domain — read the one doc, don't re-derive:
+- **Application** (data model, variants, inventory, UX) → `specification_documents/SWU_Application_Spec.md`
+- **Variant mechanism** → `SWU_Standard_Variant_Mapping_Spec.md` (+ current exceptions in `swuapi_standard_variant_exceptions.md`)
+- **Card domain rules** → `CARD_RULES.md`
+- **Platform** (auth, CI/CD, infra, security) → `SWU_Platform_Spec.md` (phase history → `SWU_Platform_Roadmap.md`)
+- **Outstanding work** → `SWU_Backlog.md` (the only work registry — everything else points to a BL-ID)
+- **Decisions / rationale** → `docs/decisions/` (ADRs)
+- **Supporting analysis / evidence** → `specification_documents/analysis/`
+- `SWU_ClaudeCode_Spec.md` is **frozen** (original V1 design) — historical reference only.
 
 ## Set Codes
 | Set | Code | File prefix |

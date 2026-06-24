@@ -53,6 +53,10 @@
 | BL-47 | Documentation reconnaissance & cleanup | 1 — Documentation Foundation | Audit the large, cross-referencing spec/doc set — decide per file keep/update/archive/consolidate and fix stale cross-references (e.g. ClaudeCode spec predates the catalog redesign); also rationalize the learning guide(s) |
 | BL-48 | Learning guide rationalization | 1 — Documentation Foundation | Reconcile the stale main `SWU_Learning_Guide.md` and the accumulated per-session standalone guides into a coherent set; split out from BL-47 because the guide is personal/gitignored and a distinct effort |
 | BL-49 | Absorb API/ingestion/architecture into the Application Spec | 1 — Documentation Foundation | Port the still-true API surface, ingestion pipeline, architecture, tech stack, and environment sections from the frozen `SWU_ClaudeCode_Spec.md` into `SWU_Application_Spec.md`, verified against current code (the redesign changed the schema, so endpoint/payload shapes drifted) — so the Application Spec becomes a complete standalone hub and the frozen spec is referenced only as history |
+| BL-50 | Token printed-number display ("T02") | 5 — Opportunistic | Tokens show swuapi's set-sequence number (Shield "2") not the printed token number ("T02"); swuapi exposes no printed token number, so decide whether it's derivable vs. an accepted gap, incl. Add Cards resolver + sort impact (graduated from frontend-fix triage #2) |
+| BL-51 | Browser Back closes popups; Add Cards unsaved-changes confirm | 6 — Feature Enhancements | Back should close an open popup and return to the app (not exit to the portal) via one shared history mechanism in the currently router-less SPA; + unsaved-changes confirm on Add Cards (graduated from triage #3; relates BL-18) |
+| BL-52 | Cross-set "all printings" reprint view | 6 — Feature Enhancements | Group `base_cards` roots by case-insensitive `(name, subtitle)` across sets for a card-detail "all printings" view; query-time derived (swuapi has no reprint lineage); graduated from variant mapping spec §7's deferred concept |
+| BL-53 | API rate limiting on `/api/*` | 4 — Operational Hardening | No per-IP/per-tenant cap on API routes; flagged deferred in the P7 security review (OWASP A04) and platform spec §5 — low severity at current scale, real gap before broader exposure |
 
 ### Completed
 
@@ -421,6 +425,18 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 ---
 
+### BL-53: API rate limiting on `/api/*`
+
+**What:** No per-IP/per-tenant rate limit exists on the `/api/*` routes. Flagged as deferred in the P7 security review (OWASP A04 Insecure Design) and `SWU_Platform_Spec.md` §5 — low severity at the current single-developer, low-traffic scale, but a real gap before broader multi-user exposure.
+
+**Why:** Surfaced during the BL-47 documentation sweep as an untracked deferral living only inside the security review / platform spec prose. Without a cap, the API is exposed to brute-force and resource-exhaustion abuse as usage grows.
+
+**Definition of done:** A rate-limiting control on `/api/*` (per-IP and/or per-tenant), tuned not to impede legitimate use; the Platform Spec A04 row and §5 updated from "deferred" to the implemented control.
+
+**Status:** 🔲 Open
+
+---
+
 ## Tier 5 — Opportunistic / Low Priority
 
 ### BL-45: Bulletproof popover positioning (portal-based)
@@ -480,6 +496,18 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 **Definition of done:** Either a double-pip data source is found and a multiplicity-capable `card_aspects` model (ordered list or per-aspect count) is implemented so the catalog/popup render the correct pip count, or this is explicitly marked out of scope indefinitely. If pursued, BL-27's raw-JSON census first confirms swuapi truly omits the data.
 
 **Status:** 🔲 Open — deferred (swuapi fidelity accepted 2026-06-20)
+
+---
+
+### BL-50: Token printed-number display ("T02")
+
+**What:** Token cards display swuapi's set-sequence number (e.g. SOR Shield = "2") rather than the printed token number ("T02"). swuapi exposes no printed token number — it numbers tokens by set sequence (Shield = 2/4/6; zero "T0x" in the export) — so this is a data-source gap, not an ingestion bug (cf. BL-10 data gaps, BL-38 fidelity).
+
+**Why:** Graduated from the gitignored frontend-fix triage rubric (item #2) during the BL-47 sweep. Needs analysis on whether "T02" is reliably *derivable* vs. an accepted swuapi gap, plus impact on the Add Cards resolver (keys on `card_number`) and sort. NB: tokens currently sort to the *top* (low numbers); a "tokens last" sort is a related-but-separate concern.
+
+**Definition of done:** A decision on whether to derive/display printed token numbers or accept the swuapi gap; if displayed, the resolver and sort handle token numbering consistently.
+
+**Status:** 🔲 Open
 
 ---
 
@@ -576,6 +604,8 @@ Because the vocabulary is open and large, the store is **default-driven, not a d
 **Why:** Requested by Jeremy: e.g. Standard Leader/Base capped at 1 but Hyperspace Leader/Base allowed up to 2, while non-singleton cards might allow 4 Standard / 5 Hyperspace / 3 Foil simultaneously (per-variant limits for leaders/bases confirmed in scope 2026-06-20; default stays 1 for singleton variants, 3 for standard). **Important behavior change uncovered during design:** today, non-singleton limits are enforced as a *shared pool* across all variants of a card (`inventory_repo.get_base_card_total` sums every variant toward one cap of 3 — `backend/app/services/inventory.py:70-88`). This item changes that to *independent per-variant caps*, matching how Leader/Base already work (each variant capped separately, `inventory.py:54-62`). This is a deliberate, necessary change to support the requested behavior, not an incidental side effect.
 
 **Relationship to this session's model (2026-06-20):** these limits are **advisory tenant policy**, deliberately decoupled from two other axes — they do *not* define *completion* (which stays base-card-level and variant-agnostic: playset = 3 total / owned = ≥1, already built into `InventorySummary`), and they do *not* set a DB constraint on `inventory.quantity` (which must always be free to exceed any limit). This item owns the *numbers*; **BL-35** owns the *enforcement style* (hard cap = block past the limit, soft cap = commit-and-flag).
+
+**Surfaced in the UI (2026-06-21):** the inventory popup currently caps total copies at 3 *across all variants* (the shared pool); this item's independent per-variant caps are the fix. Completion stays 3-total and variant-agnostic per the decoupling above — only the keep-limit goes per-variant. (Graduated from frontend-fix triage #9; no separate item needed.)
 
 **Open consideration (resolve with BL-31/32):** with ~58 variant types, a separate limit per individual `variant_type` would be unusable in a settings UI and semantically odd for stamp-only tournament tiers (a user is unlikely to want a different keep-limit for "PQ Top 4" vs "PQ Top 8"). The likely answer is to set limits at the consolidated **`stamp_group` family** level for those variants, while keeping per-`variant_type` granularity for genuinely distinct variants — but that depends on BL-31/32's consolidation model and BL-33's `stamp_group`, so it's flagged here, not decided.
 
@@ -927,6 +957,32 @@ This is real, not hypothetical — the captured export has both shapes for the s
 **Depends on:** `SWU_Application_Spec.md` §10.4 (the rule in question); BL-27 (the classification framework this lives in).
 
 **Definition of done:** Not yet scoped — needs a decision on whether SOR/SHD/TWI's own PQ/RQ/SQ/GC/SS rows should classify as Promo/Tournament-tier (extending the rule with a variant_type-prefix clause, mirroring the Weekly Play rule's dual check) or whether Retail is actually correct for them (e.g. if these specific early-set rows really were sold through retail channels rather than tournament prize support). Likely needs the same kind of visual/provenance inspection BL-39 does for Judge/Prerelease, since the prefix alone doesn't say which is true.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-51: Browser Back closes popups; Add Cards unsaved-changes confirm
+
+**What:** The browser Back button should close an open popup (card detail / inventory / Add Cards) and return to the app, rather than exiting to the portal; plus an "unsaved changes" confirmation when backing out of Add Cards.
+
+**Why:** Graduated from the frontend-fix triage rubric (item #3). The SPA is currently router-less (BL-18: tab/popup nav is pure state with no history, so Back exits the site). This needs one shared browser-history mechanism across all popups, and a custom confirm-on-back collides with browser limits (native `beforeunload` is generic-only; custom text/buttons need a `pushState`/`popstate` guard with real edge cases) — a genuine approach decision (Opus-design item).
+
+**Definition of done:** Back closes any open popup via one shared mechanism without leaving the app; Add Cards prompts on unsaved changes; behavior covered by tests.
+
+**Related:** BL-18 (tab mounting / nav model).
+
+**Status:** 🔲 Open
+
+---
+
+### BL-52: Cross-set "all printings" reprint view
+
+**What:** "Show every printing of this physical card, reprints across sets included" — group independent `base_cards` roots by case-insensitive `(name, subtitle)` *across* sets, layered on top of the within-set variant mechanism. Wanted for the card detail popup.
+
+**Why:** Graduated from `SWU_Standard_Variant_Mapping_Spec.md` §7 (and referenced in `SWU_Application_Spec.md` §4.3), where it was "deferred per 2026-06-20 conversation" with no tracking item. swuapi exposes no reprint lineage (confirmed 2026-06-20), so this is a query-time derived grouping, not a schema change.
+
+**Definition of done:** The popup can show all cross-set printings of a card via `(name, subtitle)` matching (tokens excluded per the duplicate-per-set rule); behavior covered by tests. Pick up when popup (S6) work reaches it.
 
 **Status:** 🔲 Open
 

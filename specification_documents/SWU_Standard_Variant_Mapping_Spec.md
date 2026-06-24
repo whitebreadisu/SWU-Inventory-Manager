@@ -145,7 +145,7 @@ This is intentionally narrow and structural — not "no card matched by name sea
 
 ## 7. Deferred / Related Concepts (explicitly out of scope here)
 
-- **Cross-set reprint grouping.** "Show every printing of this physical card, reprints across sets included" (wanted for the card detail popup) requires grouping independent roots by `(name, subtitle)`, case-insensitive, *across* sets — layered on top of the within-set mechanism this document describes, not part of it. Deferred per 2026-06-20 conversation; pick up when popup work (S6) reaches this feature.
+- **Cross-set reprint grouping.** "Show every printing of this physical card, reprints across sets included" (wanted for the card detail popup) requires grouping independent roots by `(name, subtitle)`, case-insensitive, *across* sets — layered on top of the within-set mechanism this document describes, not part of it. Deferred per 2026-06-20 conversation; pick up when popup work (S6) reaches this feature. **Tracked: `SWU_Backlog.md` BL-52.**
 - **`stamp_group` (BL-31/BL-32).** Grouping a root's many non-root *tournament-tier* children (e.g. Rey's 6 RQ-tier variants, pixel-identical art with only a stamp changed) for UI consolidation is a sub-grouping among one root's children — a UI concern, not a base-card-matching concern. This document's mechanism determines *that* those 6 variants share a root; which of them visually look alike is BL-31/32's problem.
 
 ---

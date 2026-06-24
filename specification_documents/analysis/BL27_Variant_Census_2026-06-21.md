@@ -1,6 +1,6 @@
 # BL-27 Variant Census — 2026-06-21
 
-**Analysis only — no vocabulary/grouping/stamp_group decisions made here.** Per `SWU_Backlog.md` BL-33's sequencing, those decisions (finish-vs-provenance mapping, vocabulary normalization, `stamp_group` assignment) are an Opus call (`SWU_Catalog_Redesign_Spec.md` §10, §3.2 caveat). This report is the data that decision should be made against.
+**Analysis only — no vocabulary/grouping/stamp_group decisions made here.** Per `SWU_Backlog.md` BL-33's sequencing, those decisions (finish-vs-provenance mapping, vocabulary normalization, `stamp_group` assignment) are an Opus call (`SWU_Application_Spec.md` §10, §3.2 caveat). This report is the data that decision should be made against.
 
 Source: `backend/app/tests/fixtures/swuapi_export_2026-06-21.json` (8353 cards, full live capture via paginated `/cards`).
 

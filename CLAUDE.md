@@ -26,8 +26,8 @@ When the user refers to **"the standard variant mapping spec"** or **"the varian
 When the user refers to **"the variant exceptions report"** or **"the exceptions list"**, they mean:
 `F:\Projects\swu-inventory-manager\specification_documents\swuapi_standard_variant_exceptions.md`
 
-When the user refers to **"the redesign spec"** or **"the catalog redesign spec"**, they mean:
-`F:\Projects\swu-inventory-manager\specification_documents\SWU_Catalog_Redesign_Spec.md`
+When the user refers to **"the application spec"**, **"the app spec"**, **"the redesign spec"**, or **"the catalog redesign spec"**, they mean:
+`F:\Projects\swu-inventory-manager\specification_documents\SWU_Application_Spec.md`
 
 ## Set Codes
 | Set | Code | File prefix |
@@ -47,4 +47,4 @@ When the user refers to **"the redesign spec"** or **"the catalog redesign spec"
 - **Replace** — the behavior survives but changed; write a new test superseding the old assertion.
 - **Retire** — the behavior is designed away; delete the test **with a recorded reason** tying it to the change that eliminated it.
 
-The forbidden path is the unreasoned delete-to-go-green: abandoning a still-valid test because porting is effort silently erodes coverage. Coverage % is a floor, not proof — tests encode hard-won bug knowledge, so carry the *intent*, not just the shape. For larger rewrites, produce a disposition log (each test area → disposition + reason). See `SWU_Catalog_Redesign_Spec.md` §8 for the worked example.
+The forbidden path is the unreasoned delete-to-go-green: abandoning a still-valid test because porting is effort silently erodes coverage. Coverage % is a floor, not proof — tests encode hard-won bug knowledge, so carry the *intent*, not just the shape. For larger rewrites, produce a disposition log (each test area → disposition + reason). See `SWU_Application_Spec.md` §8 for the worked example.

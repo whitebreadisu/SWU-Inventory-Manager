@@ -1,7 +1,7 @@
 # BL-33 Step 1 — Test Disposition Log
 
 **Created:** 2026-06-21
-**Scope:** The catalog schema redesign migration (`0022_catalog_schema_redesign.py`) and the full backend-layer port it required (models, repositories, services, schemas, routers, ingestion scripts). Per `SWU_Catalog_Redesign_Spec.md` §8.1 and `CLAUDE.md`'s Testing rule — every legacy test broken by the migration gets a deliberate disposition recorded here, never an unreasoned delete-to-go-green.
+**Scope:** The catalog schema redesign migration (`0022_catalog_schema_redesign.py`) and the full backend-layer port it required (models, repositories, services, schemas, routers, ingestion scripts). Per `SWU_Application_Spec.md` §8.1 and `CLAUDE.md`'s Testing rule — every legacy test broken by the migration gets a deliberate disposition recorded here, never an unreasoned delete-to-go-green.
 
 **Result:** 87/87 backend tests passing post-port (9 new + 78 ported/retained from the prior 209; the gap is the retired tests below, not lost coverage — see reasons).
 

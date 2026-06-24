@@ -1,15 +1,19 @@
-# SWU Catalog Redesign — Target Design Specification
+# SWU Application Spec — As-Built Application Reference
 
-**Created:** 2026-06-20
-**Status:** Living target-design reference for the swuapi-first catalog/inventory rebuild. Authoritative for *what the redesigned system should be*; the work to get there is sequenced in `SWU_Backlog.md` BL-33.
-**Implementation status (2026-06-21):** Schema + ingestion (BL-33 steps 1–3, BL-27, BL-29) and the **frontend rewire + full UI redesign — §5 catalog/filters, popups (§5.3 / S6 / BL-31), inventory, two-axis Add Cards (§5.4) — are built and DEPLOYED TO PROD** (commits `e1832c0`..`8d33e86`, CI run 27910607802). Remaining: BL-33 step 4 (inventory snapshot regen). Open follow-ups surfaced post-ship: BL-44 (catalog perf at scale), BL-45 (popover polish), BL-46 (Add Cards UX rethink); still-deferred BL-32 / BL-39 / BL-40.
-**Origin:** Produced in the Opus design session called for by `SWU_Backlog.md` **Open Question E** ("swuapi-first counterfactual"). It captures the decisions made there so a later implementation session has a concrete spec to execute against rather than a conversation to re-derive.
+> **Status:** Authoritative — current as-built reference for the application domain (catalog, variants, inventory, and their UX).
+> **Supersedes:** `SWU_ClaudeCode_Spec.md` (frozen — original V1 design) for the data model, the catalog/inventory/Add-Cards UX, and the variant model.
+> **App milestone:** v0.x, approaching v1.0.
+> **Last updated:** 2026-06-24.
+
+**Scope & authority.** Authoritative for the catalog/variant/inventory **data model** (§4, §10), the **UX / interaction model** (§5), and **completion, limits, and currency** (§6, §7). For the **API surface, ingestion pipeline, system architecture, tech stack, and environment setup**, the current reference is the frozen `SWU_ClaudeCode_Spec.md` (§2–§3, §5–§6, §10) — pending a focused pass to absorb its still-true sections here and verify them against the code (**BL-49**). For the variant *mechanism* (`variant_of_uuid`), see `SWU_Standard_Variant_Mapping_Spec.md`.
+
+**Origin.** Produced in the Opus design session for `SWU_Backlog.md` Open Question E (the "swuapi-first counterfactual") and built + deployed to prod 2026-06-21 (commits `e1832c0`..`8d33e86`). Originally written as a forward-looking *target-design* spec ("the redesign"); the system it describes is now deployed, so it serves as the as-built reference. The variant-identity layer converged on BL-33's `base_cards`/`card_variants` split; user-experience intent drove the finish-vs-provenance separation and base-set anchoring. Remaining sequenced work and post-ship follow-ups are tracked in `SWU_Backlog.md` (BL-33 step 4; BL-44/45/46; BL-32/39/40).
 
 **Related:**
 - [`SWU_Standard_Variant_Mapping_Spec.md`](SWU_Standard_Variant_Mapping_Spec.md) — the data mechanism (`variant_of_uuid`) this design rests on.
 - [`swuapi_standard_variant_exceptions.md`](swuapi_standard_variant_exceptions.md) — current standard-anchor exceptions.
 - [`SWU_Backlog.md`](SWU_Backlog.md) — BL-33 (execution/sequencing), BL-24/27/29/31/32/35/36/37 (discrete work), Open Questions D/E.
-- [`SWU_ClaudeCode_Spec.md`](SWU_ClaudeCode_Spec.md) — the as-built app spec; its §4/§6/§7/§9 are updated *at implementation time*, not here.
+- [`SWU_ClaudeCode_Spec.md`](SWU_ClaudeCode_Spec.md) — **frozen** original V1 design spec; current reference for API / architecture / ingestion / environment (§2–§3, §5–§6, §10) until absorbed here (BL-49).
 
 ---
 

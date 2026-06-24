@@ -52,6 +52,7 @@
 | BL-46 | Add Cards experience — rethink with real-card exploration | 6 — Feature Enhancements | The two-axis (provenance × finish) Add Cards flow is functionally correct but the UX isn't satisfying at full catalog scale; needs hands-on exploration with real cards/examples to define the optimal add-to-inventory experience before redesigning |
 | BL-47 | Documentation reconnaissance & cleanup | 1 — Documentation Foundation | Audit the large, cross-referencing spec/doc set — decide per file keep/update/archive/consolidate and fix stale cross-references (e.g. ClaudeCode spec predates the catalog redesign); also rationalize the learning guide(s) |
 | BL-48 | Learning guide rationalization | 1 — Documentation Foundation | Reconcile the stale main `SWU_Learning_Guide.md` and the accumulated per-session standalone guides into a coherent set; split out from BL-47 because the guide is personal/gitignored and a distinct effort |
+| BL-49 | Absorb API/ingestion/architecture into the Application Spec | 1 — Documentation Foundation | Port the still-true API surface, ingestion pipeline, architecture, tech stack, and environment sections from the frozen `SWU_ClaudeCode_Spec.md` into `SWU_Application_Spec.md`, verified against current code (the redesign changed the schema, so endpoint/payload shapes drifted) — so the Application Spec becomes a complete standalone hub and the frozen spec is referenced only as history |
 
 ### Completed
 
@@ -172,9 +173,9 @@ These come first because they fix the "two specs at different detail levels" pro
 
 ### BL-47: Documentation reconnaissance & cleanup
 
-**What:** The documentation set has grown into a web of cross-referencing files — `SWU_ClaudeCode_Spec.md`, `SWU_Catalog_Redesign_Spec.md`, `SWU_Platform_Spec.md`, `SWU_Standard_Variant_Mapping_Spec.md`, `swuapi_standard_variant_exceptions.md`, this backlog, `SWU_Platform_Roadmap.md`, the learning guide(s), and `learning_journal/` — and it's no longer clear what is current, stale, superseded, or duplicative. Do a deliberate recon pass: inventory every doc, decide **keep / update / archive / consolidate** for each, then fix or remove stale cross-references and establish a clear "which doc is authoritative for what" map.
+**What:** The documentation set has grown into a web of cross-referencing files — `SWU_ClaudeCode_Spec.md`, `SWU_Application_Spec.md`, `SWU_Platform_Spec.md`, `SWU_Standard_Variant_Mapping_Spec.md`, `swuapi_standard_variant_exceptions.md`, this backlog, `SWU_Platform_Roadmap.md`, the learning guide(s), and `learning_journal/` — and it's no longer clear what is current, stale, superseded, or duplicative. Do a deliberate recon pass: inventory every doc, decide **keep / update / archive / consolidate** for each, then fix or remove stale cross-references and establish a clear "which doc is authoritative for what" map.
 
-**Why:** Raised by Jeremy 2026-06-21 after the catalog redesign shipped. Concrete drift example: `SWU_ClaudeCode_Spec.md` still describes the pre-redesign `cards` boolean-flag schema, the old OP-flag Add Cards resolver (§7.5 / S4), and S5/S6 as future slices — all superseded by `SWU_Catalog_Redesign_Spec.md` and the 2026-06-21 frontend rewire (only lightly patched in place so far, with pointers, pending this pass). The learning guide is also significantly out of date; for now a standalone per-session guide was created for the catalog-redesign session, to be integrated (or not) during this recon.
+**Why:** Raised by Jeremy 2026-06-21 after the catalog redesign shipped. Concrete drift example: `SWU_ClaudeCode_Spec.md` still describes the pre-redesign `cards` boolean-flag schema, the old OP-flag Add Cards resolver (§7.5 / S4), and S5/S6 as future slices — all superseded by `SWU_Application_Spec.md` and the 2026-06-21 frontend rewire (only lightly patched in place so far, with pointers, pending this pass). The learning guide is also significantly out of date; for now a standalone per-session guide was created for the catalog-redesign session, to be integrated (or not) during this recon.
 
 **Definition of done:** A documented disposition for each spec/guide/journal file (keep/update/archive/consolidate + reason); stale cross-references resolved; an authoritative-source map (data model, platform, UX, variant mechanism, backlog). Likely an Opus analysis session.
 
@@ -189,6 +190,18 @@ These come first because they fix the "two specs at different detail levels" pro
 **Why:** Split out from BL-47 (documentation recon) during the 2026-06-23 planning session. BL-47 scopes the *tracked, repo-facing* spec/doc set; the learning guides are **personal and gitignored** (Jeremy's teaching record and future blog/talk source material), so they're a distinct effort with a different audience and shouldn't be conflated with the portfolio-facing doc cleanup. Several per-session guides were intentionally written self-contained with a "integrate or discard during the recon" banner, deferring exactly this reconciliation.
 
 **Definition of done:** A disposition for each learning-guide file (integrate / keep standalone / retire + reason); the main `SWU_Learning_Guide.md` brought current or explicitly restructured (e.g. as an index over standalone per-topic guides); still-open items from `Frontend_Fix_Triage_Rubric.md` graduated to backlog entries (handled in BL-47's backlog-consolidation phase) so the rubric can be retired or kept purely as working scratch.
+
+**Status:** 🔲 Open
+
+---
+
+### BL-49: Absorb API/ingestion/architecture into the Application Spec
+
+**What:** `SWU_Application_Spec.md` (renamed from the catalog redesign spec in BL-47 Phase 2) is authoritative for the catalog/variant/inventory data model and UX, but does not yet cover the API surface, ingestion pipeline, system architecture, tech stack, or environment setup — those still live only in the now-frozen `SWU_ClaudeCode_Spec.md` (§2–§3, §5–§6, §10). Port the still-true parts into the Application Spec, **verified against the current code** rather than copied from the frozen spec (the catalog redesign changed the schema, so endpoint and payload shapes have drifted from what §6 describes).
+
+**Why:** Split out from BL-47 Phase 2. Copying potentially-stale API/ingestion detail into the new authoritative doc would bake in errors, so the structural reconciliation (rename, freeze, authority map) was done first and the content port deferred to this focused pass. Until BL-49 is done, the Application Spec points to the frozen spec for those domains — an intentional, documented gap, not an oversight.
+
+**Definition of done:** The Application Spec contains current, code-verified API / ingestion / architecture / environment sections; `SWU_ClaudeCode_Spec.md` is referenced only as historical design context (no longer the live reference for any domain); the Application Spec's "Scope & authority" header is updated to drop the "see the frozen spec for X" pointers.
 
 **Status:** 🔲 Open
 
@@ -474,7 +487,7 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 ### BL-46: Add Cards experience — rethink with real-card exploration
 
-**What:** The Add Cards flow was rebuilt to the two-axis (provenance × finish) ambiguity-gated resolver (`SWU_Catalog_Redesign_Spec.md` §5.4) and is functionally correct, but the *experience* isn't satisfying now that the catalog holds the full set of cards/variants. Before redesigning, use the app with **real cards and concrete examples** to figure out the optimal add-to-inventory experience (entry method, ambiguity handling, source/set selection, bulk patterns).
+**What:** The Add Cards flow was rebuilt to the two-axis (provenance × finish) ambiguity-gated resolver (`SWU_Application_Spec.md` §5.4) and is functionally correct, but the *experience* isn't satisfying now that the catalog holds the full set of cards/variants. Before redesigning, use the app with **real cards and concrete examples** to figure out the optimal add-to-inventory experience (entry method, ambiguity handling, source/set selection, bulk patterns).
 
 **Why:** Flagged by Jeremy during the 2026-06-21 smoke test ("not loving the add cards experience"). The optimal design isn't clear from analysis alone — it needs hands-on use against the real, much larger card set. This is a design-exploration item, not a defined build yet.
 
@@ -614,7 +627,7 @@ Likely the right approach is to use the chat history to understand *what kinds o
 
 **Definition of done:** Full enumeration of variant types available via swuapi.com documented; a scoped plan exists identifying every touchpoint in the app that assumes the current fixed 8-variant set; either implemented or explicitly deferred per-variant-type with rationale.
 
-**Status:** ✅ Resolved 2026-06-21 (Opus) — full programmatic census of the captured 8,353-card export (`backend/app/tests/fixtures/swuapi_export_2026-06-21.json`); classification frozen in `SWU_Catalog_Redesign_Spec.md` §10. **58 variant_types** = 8 finishes (Standard, Standard Foil, Hyperspace, Hyperspace Foil, Standard Prestige, Foil Prestige, Serialized Prestige, Showcase) + channel labels + ~40 tournament-tier labels. Decisions: store `variant_type` **raw** + a curated `finish`/`channel`/`stamped`/`stamp_family` classification; `channel` (provenance) derived from `variant_type` + `source_set_code` (inconsistently encoded); `stamp_group` = `(base_card, finish)` with a stamped member (Prestige Foil + tournament-tier families confirmed); exceptions = 15 structural → 14 swuapi-null `(name,subtitle)` fallback re-anchors (tokens exempt) → **Zam the sole true exception**; `is_token` from `type` containing "Token"; `card_variants` keyed on `swuapi_id` (`(base_card,variant_type)` not unique); aspect double-pip flattening confirmed (0/8353). **Spun off BL-39** (judge/prerelease stamp visual analysis) and **BL-40** (group-by-art grouping revisit).
+**Status:** ✅ Resolved 2026-06-21 (Opus) — full programmatic census of the captured 8,353-card export (`backend/app/tests/fixtures/swuapi_export_2026-06-21.json`); classification frozen in `SWU_Application_Spec.md` §10. **58 variant_types** = 8 finishes (Standard, Standard Foil, Hyperspace, Hyperspace Foil, Standard Prestige, Foil Prestige, Serialized Prestige, Showcase) + channel labels + ~40 tournament-tier labels. Decisions: store `variant_type` **raw** + a curated `finish`/`channel`/`stamped`/`stamp_family` classification; `channel` (provenance) derived from `variant_type` + `source_set_code` (inconsistently encoded); `stamp_group` = `(base_card, finish)` with a stamped member (Prestige Foil + tournament-tier families confirmed); exceptions = 15 structural → 14 swuapi-null `(name,subtitle)` fallback re-anchors (tokens exempt) → **Zam the sole true exception**; `is_token` from `type` containing "Token"; `card_variants` keyed on `swuapi_id` (`(base_card,variant_type)` not unique); aspect double-pip flattening confirmed (0/8353). **Spun off BL-39** (judge/prerelease stamp visual analysis) and **BL-40** (group-by-art grouping revisit).
 
 ---
 
@@ -759,19 +772,19 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Why the flat schema doesn't extend:** BL-27 found ~58 real `variantType` values in swuapi, not 8 — an unbounded set of boolean columns isn't viable, and a flag-based schema has no way to express BL-31/32's core problem ("these 6 tournament-tier variants are pixel-identical art, group them") without ad hoc string parsing at query time.
 
-**Proposed redesign (summary — the authoritative target design now lives in `SWU_Catalog_Redesign_Spec.md` §4):**
+**Proposed redesign (summary — the authoritative target design now lives in `SWU_Application_Spec.md` §4):**
 - **`base_cards`** (new) — one row per root printing per base set; shared card data (name, subtitle, type/type2, double_sided, rarity, cost/power/hp/arena, is_unique, front/back/epic text, artist), `swuapi_id` (UUID, unique), nullable `standard_variant_id`; `card_aspects`/`card_traits`/`card_keywords` move here (keyed on `base_card_id`). *(No reprint column — live check 2026-06-20 confirmed swuapi exposes no reprint lineage; cross-set "all printings" is derived via name/subtitle matching. See redesign spec §4.2.)*
 - **`card_variants`** (replaces the boolean flag columns) — `base_card_id` FK, **`variant_type` (finish)**, **`source_set_code` (provenance — FK `sets.code`)**, `card_number`, `front_image_url`/`back_image_url`, `swuapi_id` (unique upsert key), nullable `stamp_group`.
 - **`sets`** — a single table for *all* sets (base + long-tail container), with a curated **`is_base_set`** flag; `base_cards.set_id` references a base set; `card_variants.source_set_code` references any set; add `release_date`, `total_cards`, `swuapi_updated_at`. **The `is_organized_play` boolean is retired** — OP becomes `source_set_code` = a Weekly Play set.
 - **`inventory`** — FK retargeted to `card_variants.id` (rename from `card_id`); unique `(tenant_id, variant_id)`.
 
-*Refined 2026-06-20 (swuapi-first redesign session): finish/provenance split on `card_variants`, single `sets` table with `is_base_set`, `is_organized_play` retirement. **See `SWU_Catalog_Redesign_Spec.md` for the full target design (schema + variant/provenance model + UX behaviors) — this item is now the execution/sequencing record pointing at it.** Note: §4.3's `variant_type` vocabulary must not be frozen until BL-27 resolves the finish-vs-provenance mapping against live data (a programmatic `/export/all` census — see redesign spec §10).*
+*Refined 2026-06-20 (swuapi-first redesign session): finish/provenance split on `card_variants`, single `sets` table with `is_base_set`, `is_organized_play` retirement. **See `SWU_Application_Spec.md` for the full target design (schema + variant/provenance model + UX behaviors) — this item is now the execution/sequencing record pointing at it.** Note: §4.3's `variant_type` vocabulary must not be frozen until BL-27 resolves the finish-vs-provenance mapping against live data (a programmatic `/export/all` census — see redesign spec §10).*
 
 **Why this over patching the current schema:** Collapses aspect/trait/keyword duplication; gives S6's popup a natural default-render anchor (`standard_variant_id`) instead of no answer for "which variant renders before one is picked"; makes BL-27's variant long tail data instead of a schema migration; makes BL-28's ongoing-sync thread an ID upsert instead of re-running fuzzy text matching on every poll. Token-card sharing across sets (noted in BL-28's findings log) isn't solved by this split alone, but becomes a tractable follow-on (shared `base_cards` row vs. one per set) instead of a fight against a flag-based schema.
 
 **Zam Wesell re-check (2026-06-20):** BL-28 found one card with no Standard printing anywhere — "Zam Wesell - Not What She Seems" (C26, card #3, Convention Exclusive) — and guessed it might be an ASH preview. Re-checked directly against `GET /cards?set=TS26` (63 cards) and `GET /cards?set=IBH` (104 cards): absent from both. Re-confirmed absent from ASH (`[]`). `GET /sets/C26` shows that set itself has no release date, only 6 total cards, last scraped today — it's an in-development preview container, same situation as ASH, just not specifically ASH. The card remains the single confirmed no-Standard-anchor exception; `standard_variant_id` must stay nullable to handle it (and any future preview card like it) rather than being treated as a data bug to fix.
 
-**Testing mandate (per `SWU_Catalog_Redesign_Spec.md` §8):** each numbered step below lands **with its own tests in the same PR** — not deferred to the end. Every broken legacy test gets a **deliberate disposition — port / replace / retire (with a recorded reason for *retire*), never an unreasoned delete-to-go-green** (§8.1). The rewrite produces a **disposition log** (each legacy test area → disposition + reason) as the auditable record that coverage was preserved or deliberately reduced, never silently eroded — eliminating now-irrelevant tests happens *here, in this work*, not as a deferred cleanup item. Per-step: step 1 carries the migration plus the `variant_of_uuid` graph-invariant test, written test-first against captured swuapi fixtures (§8.2/§8.4); step 3's ingestion carries upsert-by-`swuapi_id` idempotency tests; **step 4 carries an explicit snapshot-reload test** proving the regenerated F5 snapshot restores correctly against the new `card_variants.id` values (§8.5); steps 5–6 carry the resolver / token / popup behavior tests (§8.2).
+**Testing mandate (per `SWU_Application_Spec.md` §8):** each numbered step below lands **with its own tests in the same PR** — not deferred to the end. Every broken legacy test gets a **deliberate disposition — port / replace / retire (with a recorded reason for *retire*), never an unreasoned delete-to-go-green** (§8.1). The rewrite produces a **disposition log** (each legacy test area → disposition + reason) as the auditable record that coverage was preserved or deliberately reduced, never silently eroded — eliminating now-irrelevant tests happens *here, in this work*, not as a deferred cleanup item. Per-step: step 1 carries the migration plus the `variant_of_uuid` graph-invariant test, written test-first against captured swuapi fixtures (§8.2/§8.4); step 3's ingestion carries upsert-by-`swuapi_id` idempotency tests; **step 4 carries an explicit snapshot-reload test** proving the regenerated F5 snapshot restores correctly against the new `card_variants.id` values (§8.5); steps 5–6 carry the resolver / token / popup behavior tests (§8.2).
 
 **Revised sequencing (supersedes the prior BL-29-first ordering):**
 1. **Schema redesign migration** — `base_cards` + `card_variants` as above, `inventory` FK retargeted. Clean drop/recreate of the catalog tables, not an in-place ALTER chain — no data-preservation constraint per Jeremy's 2026-06-20 confirmation.
@@ -863,13 +876,13 @@ Applies whether application is **gated** (the initial mode) or **automatic** (fu
 
 ### BL-39: Judge/Prerelease variant stamp classification (visual set-by-set analysis)
 
-**What:** The `Judge Program`, `Prerelease Judge`, and `Prerelease Promo` variant_types are a mixed bag — some are a *stamp over an existing finish* (so they belong in a `stamp_group` with that unstamped finish, per `SWU_Catalog_Redesign_Spec.md` §10.5), others are *genuinely distinct printings* (ungrouped). Which is which **cannot** be determined from the data or image filenames — it requires visual, set-by-set inspection of the actual card art. BL-27 left them **ungrouped by default**. This item does the visual classification and assigns each (per set) its correct `finish` + `stamped` flag, updating the curated classification and `stamp_group` assignments.
+**What:** The `Judge Program`, `Prerelease Judge`, and `Prerelease Promo` variant_types are a mixed bag — some are a *stamp over an existing finish* (so they belong in a `stamp_group` with that unstamped finish, per `SWU_Application_Spec.md` §10.5), others are *genuinely distinct printings* (ungrouped). Which is which **cannot** be determined from the data or image filenames — it requires visual, set-by-set inspection of the actual card art. BL-27 left them **ungrouped by default**. This item does the visual classification and assigns each (per set) its correct `finish` + `stamped` flag, updating the curated classification and `stamp_group` assignments.
 
 **Why:** Raised 2026-06-21 during BL-27. The finish+stamp `stamp_group` rule needs each variant_type classified as stamped-over-a-finish vs. distinct; for these three it's genuinely varied (Jeremy, holding the physical cards, confirmed "some are stamps, some are not"), and only visual inspection resolves it.
 
 **Depends on:** BL-27 (the classification framework + `stamp_group` rule, resolved); feeds BL-31/BL-32; an input to BL-40.
 
-**Definition of done:** Each Judge Program / Prerelease Judge / Prerelease Promo variant (per set) classified via visual inspection as `(finish, stamped)`; the curated classification and `stamp_group` assignments updated from the ungrouped default; recorded in `SWU_Catalog_Redesign_Spec.md` §10.5.
+**Definition of done:** Each Judge Program / Prerelease Judge / Prerelease Promo variant (per set) classified via visual inspection as `(finish, stamped)`; the curated classification and `stamp_group` assignments updated from the ungrouped default; recorded in `SWU_Application_Spec.md` §10.5.
 
 **Status:** 🔲 Open
 
@@ -877,13 +890,13 @@ Applies whether application is **gated** (the initial mode) or **automatic** (fu
 
 ### BL-40: Revisit variant grouping model — finish+stamp vs. group-by-art
 
-**What:** BL-27 adopted a **finish + stamp** rule for `stamp_group` — consolidate variants sharing the same base art *and* the same finish, differing only by a stamp (`SWU_Catalog_Redesign_Spec.md` §10.5). This is a deliberate starting point. Jeremy wants to revisit whether a broader **group-by-base-art** model is better — collapsing *all* finishes of the same art together (Standard + Foil, Hyperspace + Hyperspace Foil, all prestige finishes, …) regardless of finish or stamp. That would reduce the popup/inline-edit button count further but changes the consolidation semantics.
+**What:** BL-27 adopted a **finish + stamp** rule for `stamp_group` — consolidate variants sharing the same base art *and* the same finish, differing only by a stamp (`SWU_Application_Spec.md` §10.5). This is a deliberate starting point. Jeremy wants to revisit whether a broader **group-by-base-art** model is better — collapsing *all* finishes of the same art together (Standard + Foil, Hyperspace + Hyperspace Foil, all prestige finishes, …) regardless of finish or stamp. That would reduce the popup/inline-edit button count further but changes the consolidation semantics.
 
 **Why:** Raised 2026-06-21. The finish+stamp model is the v1 grouping; an art-based grouping might serve the BL-31/BL-32 UI better but is a different philosophy. Jeremy wants to think it through, with BL-39's judge/prerelease visual pass as an input to the decision.
 
 **Depends on:** BL-27 (baseline grouping), BL-39 (visual input), BL-31/BL-32 (the UI surfaces this affects).
 
-**Definition of done:** A decision on whether to keep finish+stamp grouping, move to group-by-art, or a hybrid — documented in `SWU_Catalog_Redesign_Spec.md`; if changed, the `stamp_group` model and BL-31/BL-32 updated accordingly.
+**Definition of done:** A decision on whether to keep finish+stamp grouping, move to group-by-art, or a hybrid — documented in `SWU_Application_Spec.md`; if changed, the `stamp_group` model and BL-31/BL-32 updated accordingly.
 
 **Status:** 🔲 Open — deferred (Jeremy thinking)
 
@@ -891,7 +904,7 @@ Applies whether application is **gated** (the initial mode) or **automatic** (fu
 
 ### BL-41: Channel-rule quirk — base-set tournament-tier variants classify as Retail, not Promo
 
-**What:** Found 2026-06-21 while building BL-29's ingestion script, executing `SWU_Catalog_Redesign_Spec.md` §10.4's channel-derivation rule literally. The rule's "Promo / Tournament-tier" branch is keyed only on `source_set_code` (`P25`/`P26`) — it has no `variant_type`-prefix clause, unlike every other branch in that rule (Weekly Play, Judge, Convention all check `variant_type` *or* set code). So a PQ/RQ/SQ/GC/SS-prefixed variant sourced from a base set instead of P25/P26 falls through to the `else → Retail` branch, even though it's the same tournament-tier label.
+**What:** Found 2026-06-21 while building BL-29's ingestion script, executing `SWU_Application_Spec.md` §10.4's channel-derivation rule literally. The rule's "Promo / Tournament-tier" branch is keyed only on `source_set_code` (`P25`/`P26`) — it has no `variant_type`-prefix clause, unlike every other branch in that rule (Weekly Play, Judge, Convention all check `variant_type` *or* set code). So a PQ/RQ/SQ/GC/SS-prefixed variant sourced from a base set instead of P25/P26 falls through to the `else → Retail` branch, even though it's the same tournament-tier label.
 
 This is real, not hypothetical — the captured export has both shapes for the same labels:
 
@@ -911,7 +924,7 @@ This is real, not hypothetical — the captured export has both shapes for the s
 
 **Why:** Surfaced organically while writing `classify_variant()` (`backend/app/ingestion/swuapi_classify.py`) against the real `variant_type`/`source_set_code` pairs in the captured export, not from re-reading the spec in the abstract.
 
-**Depends on:** `SWU_Catalog_Redesign_Spec.md` §10.4 (the rule in question); BL-27 (the classification framework this lives in).
+**Depends on:** `SWU_Application_Spec.md` §10.4 (the rule in question); BL-27 (the classification framework this lives in).
 
 **Definition of done:** Not yet scoped — needs a decision on whether SOR/SHD/TWI's own PQ/RQ/SQ/GC/SS rows should classify as Promo/Tournament-tier (extending the rule with a variant_type-prefix clause, mirroring the Weekly Play rule's dual check) or whether Retail is actually correct for them (e.g. if these specific early-set rows really were sold through retail channels rather than tournament prize support). Likely needs the same kind of visual/provenance inspection BL-39 does for Judge/Prerelease, since the prefix alone doesn't say which is true.
 

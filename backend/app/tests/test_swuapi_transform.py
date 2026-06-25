@@ -17,7 +17,12 @@ from app.ingestion.swuapi_transform import (
     transform,
 )
 
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "swuapi_export_2026-06-21.json"
+FIXTURE_PATH = (
+    Path(__file__).parent.parent
+    / "ingestion"
+    / "data"
+    / "swuapi_export_2026-06-21.json"
+)
 
 
 @pytest.fixture(scope="module")

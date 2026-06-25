@@ -18,7 +18,12 @@ from pathlib import Path
 
 import pytest
 
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "swuapi_export_2026-06-21.json"
+FIXTURE_PATH = (
+    Path(__file__).parent.parent
+    / "ingestion"
+    / "data"
+    / "swuapi_export_2026-06-21.json"
+)
 
 MAX_HOPS = 2  # confirmed depth in the captured export — see mapping spec §3/§5I
 

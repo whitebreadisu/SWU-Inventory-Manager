@@ -56,6 +56,7 @@
 | BL-52 | Cross-set "all printings" reprint view | 6 — Feature Enhancements | Group `base_cards` roots by case-insensitive `(name, subtitle)` across sets for a card-detail "all printings" view; query-time derived (swuapi has no reprint lineage); graduated from variant mapping spec §7's deferred concept |
 | BL-53 | API rate limiting on `/api/*` | 4 — Operational Hardening | No per-IP/per-tenant cap on API routes; flagged deferred in the P7 security review (OWASP A04) and platform spec §5 — low severity at current scale, real gap before broader exposure |
 | BL-54 | Inventory import/export (user-facing) | 6 — Feature Enhancements | **v1.0 goal.** Let users import inventory exported from other SWU apps (CSV/JSON) so they don't re-enter collections by hand, and export from this app. **Likely decomposes** into several items once designed (formats, parse/validate, map to `card_variants`, dedupe/merge, UI, error reporting). Landing this **retires the throwaway personal inventory-seed scaffolding** (`regenerate_inventory`, `apply_inventory_snapshot`, §8.5 test, snapshot files) |
+| BL-55 | Learning — dissect the branch → PR → CI → deploy workflow | 2 — Guided Review | Walkthrough (no code): when branching matters vs. when working on `main` is fine; the full loop and **who** runs each part **when**; what CI does at each stage and why a failing check blocks deploy; solo vs. second-developer; what matters for prod vs. local. Deferred ("not tonight") |
 
 ### Completed
 
@@ -249,6 +250,18 @@ These are conversations and walkthroughs, not code changes — Jeremy reviewing 
 **Definition of done:** Session held; Jeremy can navigate to and interpret the dashboard, a structured log entry, and (if one exists) an Error Reporting group.
 
 **Status:** 🔲 Open
+
+---
+
+### BL-55: Learning — dissect the branch → PR → CI → deploy workflow
+
+**What:** A guided walkthrough (no code) giving Jeremy a genuine end-to-end mental model of the git/GitHub workflow he's been using: when a branch matters (and when working directly on `main` is fine); the full loop — branch → commit → push → PR → CI → review → merge → delete branch → `pull main` — and **who** runs each part **when**; what CI actually does at each stage (lint/format → tests → build-and-push → deploy) and why a failing check blocks the deploy; how this differs in a **solo** project vs. with a **second developer**; and what genuinely matters for **prod** vs. for local/dev. Draws on concrete examples from the 2026-06-25 session (the BL-47 PR rebase, the BL-33 "red main" incident, the catalog-bootstrap branch).
+
+**Why:** Requested by Jeremy 2026-06-25. He's been executing the loop but wants to fully understand the *why* and the *who/when* before it becomes habit — not just follow steps. Pairs with the branch-workflow coaching note.
+
+**Definition of done:** Jeremy can articulate, in his own words, when to branch, what each CI stage does, and how the workflow changes with a second developer and for prod. No artifact required beyond (optionally) a learning-guide entry capturing it.
+
+**Status:** 🔲 Open — Jeremy explicitly deferred ("not tonight").
 
 ---
 

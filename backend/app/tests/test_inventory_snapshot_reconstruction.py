@@ -90,9 +90,9 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
     #    One base card with Standard / Standard Foil (source_set_code = its own
     #    base set, which regenerate_inventory._resolve_variant_id requires for
     #    finishes) plus Weekly Play / Weekly Play Foil siblings (matched by
-    #    variant_type alone). SOR is old set_id 1 (regenerate_inventory.
-    #    OLD_SET_ID_TO_CODE), so the synthetic old rows below use set_id=1.
-    sor_id = db.execute(text("SELECT id FROM sets WHERE code = 'SOR'")).scalar()
+    #    variant_type alone). The synthetic old rows below use set_id=4, which
+    #    regenerate_inventory.OLD_SET_ID_TO_CODE maps to JTL.
+    jtl_id = db.execute(text("SELECT id FROM sets WHERE code = 'JTL'")).scalar()
     base_card_number = "99007"
     base_card_id = db.execute(
         text(
@@ -102,7 +102,7 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
             "ON CONFLICT (swuapi_id) DO UPDATE SET name = EXCLUDED.name "
             "RETURNING id"
         ),
-        {"sid": sor_id, "num": base_card_number},
+        {"sid": jtl_id, "num": base_card_number},
     ).scalar()
 
     def _fixture_variant(swuapi_id: str, variant_type: str, card_number: str) -> int:
@@ -110,7 +110,7 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
             text(
                 "INSERT INTO card_variants "
                 "(base_card_id, variant_type, source_set_code, card_number, swuapi_id) "
-                "VALUES (:bcid, :vt, 'SOR', :num, :sid) "
+                "VALUES (:bcid, :vt, 'JTL', :num, :sid) "
                 "ON CONFLICT (swuapi_id) DO UPDATE SET card_number = EXCLUDED.card_number "
                 "RETURNING id"
             ),

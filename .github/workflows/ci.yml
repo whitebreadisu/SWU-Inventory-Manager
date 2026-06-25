@@ -120,7 +120,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           project_id: swu-prod
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
@@ -151,7 +151,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           project_id: swu-prod
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
@@ -190,7 +190,7 @@ jobs:
         run: npm ci
 
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           project_id: swu-prod
           workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github

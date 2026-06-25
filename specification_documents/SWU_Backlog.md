@@ -55,6 +55,7 @@
 | BL-51 | Browser Back closes popups; Add Cards unsaved-changes confirm | 6 — Feature Enhancements | Back should close an open popup and return to the app (not exit to the portal) via one shared history mechanism in the currently router-less SPA; + unsaved-changes confirm on Add Cards (graduated from triage #3; relates BL-18) |
 | BL-52 | Cross-set "all printings" reprint view | 6 — Feature Enhancements | Group `base_cards` roots by case-insensitive `(name, subtitle)` across sets for a card-detail "all printings" view; query-time derived (swuapi has no reprint lineage); graduated from variant mapping spec §7's deferred concept |
 | BL-53 | API rate limiting on `/api/*` | 4 — Operational Hardening | No per-IP/per-tenant cap on API routes; flagged deferred in the P7 security review (OWASP A04) and platform spec §5 — low severity at current scale, real gap before broader exposure |
+| BL-54 | Inventory import/export (user-facing) | 6 — Feature Enhancements | **v1.0 goal.** Let users import inventory exported from other SWU apps (CSV/JSON) so they don't re-enter collections by hand, and export from this app. **Likely decomposes** into several items once designed (formats, parse/validate, map to `card_variants`, dedupe/merge, UI, error reporting). Landing this **retires the throwaway personal inventory-seed scaffolding** (`regenerate_inventory`, `apply_inventory_snapshot`, §8.5 test, snapshot files) |
 
 ### Completed
 
@@ -835,9 +836,11 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 
 **Step 3 progress (2026-06-21):** BL-29's ingestion script landed, deployed, and run for real against production — see BL-29's own entry above for the full build/verification/production-run detail. `base_cards`/`card_variants` are now populated in production (27 sets, 2,306 base_cards, 8,353 card_variants, 1 exception), upserted idempotently by `swuapi_id`. Not wired into `apply_seed`/container startup as an automated step — run manually via the CLI (`--file`/`--live`) through the Cloud SQL Auth Proxy, matching the pattern of the original P2 manual data load. **Next:** step 4 (inventory snapshot regeneration) — the F5 snapshot still needs to be reloaded against the new `card_variants.id` values now that a real run has produced them; production inventory was empty going into this (Jeremy confirmed no real data to lose), so step 4 is about restoring the *reload path*, not recovering lost data.
 
-**Step 4 progress (2026-06-25):** The remap tool (`regenerate_inventory.py`) and its §8.5 reload-safety test landed on `main`, CI-green and deployed (commit `490dc8f`). The test is now **self-contained** — a small inline `base_cards`/`card_variants` fixture (keyed to JTL to match the synthetic old rows' `set_id`), with no dependency on the full ingested catalog. That JTL-data dependency was the "not push-ready" gate from `863e2cf`. Also fixed `apply_seed.py`'s post-seed summary, which still queried the `cards` table dropped by migration 0022. **Still outstanding for step 4 — a local data op (needs Docker + the archived snapshot):** actually *regenerate and commit* the catalog seed (`db/seeds/catalog_seed.sql`) and the remapped inventory snapshot (`db/snapshots/inventory_snapshot.sql`) — both currently absent — and verify the fresh-DB `docker compose down -v && up` seed+snapshot startup path end-to-end. The reload *path* is now proven by the §8.5 test; this remaining piece produces the committed data files.
+**Step 4 progress (2026-06-25):** The remap tool (`regenerate_inventory.py`) and its §8.5 reload-safety test landed on `main`, CI-green and deployed (commit `490dc8f`). The test is now **self-contained** — a small inline `base_cards`/`card_variants` fixture (keyed to JTL to match the synthetic old rows' `set_id`), with no dependency on the full ingested catalog. That JTL-data dependency was the "not push-ready" gate from `863e2cf`. Also fixed `apply_seed.py`'s post-seed summary, which still queried the `cards` table dropped by migration 0022. **Reframed 2026-06-25 (context: BL-54):** the original step-4 goal — "regenerate + commit `catalog_seed.sql`/`inventory_snapshot.sql` + auto-restore on startup" — is **overcome by events.** Jeremy's v1.0 plan is a user-facing inventory **import/export** feature (**BL-54**) that will retire the personal inventory-seed scaffolding entirely (`regenerate_inventory`, `apply_inventory_snapshot`, the §8.5 test, any snapshot file). So we are deliberately **not** building seed/snapshot *generators* or committing static data files — that's throwaway code. Instead:
+- **Catalog** bootstrap on a fresh DB = `run_swuapi_ingestion --file backend/app/tests/fixtures/swuapi_export_2026-06-21.json` (the committed 13MB export is the swuapi-sourced "seed"). Whether to auto-run it on startup vs. keep it manual is a small deferred decision — **ADR pending**, not blocking.
+- **Inventory** = a one-time `regenerate_inventory` load into prod, **deferred by Jeremy** (2026-06-25) — no longer needed for personal feature-testing; he's confident in the functionality and doesn't need his real collection in prod yet.
 
-**Status:** 🟡 Open — steps 1-3 live in prod; **step 4 *code*** (remap tool + self-contained reload test + `apply_seed` fix) shipped 2026-06-25; **remaining for step 4:** regenerate/commit the seed + snapshot files and verify fresh-DB startup (a local op). Frontend catalog/inventory/popups (steps 5-6 territory) shipped in the 2026-06-21 redesign; BL-31 done, BL-32 open. Steps 7 (ongoing sync → BL-36/37) and 8 (BL-30 bulk-add) are deferred.
+**Status:** 🟢 Core delivered (2026-06-25) — schema/ingestion (steps 1-3) live in prod; remap tool + self-contained §8.5 reload test + `apply_seed` fix shipped; static seed/snapshot file generation dropped as throwaway (reframe above); frontend catalog/inventory/popups (steps 5-6) shipped in the 2026-06-21 redesign. **Remaining threads are tracked as their own items:** one-time prod inventory load (deferred), catalog-bootstrap ADR, BL-32 (stamp consolidation UI), BL-36/BL-37 (ongoing sync), BL-30 (bulk-add), BL-54 (import/export, which retires this scaffolding).
 
 ---
 
@@ -988,6 +991,20 @@ This is real, not hypothetical — the captured export has both shapes for the s
 **Definition of done:** The popup can show all cross-set printings of a card via `(name, subtitle)` matching (tokens excluded per the duplicate-per-set rule); behavior covered by tests. Pick up when popup (S6) work reaches it.
 
 **Status:** 🔲 Open
+
+---
+
+### BL-54: Inventory import/export (user-facing)
+
+**What:** A v1.0 goal (Jeremy, 2026-06-25). Let a user **import** their inventory — exported from another SWU inventory app as CSV/JSON — into this app, so they don't have to re-enter a collection they've already built elsewhere; and **export** their inventory from this app (same formats) for portability/backup. Resolution maps imported rows onto `card_variants` (set + card number + finish/variant, per the resolver/two-axis model), with explicit handling for unresolved/ambiguous rows (report, never silently drop — same discipline as `regenerate_inventory`'s flagging).
+
+**Why:** It's the feature that makes the app adoptable for collectors who already track inventory elsewhere, and it's what lets Jeremy **delete the entire personal inventory-seed mechanism** — the archived Excel ingest, `regenerate_inventory.py`, `apply_inventory_snapshot.py`, the §8.5 reconstruction test, the archived pre-redesign snapshot, and any `inventory_snapshot.sql`. That scaffolding exists only to get *Jeremy's own* collection in once (deferred — see BL-33 step 4 reframe); a real import path supersedes it for everyone.
+
+**Likely decomposition (decide during design):** (1) supported formats + a documented import schema; (2) parser + validation; (3) row → `card_variants` resolution & the unresolved/ambiguous report; (4) merge/dedupe semantics against existing inventory; (5) import/export UI + progress/error surfacing; (6) export endpoint/format. These may become separate BL items once the design lands.
+
+**Depends on / relates to:** the two-axis variant model and resolver (`SWU_Application_Spec.md` §5.4, §12); BL-30 (bulk-add precon, a related "get cards in fast" path); supersedes the inventory-seed scaffolding tracked under BL-33 step 4.
+
+**Status:** 🔲 Open — v1.0 goal; not yet designed (may decompose).
 
 ---
 

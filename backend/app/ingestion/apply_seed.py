@@ -52,9 +52,18 @@ def apply_seed(seed_path: Path = SEED_PATH) -> None:
         db.commit()
 
         final_sets = db.execute(text("SELECT COUNT(*) FROM sets")).scalar()
-        final_cards = db.execute(text("SELECT COUNT(*) FROM cards")).scalar()
-        logger.info("Seed applied: %d sets, %d cards.", final_sets, final_cards)
-        print(f"Seed applied: {final_sets} sets, {final_cards} cards.")
+        final_base_cards = db.execute(text("SELECT COUNT(*) FROM base_cards")).scalar()
+        final_variants = db.execute(text("SELECT COUNT(*) FROM card_variants")).scalar()
+        logger.info(
+            "Seed applied: %d sets, %d base_cards, %d card_variants.",
+            final_sets,
+            final_base_cards,
+            final_variants,
+        )
+        print(
+            f"Seed applied: {final_sets} sets, {final_base_cards} base_cards, "
+            f"{final_variants} card_variants."
+        )
 
     except Exception:
         db.rollback()

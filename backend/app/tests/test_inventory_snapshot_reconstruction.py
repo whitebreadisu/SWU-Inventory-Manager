@@ -84,39 +84,49 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
     a matching slice of the real new-schema catalog and reloaded for the
     tenant resolved by email. Asserts quantities land on the correct new
     variant_ids, and that the unmappable row is flagged, not dropped."""
-    # 1. Pick a real, known-shape slice of the *new* schema to remap onto:
-    #    a base card with both a Standard and Standard Foil sibling, plus a
-    #    Weekly Play / Weekly Play Foil pair (any base set with full OP
-    #    coverage works -- JTL has 40 Weekly Play[+Foil] rows per the local
-    #    validation run, so it's a safe, populated choice).
-    row = db.execute(
+    # 1. Insert a small, self-contained new-schema slice to remap onto -- a
+    #    handful of base_cards/card_variants per this file's docstring, with no
+    #    dependency on the full ingested catalog, so it runs on CI's fresh DB.
+    #    One base card with Standard / Standard Foil (source_set_code = its own
+    #    base set, which regenerate_inventory._resolve_variant_id requires for
+    #    finishes) plus Weekly Play / Weekly Play Foil siblings (matched by
+    #    variant_type alone). SOR is old set_id 1 (regenerate_inventory.
+    #    OLD_SET_ID_TO_CODE), so the synthetic old rows below use set_id=1.
+    sor_id = db.execute(text("SELECT id FROM sets WHERE code = 'SOR'")).scalar()
+    base_card_number = "99007"
+    base_card_id = db.execute(
         text(
-            """
-            SELECT bc.id AS base_card_id, s.code AS set_code, bc.base_card_number,
-                   (SELECT id FROM card_variants WHERE base_card_id = bc.id
-                    AND variant_type = 'Standard') AS standard_id,
-                   (SELECT id FROM card_variants WHERE base_card_id = bc.id
-                    AND variant_type = 'Standard Foil') AS standard_foil_id,
-                   (SELECT id FROM card_variants WHERE base_card_id = bc.id
-                    AND variant_type = 'Weekly Play') AS weekly_play_id,
-                   (SELECT id FROM card_variants WHERE base_card_id = bc.id
-                    AND variant_type = 'Weekly Play Foil') AS weekly_play_foil_id
-            FROM base_cards bc
-            JOIN sets s ON s.id = bc.set_id
-            WHERE s.code = 'JTL'
-            AND EXISTS (SELECT 1 FROM card_variants WHERE base_card_id = bc.id AND variant_type = 'Standard')
-            AND EXISTS (SELECT 1 FROM card_variants WHERE base_card_id = bc.id AND variant_type = 'Standard Foil')
-            AND EXISTS (SELECT 1 FROM card_variants WHERE base_card_id = bc.id AND variant_type = 'Weekly Play')
-            AND EXISTS (SELECT 1 FROM card_variants WHERE base_card_id = bc.id AND variant_type = 'Weekly Play Foil')
-            LIMIT 1
-            """
-        )
-    ).first()
-    assert row is not None, (
-        "Test requires at least one JTL base card with Standard/Standard Foil/"
-        "Weekly Play/Weekly Play Foil siblings in the local catalog -- run "
-        "BL-29 ingestion first."
-    )
+            "INSERT INTO base_cards "
+            "(set_id, base_card_number, name, type, rarity, swuapi_id) "
+            "VALUES (:sid, :num, 'SS8.5 Fixture Card', 'Unit', 'Common', 'test-ss85-bc') "
+            "ON CONFLICT (swuapi_id) DO UPDATE SET name = EXCLUDED.name "
+            "RETURNING id"
+        ),
+        {"sid": sor_id, "num": base_card_number},
+    ).scalar()
+
+    def _fixture_variant(swuapi_id: str, variant_type: str, card_number: str) -> int:
+        return db.execute(
+            text(
+                "INSERT INTO card_variants "
+                "(base_card_id, variant_type, source_set_code, card_number, swuapi_id) "
+                "VALUES (:bcid, :vt, 'SOR', :num, :sid) "
+                "ON CONFLICT (swuapi_id) DO UPDATE SET card_number = EXCLUDED.card_number "
+                "RETURNING id"
+            ),
+            {
+                "bcid": base_card_id,
+                "vt": variant_type,
+                "num": card_number,
+                "sid": swuapi_id,
+            },
+        ).scalar()
+
+    standard_id = _fixture_variant("test-ss85-v1", "Standard", "99007")
+    standard_foil_id = _fixture_variant("test-ss85-v2", "Standard Foil", "99107")
+    weekly_play_id = _fixture_variant("test-ss85-v3", "Weekly Play", "99307")
+    weekly_play_foil_id = _fixture_variant("test-ss85-v4", "Weekly Play Foil", "99407")
+    db.commit()
 
     old_cards = [
         # (old_id, set_id, card_number, base_card_number, name, type,
@@ -126,8 +136,8 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
         (
             90001,
             4,
-            row.base_card_number,
-            row.base_card_number,
+            base_card_number,
+            base_card_number,
             "Fixture Card",
             "Unit",
             False,
@@ -139,8 +149,8 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
         (
             90002,
             4,
-            row.base_card_number,
-            row.base_card_number,
+            base_card_number,
+            base_card_number,
             "Fixture Card",
             "Unit",
             True,
@@ -155,7 +165,7 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
             90003,
             4,
             "999",
-            row.base_card_number,
+            base_card_number,
             "Fixture Card",
             "Unit",
             False,
@@ -169,7 +179,7 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
             90004,
             4,
             "998",
-            row.base_card_number,
+            base_card_number,
             "Fixture Card",
             "Unit",
             True,
@@ -241,10 +251,10 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
                 {"tid": tenant_id},
             )
         }
-        assert loaded[row.standard_id] == 2
-        assert loaded[row.standard_foil_id] == 1
-        assert loaded[row.weekly_play_id] == 3
-        assert loaded[row.weekly_play_foil_id] == 4
+        assert loaded[standard_id] == 2
+        assert loaded[standard_foil_id] == 1
+        assert loaded[weekly_play_id] == 3
+        assert loaded[weekly_play_foil_id] == 4
         # The wipe-and-reload nature of regenerate_inventory means only
         # these 4 rows exist post-reload for this tenant (pre-existing
         # tenant #1 rows from seed_minimal_catalog are wiped too).
@@ -268,6 +278,16 @@ def test_reconstruct_inventory_from_crosswalk_remap(db):
                 ),
                 {"tid": tenant_id, "vid": r.variant_id, "qty": r.quantity},
             )
+        # Drop the inline fixture slice. Inventory referencing these variants
+        # was wiped above, and the restored pre-existing rows reference only
+        # seed_minimal_catalog variants, so the deletes can't FK-violate.
+        db.execute(
+            text("DELETE FROM card_variants WHERE base_card_id = :bcid"),
+            {"bcid": base_card_id},
+        )
+        db.execute(
+            text("DELETE FROM base_cards WHERE id = :bcid"), {"bcid": base_card_id}
+        )
         db.commit()
 
     # Explicit restore reproduced the pre-test state exactly.

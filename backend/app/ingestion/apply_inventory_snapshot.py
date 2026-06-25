@@ -1,7 +1,7 @@
 """
 Apply the inventory snapshot file to the database.
 
-Called automatically during container startup (after apply_seed).
+Called automatically during container startup (after the catalog bootstrap).
 Idempotent: skips if the inventory table is already populated.
 
 Usage (called in Docker entrypoint):

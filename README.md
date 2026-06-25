@@ -63,7 +63,7 @@ The Firebase Auth Emulator runs against the reserved offline project id `demo-sw
 
 First run takes a few minutes while Docker pulls images and installs dependencies. Subsequent starts are fast.
 
-On every startup the backend automatically runs database migrations, applies the card catalog seed file (`db/seeds/catalog_seed.sql`), and applies the inventory snapshot (`db/snapshots/inventory_snapshot.sql`). Both applies are idempotent — they skip if their table is already populated.
+On every startup the backend automatically runs database migrations and, if the catalog is empty, **bootstraps the card catalog from the committed swuapi export** (`backend/app/ingestion/data/swuapi_export_2026-06-21.json`) via the ingestion pipeline. It then applies the personal inventory snapshot (`db/snapshots/inventory_snapshot.sql`) if one is present. Both steps are idempotent — they skip when their table is already populated. (See `docs/decisions/0004-catalog-bootstrap-from-swuapi-export.md`.)
 
 ### 4. Verify the setup
 
@@ -86,7 +86,7 @@ To also wipe the database (full reset):
 docker compose down -v
 ```
 
-After a full reset, `docker compose up` automatically restores both the card catalog and personal inventory from the seed and snapshot files — no manual steps required.
+After a full reset, `docker compose up` automatically rebuilds the card catalog from the committed swuapi export — no manual steps required. (Personal inventory is restored only if a snapshot file is present.)
 
 ## Development workflow
 
@@ -113,7 +113,7 @@ docker compose exec frontend npm test
 ├── backend/
 │   ├── alembic/            # Database schema migrations
 │   ├── app/
-│   │   ├── ingestion/      # Seed and snapshot import pipeline
+│   │   ├── ingestion/      # swuapi catalog ingestion + startup bootstrap
 │   │   ├── models/         # SQLAlchemy ORM models
 │   │   ├── repositories/   # Database query logic
 │   │   ├── routers/        # FastAPI route handlers
@@ -125,10 +125,7 @@ docker compose exec frontend npm test
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── db/
-│   ├── seeds/
-│   │   └── catalog_seed.sql        # Card catalog seed (auto-applied on startup)
-│   └── snapshots/
-│       └── inventory_snapshot.sql  # Personal inventory snapshot (auto-applied on startup)
+│   └── snapshots/          # Personal inventory snapshot (applied on startup if present)
 ├── frontend/
 │   ├── src/
 │   │   ├── api/            # authedFetch (attaches Firebase Bearer token)

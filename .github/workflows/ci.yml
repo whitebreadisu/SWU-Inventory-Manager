@@ -64,10 +64,6 @@ jobs:
         working-directory: backend
         run: alembic upgrade head
 
-      - name: Apply catalog seed
-        working-directory: backend
-        run: python -m app.ingestion.apply_seed
-
       - name: Apply inventory snapshot
         working-directory: backend
         run: python -m app.ingestion.apply_inventory_snapshot

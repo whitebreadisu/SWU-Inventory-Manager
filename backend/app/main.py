@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.ingestion.apply_inventory_snapshot import apply_inventory_snapshot
-from app.ingestion.apply_seed import apply_seed
+from app.ingestion.bootstrap import bootstrap_catalog
 from app.logging_config import configure_logging
 from app.middleware import log_requests
 from app.routers import base_cards as base_cards_router
@@ -18,7 +18,7 @@ configure_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    apply_seed()
+    bootstrap_catalog()
     apply_inventory_snapshot()
     yield
 

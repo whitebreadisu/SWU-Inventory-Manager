@@ -442,7 +442,7 @@ Full walkthrough: `SWU_Platform_Security_Review.md` (P7 Stage 4, dated 2026-06-1
 | A01 Broken Access Control | Addressed — Section 1 of this document is the as-built reference; live-verified `401`s on every `/api/*` route without/with-bad token |
 | A02 Cryptographic Failures | Addressed — HTTPS everywhere (Cloud Run + Firebase Hosting); secrets are 32-char `random_password`, never hand-set; no passwords stored (Firebase Auth) |
 | A03 Injection | Addressed — all runtime SQL via SQLAlchemy `text()` with bound params; the only string-interpolated SQL (migration 0019's `CREATE ROLE`) uses a Terraform-generated secret, not user input, and runs once at migration time |
-| A04 Insecure Design | Addressed; **rate limiting deferred** (no per-IP/per-tenant cap on `/api/*` — low severity at current scale) |
+| A04 Insecure Design | Addressed; **rate limiting deferred** (no per-IP/per-tenant cap on `/api/*` — low severity at current scale; tracked: `SWU_Backlog.md` BL-53) |
 | A05 Security Misconfiguration | Addressed — `/docs`/`/redoc`/`/openapi.json` disabled in production via `_api_docs_enabled()` (`ENVIRONMENT != "production"`, `app/main.py`) + `ENVIRONMENT=production` on Cloud Run (3.5); dev-only CORS config is not exercised in prod (3.11) |
 | A06 Vulnerable/Outdated Components | Addressed (Dependabot scanning live); **18-PR triage deferred** — `SWU_Backlog.md` BL-9 |
 | A07 Auth Failures | Addressed — Firebase Authentication owns credentials entirely; short-lived signed ID tokens, verified server-side |

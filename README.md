@@ -167,13 +167,18 @@ Local development uses `.env` (copied from `.env.example`). Production values ar
 
 ## Documentation Map
 
-| Document | Purpose |
-|----------|---------|
-| `specification_documents/SWU_ClaudeCode_Spec.md` | App spec — data model, API endpoints, frontend UI (V1) |
-| `specification_documents/SWU_Platform_Spec.md` | As-built platform reference — auth/tenancy chain, CI/CD pipeline, Terraform module map, observability, security posture |
-| `specification_documents/SWU_Platform_Roadmap.md` | P1-P7 phase history and status — read for *when and why* each platform decision was made |
-| `specification_documents/SWU_Platform_Security_Review.md` | Full OWASP Top 10 + secrets/network walkthrough (P7 Stage 4) |
-| `specification_documents/SWU_Backlog.md` | Open tech-debt, refactoring, and follow-up items with narrative context |
-| `learning_guide/SWU_Learning_Guide.md` | Teaching companion — Key Concepts, decision comparisons, external resources (P1-P7) |
-| `learning_journal/` | Session-by-session development notes |
-| `claude_design/` | UI design assets and component handoff files |
+The authoritative source for each domain — start here to find "where does X live?". Each fact has one home; everything else points to it.
+
+| Document | Authoritative for |
+|----------|-------------------|
+| `specification_documents/SWU_Application_Spec.md` | **The application** — catalog/variant/inventory data model, variant model, and UX (as-built). *API/ingestion/architecture sections being absorbed — BL-49.* |
+| `specification_documents/SWU_Standard_Variant_Mapping_Spec.md` | Variant **mechanism** (`variant_of_uuid` resolution); current exceptions in `swuapi_standard_variant_exceptions.md` |
+| `specification_documents/CARD_RULES.md` | Card catalog domain rules (enforced by `backend/app/tests/test_card_domain_rules.py`) |
+| `specification_documents/SWU_Platform_Spec.md` | **Platform** — auth/tenancy, CI/CD, Terraform, observability, security (as-built) |
+| `specification_documents/SWU_Platform_Roadmap.md` | Platform phase history (P1-P7) — *when and why* each platform decision was made |
+| `specification_documents/SWU_Platform_Security_Review.md` | Full OWASP Top 10 + secrets/network walkthrough |
+| `specification_documents/SWU_Backlog.md` | **All outstanding work** — the single registry; everything else points to a BL-ID |
+| `docs/decisions/` | **Architecture Decision Records** — why the key architectural decisions were made |
+| `specification_documents/analysis/` | Supporting analyses & evidence (variant census, test-disposition logs) |
+| `specification_documents/SWU_ClaudeCode_Spec.md` | *Frozen* — original V1 design spec (historical; superseded by the Application Spec) |
+| `learning_guide/`, `learning_journal/`, `claude_design/` | Personal teaching notes, session journal, and design assets (gitignored — not in the repo) |

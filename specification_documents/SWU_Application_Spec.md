@@ -1,15 +1,19 @@
-# SWU Catalog Redesign — Target Design Specification
+# SWU Application Spec — As-Built Application Reference
 
-**Created:** 2026-06-20
-**Status:** Living target-design reference for the swuapi-first catalog/inventory rebuild. Authoritative for *what the redesigned system should be*; the work to get there is sequenced in `SWU_Backlog.md` BL-33.
-**Implementation status (2026-06-21):** Schema + ingestion (BL-33 steps 1–3, BL-27, BL-29) and the **frontend rewire + full UI redesign — §5 catalog/filters, popups (§5.3 / S6 / BL-31), inventory, two-axis Add Cards (§5.4) — are built and DEPLOYED TO PROD** (commits `e1832c0`..`8d33e86`, CI run 27910607802). Remaining: BL-33 step 4 (inventory snapshot regen). Open follow-ups surfaced post-ship: BL-44 (catalog perf at scale), BL-45 (popover polish), BL-46 (Add Cards UX rethink); still-deferred BL-32 / BL-39 / BL-40.
-**Origin:** Produced in the Opus design session called for by `SWU_Backlog.md` **Open Question E** ("swuapi-first counterfactual"). It captures the decisions made there so a later implementation session has a concrete spec to execute against rather than a conversation to re-derive.
+> **Status:** Authoritative — current as-built reference for the application domain (catalog, variants, inventory, and their UX).
+> **Supersedes:** `SWU_ClaudeCode_Spec.md` (frozen — original V1 design) for **all application domains** — data model, UX, API, ingestion, architecture, and environment.
+> **App milestone:** v0.x, approaching v1.0.
+> **Last updated:** 2026-06-24.
+
+**Scope & authority.** The authoritative as-built reference for the **application**: the catalog/variant/inventory **data model** (§4, §10), the **UX / interaction model** (§5), **completion, limits, and currency** (§6, §7), the **backend architecture & tech stack** (§11), the **API surface** (§12), the **ingestion pipeline** (§13), and the **environment** (§14). For the variant *mechanism* (`variant_of_uuid`) see `SWU_Standard_Variant_Mapping_Spec.md`; for **platform / auth / CI / infra** see `SWU_Platform_Spec.md`; for **local setup & the full env-var table** see `README.md`. The original V1 design lives in the frozen `SWU_ClaudeCode_Spec.md` (historical only).
+
+**Origin.** Produced in the Opus design session for `SWU_Backlog.md` Open Question E (the "swuapi-first counterfactual") and built + deployed to prod 2026-06-21 (commits `e1832c0`..`8d33e86`). Originally written as a forward-looking *target-design* spec ("the redesign"); the system it describes is now deployed, so it serves as the as-built reference. The variant-identity layer converged on BL-33's `base_cards`/`card_variants` split; user-experience intent drove the finish-vs-provenance separation and base-set anchoring. Remaining sequenced work and post-ship follow-ups are tracked in `SWU_Backlog.md` (BL-33 step 4; BL-44/45/46; BL-32/39/40).
 
 **Related:**
 - [`SWU_Standard_Variant_Mapping_Spec.md`](SWU_Standard_Variant_Mapping_Spec.md) — the data mechanism (`variant_of_uuid`) this design rests on.
 - [`swuapi_standard_variant_exceptions.md`](swuapi_standard_variant_exceptions.md) — current standard-anchor exceptions.
 - [`SWU_Backlog.md`](SWU_Backlog.md) — BL-33 (execution/sequencing), BL-24/27/29/31/32/35/36/37 (discrete work), Open Questions D/E.
-- [`SWU_ClaudeCode_Spec.md`](SWU_ClaudeCode_Spec.md) — the as-built app spec; its §4/§6/§7/§9 are updated *at implementation time*, not here.
+- [`SWU_ClaudeCode_Spec.md`](SWU_ClaudeCode_Spec.md) — **frozen** original V1 design spec; historical only (all application domains now absorbed into this document — BL-49).
 
 ---
 
@@ -176,7 +180,7 @@ The only forbidden path is the fourth: deleting or `skip`ping a red test because
 
 **Tests encode hard-won bug knowledge — carry the intent, not just the shape.** Where a legacy test guards a specific past bug (the F4 ingestion fixes, diacritic migrations 0007/0009, the RLS `WITH CHECK` bug, OP card-number collisions), record which — so a *port* preserves it and a *retire* is a conscious "this bug class no longer exists," not an accidental loss.
 
-**Deliverable — the disposition log.** The rewrite produces a log mapping each legacy test area to its disposition (port / replace / retire) + reason. This is the auditable record that coverage was *preserved or deliberately reduced*, never silently eroded — produced during BL-33, not as a deferred cleanup item. **Step 1's log:** [`BL33_Step1_Test_Disposition_Log.md`](BL33_Step1_Test_Disposition_Log.md).
+**Deliverable — the disposition log.** The rewrite produces a log mapping each legacy test area to its disposition (port / replace / retire) + reason. This is the auditable record that coverage was *preserved or deliberately reduced*, never silently eroded — produced during BL-33, not as a deferred cleanup item. **Step 1's log:** [`BL33_Step1_Test_Disposition_Log.md`](analysis/BL33_Step1_Test_Disposition_Log.md).
 
 ### 8.2 New invariants the redesign introduces (must have tests)
 
@@ -285,3 +289,97 @@ Derived from the `type` field containing **"Token"** — `Token Unit` (21), `Tok
 - **Limit configuration granularity** — per `variant_type` vs. per `stamp_group`/finish family (§4.5; tied to BL-31/32 and BL-40).
 - **Additional swuapi fields** beyond §4 (e.g. `rules`/`additionalRulings`) — deferred, no current consumer.
 - **Exact column types / constraints / indexes** — settled at BL-33 implementation.
+
+---
+
+## 11. Backend architecture & tech stack
+
+*Added 2026-06-24 (BL-49) — absorbed and code-verified from the frozen `SWU_ClaudeCode_Spec.md` §2–§3.*
+
+**Three-tier.** React (Vite) SPA → FastAPI REST backend → PostgreSQL 16. The frontend talks only to the API; it never queries the database directly.
+
+**Backend module structure** (`backend/app/`), each layer independently testable:
+- `routers/` — FastAPI route handlers (`sets`, `cards`, `base_cards`, `inventory`); no business logic. Registered in `main.py`; `/health` is the one unauthenticated route.
+- `services/` — business logic (completion, limits, classification-on-read); no direct DB access.
+- `repositories/` — SQL / ORM query logic only.
+- `models/` — SQLAlchemy ORM (`base_card`, `card_variant`, `set_model`, `inventory`, `card_aspect`/`trait`/`keyword`, `tenant`, `user`).
+- `schemas/` — Pydantic request/response models (§12).
+- `ingestion/` — the swuapi pipeline + seed/snapshot apply (§13).
+- `auth.py` + `database.py` — `get_db()` wires Firebase token verification and the RLS tenant context onto every request (see `SWU_Platform_Spec.md` §1 — authoritative for auth/tenancy; not duplicated here). `middleware.py` — structured request logging. `main.py` — app entry, startup lifespan (seed + snapshot apply), router registration, prod `/docs` gating.
+- `tests/` — pytest suite mirroring the structure.
+
+**Tech stack** (code-verified versions; full table + local setup in `README.md`):
+- Backend — Python 3.12, FastAPI 0.115, SQLAlchemy 2.0, Alembic, Pydantic 2.9, `psycopg2`, `firebase-admin` 6.5, uvicorn; pytest. PostgreSQL 16.
+- Frontend — React 18.3 + Vite 8, TypeScript, Firebase JS SDK 12; Vitest 4, ESLint 9 + Prettier.
+- Platform (GCP / Cloud Run / Cloud SQL / Terraform / CI) — authoritative in `SWU_Platform_Spec.md`.
+
+---
+
+## 12. API reference
+
+*Added 2026-06-24 (BL-49) — verified against `backend/app/routers/` + `schemas/`. Supersedes the frozen spec's §6, which described the pre-redesign `cards`/`card_id` model.*
+
+**Auth & docs.** Every `/api/*` route requires a Firebase ID token (`Authorization: Bearer …`) and is tenant-scoped via RLS (Platform Spec §1). `/health` is open. `/docs`, `/redoc`, `/openapi.json` are enabled in dev/CI and **disabled in production** (`ENVIRONMENT=production`).
+
+**The ID shift.** Card/variant endpoints key on **`variant_id`** = `card_variants.id` (the old `card_id` is retired). The curated classification (`finish`, `channel`, `stamped`, `is_token`) is **derived on read** by `app.ingestion.swuapi_classify.classify_variant` — the same function ingestion uses, so there is one source of truth — and is **not** stored.
+
+### Sets — `/api/sets`
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/api/sets` | `list[SetResponse]` |
+| GET | `/api/sets/{set_code}` | `SetResponse` (404 if unknown) |
+
+`SetResponse`: `id, code, name, is_base_set, release_date?`.
+
+### Cards (catalog) — `/api/cards`
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/api/cards` | `list[CardResponse]` — query params `set_code`, `variant_type`, `type`, `rarity` |
+| GET | `/api/cards/{variant_id}` | `CardResponse` (404) |
+
+`CardResponse` (one row per variant): `id, base_card_id, set_id, set_code, base_card_number, card_number, name, subtitle?, rarity, type, variant_type, source_set_code, swuapi_id, front_image_url?, back_image_url?, stamp_group?, aspects[], keywords[], traits[], cost?, power?, hp?, arena?` + derived `finish?, channel, stamped, is_token`.
+
+### Base cards (detail) — `/api/base-cards`
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/api/base-cards/{base_card_id}` | `BaseCardDetailResponse` (404) |
+
+Serves both the read-only card-detail popup and the editable card-inventory popup (§5.3): one base card plus its **full variant long tail**. `BaseCardDetailResponse`: base-card fields (`id, set_code, set_name, base_card_number, name, subtitle?, type, type2?, double_sided, rarity, cost?, power?, hp?, arena?, is_unique?, front_text?, back_text?, epic_action?, artist?, is_token, aspects[], keywords[], traits[]`) + `variants: list[CardVariantDetailResponse]`, each `{ variant_id, variant_type, finish?, channel, stamped, source_set_code, source_set_name, card_number, front_image_url?, back_image_url?, stamp_group?, quantity }`.
+
+### Inventory — `/api/inventory`
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/api/inventory` | `list[CardWithInventoryResponse]` (= `CardResponse` + `quantity`) |
+| POST | `/api/inventory/{variant_id}/increment` | `IncrementResponse` (404) |
+| POST | `/api/inventory/{variant_id}/decrement` | `DecrementResponse` (404) |
+
+`IncrementResponse`: `{ variant_id, quantity, playset_complete, blocked, reason? }`. `DecrementResponse`: `{ variant_id, quantity }` (floor 0).
+
+**Increment caps** (current behavior; per-variant caps are the pending BL-24 change):
+- **Leader / Base** — per-variant cap of 1. At quantity ≥ 1, returns `{ blocked: true, reason: "trade_sell" }` (HTTP 200); else increments to 1.
+- **All other types** — shared cap of 3 summed across all variants of the base card. At total ≥ 3, blocks as above; else increments, with `playset_complete: true` when the total reaches the playset size.
+
+**Retired vs. the frozen spec:** `PUT /api/inventory/{id}`, `GET /api/inventory/missing`, and `GET /api/cards/lookup` (frozen §6.4) are **not implemented** — playset gaps and card-number resolution are computed client-side against the already-loaded `/api/inventory` and `/api/cards` data.
+
+---
+
+## 13. Ingestion pipeline
+
+*Added 2026-06-24 (BL-49) — verified against `backend/app/ingestion/`. Supersedes the frozen spec's §5.2–§5.3 (the retired TCGPlayer-CSV + Excel pipeline); the seed/snapshot model in §5.4–§5.5 still holds and is summarized here.* See [ADR-0002](../docs/decisions/0002-csv-to-swuapi-rewrite.md) for *why* the source changed.
+
+**Catalog source: swuapi.** `run_swuapi_ingestion.py` is the CLI — `--file <export.json>` (a captured export) or `--live` (pulls from `api.swuapi.com` via `swuapi_client.fetch_export`).
+1. `transform()` (`swuapi_transform.py`, DB-free) does root-resolution (via `variant_of_uuid` — see Variant Mapping Spec) and curated classification → `IngestionResult(sets, base_cards, card_variants, aspects, keywords, traits, exceptions, duplicate_image_warnings)`.
+2. The upsert layer writes `sets`, `base_cards`, `card_variants` (each **`ON CONFLICT (swuapi_id) DO UPDATE`**), sets `base_cards.standard_variant_id`, and inserts `card_aspects`/`card_keywords`/`card_traits`.
+
+**Idempotent by construction:** every table is keyed on `swuapi_id`, so re-running an export yields the same rows — this is also the ongoing-sync mechanism (an ID upsert, not fuzzy re-matching). Classification (`finish`/`channel`/`stamped`) comes from `swuapi_classify.classify_variant`, shared with the API read path (§12).
+
+**Catalog seed & inventory snapshot** (the §5.4–§5.5 model, unchanged): the catalog is rebuilt from a generated SQL **seed** (`db/seeds/catalog_seed.sql`) and personal inventory from a generated **snapshot** (`db/snapshots/inventory_snapshot.sql`) — *not* from the live API or the migration history. Both are applied idempotently on container startup (`main.py` lifespan → `apply_seed()` then `apply_inventory_snapshot()`, each skipping if its table is already populated). Regenerating the post-redesign seed and snapshot is the pending **BL-33 step 4** (`regenerate_inventory.py`).
+
+---
+
+## 14. Environment
+
+*Added 2026-06-24 (BL-49).* Local config is a gitignored `.env` copied from `.env.example` (defaults work out of the box). Key variables: `POSTGRES_DB/USER/PASSWORD/PORT`, `APP_DB_PASSWORD`, the derived `DATABASE_URL` (admin / migrations) and `APP_DATABASE_URL` (the RLS-enforced app role), and `ENVIRONMENT` (set to `production` on Cloud Run; disables `/docs`). Docker Compose exposes backend `8000`, frontend `5173`, PostgreSQL `5432`, and the Firebase Auth Emulator `9099` (local-only).
+
+- Full variable table & local setup → `README.md`.
+- Production secret injection (GCP Secret Manager → Cloud Run) → `SWU_Platform_Spec.md`.

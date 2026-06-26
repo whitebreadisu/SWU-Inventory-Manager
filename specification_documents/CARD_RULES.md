@@ -56,6 +56,15 @@ Showcase is always foil. Showcase cards for Leaders are present in all sets.
 - Token Upgrades (card numbers beginning with `T`, e.g. `T01 Experience`) — same reason
 - Cards with a blank type — TCGPlayer CSV data gap; variant rules unknown
 
+### Special (`S`) rarity cards
+
+**Special (`S`) rarity = starter-deck-only.** A special card's Standard printing is obtainable only in that set's pre-made starter deck (new special cards may still receive non-standard variants via boosters). Starter decks also include **reprints of older cards**, and the publisher's numbering practice changed over time:
+
+- **Early sets (e.g. SHD):** a reprint received a *new* set indicator + card number for the new set (e.g. SHD Resilient #70) and appears as a **separate, Standard-only** catalog entry — no variants are minted under the new set; its variants remain under the original set (SOR Resilient).
+- **Current sets:** a reprinted starter-deck card **keeps its original** set + card number; no new entry/number is created.
+
+So standalone Standard-only reprint entries are a legacy of early sets and are **expected, not catalog gaps.**
+
 ---
 
 ## Notes on Prestige and Organized Play (OP) variants

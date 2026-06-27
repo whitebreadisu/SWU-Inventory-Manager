@@ -18,3 +18,5 @@ A decision earns an ADR when it is *most* of: structural / cross-cutting · expe
 | [0003](0003-two-axis-variant-model.md) | Two-axis variant model (finish × provenance) | Accepted |
 | [0004](0004-catalog-bootstrap-from-swuapi-export.md) | Bootstrap the catalog by ingesting the committed swuapi export on startup | Accepted |
 | [0005](0005-catalog-performance-client-side.md) | Catalog performance — client-side payload-shrink + virtualization | Accepted |
+| [0006](0006-dedicated-dev-environment.md) | Dedicated `swu-dev` cloud environment (new project, not repurposed sandbox) | Accepted |
+| [0007](0007-build-once-promote-deploy-model.md) | Build-once / promote deploy model with a gated prod release | Accepted |

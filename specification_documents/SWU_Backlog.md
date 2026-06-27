@@ -356,9 +356,11 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Why:** Today the pipeline is just local → prod (`SWU_Platform_Roadmap.md`). There's no shared cloud environment to catch environment-specific issues — auth/RLS behavior, Cloud Run cold starts, migrations against real Cloud SQL, Firebase config — before they hit prod, and nowhere to demo in-progress work. Jeremy wants a more robust development pipeline (raised 2026-06-21, while setting up the catalog-redesign smoke test exposed the local-vs-prod-only gap).
 
-**Decisions to make when picked up:** reuse `swu-sandbox` vs. a new project; branch/deploy strategy (dedicated `dev` branch → dev deploy, vs. promote-from-`main`); how the dev DB is seeded (swuapi ingestion against the dev DB); cost posture (scale-to-zero Cloud Run, smallest Cloud SQL tier); whether the custom-domain portal gets a `dev.` subdomain.
+**Decisions resolved (2026-06-27):** **new `swu-dev` project** (not `swu-sandbox` reuse — GCP project IDs are immutable, and the sandbox stays dormant for its original load-balancing-experiment intent) per **ADR-0006**; **build-once/promote** deploy model with a gated prod release (not branch-per-env) per **ADR-0007**; staging deferred (triggers named); dev DB seeded via swuapi ingestion; smallest tiers / scale-to-zero; no `dev.` subdomain initially (raw URLs). Full narrative + staged roadmap: `SWU_Platform_Roadmap.md` §7 (Agentic Platform Evolution, Stage 1).
 
-**Status:** 🔲 Open
+**Tracking:** epic **#63** + phase sub-issues **#64–#70** (board #1, milestone `two-dev experiment`). **Current top priority.**
+
+**Status:** 🟡 In progress — planning complete (ADRs 0006/0007 accepted, phased issues created 2026-06-27); Phase 1 (#64) is the next action.
 
 ---
 

@@ -1031,6 +1031,96 @@ This is real, not hypothetical — the captured export has both shapes for the s
 
 ---
 
+## App Review Items — v1.0 Redesign & Beyond (added 2026-06-27)
+
+These items came out of a structured app-review + prioritization session (2026-06-26/27, Opus). Unlike the legacy Tier 1–6 grouping above, they're organized by **epic** and tagged with a **target milestone** (v1.0 / v1.1 / later) — reflecting the move to a milestone model + GitHub Issues for execution tracking (see Open Question A, now resolved). Fine-grained status lives in GitHub Issues; these entries are the durable narrative + decisions. Architectural decisions are captured as ADRs in `docs/decisions/`.
+
+### Epic: Catalog/Inventory Unification
+
+#### BL-56: Unify Catalog & Inventory into one list (supersedes BL-17)
+**Target:** v1.0 · **Epic:** Unification · **Area:** catalog/auth · **Type:** feature
+
+**What:** Collapse the separate Catalog and Inventory tabs into a single list.
+- **Anonymous visitor:** sees the existing catalog list as-is, with a light prompt to log in / create an account to manage inventory.
+- **Authenticated user:** the *same* list with inventory + playset columns inserted to the right of the card name (the position they occupy in today's Inventory tab), plus the completion calculations and the Add Cards button.
+- One table structure; inventory columns conditionally rendered by auth state — *additive columns, not a separate view*.
+
+**Why:** The two-tab split is unnecessary — catalog and inventory are the same card list viewed with/without ownership data. One list is simpler and makes the public-catalog/conversion story cleaner.
+
+**Inherits from BL-17 (superseded):** the access model is unchanged and authoritative — public catalog reads, auth-gated inventory + mutations, the tenant-less catalog DB session (RLS fail-safe), and the anonymous value-prop gate. BL-56 replaces only BL-17's two-tab UI.
+
+**Not a Claude Designer candidate** (confirmed twice) — it's column insertion on the existing view, not a net-new layout.
+
+**Open question:** variant button / hover-over position in the anonymous vs. authenticated view (or both) — undecided.
+
+**Related:** BL-57 (value-prop popup), BL-59 (remove Decks tab), BL-60 (owned/playset toggles), BL-44 (perf, same view), BL-70 (filters, same view).
+
+**Definition of done:** a single unified list replaces the Catalog/Inventory tabs; anonymous sees catalog + login prompt; authenticated sees inventory/playset columns + completion + Add Cards; access model matches BL-17's decisions; no regression in filtering or inventory editing.
+
+**Status:** 🔲 Open — v1.0 (foundational; the other view items sit on it)
+
+---
+
+#### BL-57: "Create an account & here's what you get" value-prop popup
+**Target:** v1.1 · **Epic:** Unification · **Area:** auth · **Type:** feature · **Designer candidate**
+
+**What:** A value-prop popup with screen snippets + blurbs describing the inventory-management experience, shown to anonymous users as a conversion surface (a richer version of the inline login nudge).
+
+**Why:** Convert browsers to signups by showing what tracking inventory gives them. The inline nudge (BL-60) is the light touch; this is the full pitch on intent.
+
+**Designer candidate** (per rubric): net-new, purely visual marketing surface, wide-open solution space — a good batch partner for a Claude Designer session.
+
+**Related:** BL-56 (unification), BL-60 (the inert-toggle click can open this popup).
+
+**Definition of done:** an anonymous user can open a compelling value-prop popup (e.g. via the login nudge / inert-toggle click) that explains inventory management and routes to sign up / log in.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-58: Revisit default column widths
+**Target:** later · **Epic:** Unification · **Area:** catalog · **Type:** chore
+
+**What:** Revisit the catalog table's default column widths.
+
+**Why:** Current defaults aren't ideal. Bundled into BL-56 if that redesign ships as a whole; standalone otherwise.
+
+**Definition of done:** column widths tuned to sensible defaults.
+
+**Status:** 🔲 Open — later (or fold into BL-56)
+
+---
+
+#### BL-59: Remove the Decks tab until the deck feature ships
+**Target:** v1.0 · **Epic:** Unification · **Area:** frontend-shell · **Type:** chore
+
+**What:** Remove the Decks placeholder tab/nav entry; reinstate when the deck feature is built.
+
+**Why:** It's an empty placeholder; removing it cleans up the nav (especially as the Catalog/Inventory tabs merge under BL-56). The deck feature itself is a forthcoming, separately-scoped item (Jeremy will define it).
+
+**Definition of done:** Decks tab/nav entry removed; no dead route; reinstated when the deck feature lands.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-60: "Show only cards I own" toggle (+ anonymous teaser)
+**Target:** v1.0 · **Epic:** Unification · **Area:** catalog/inventory · **Type:** feature
+
+**What:** Add a "show only cards I own" toggle (a my-collection filter) to the unified list. This toggle **and** the existing playset toggle are **shown for anonymous users too**, but **inert** (no inventory to act on) — a conversion incentive.
+
+**Nudge treatment:** layered — a quiet persistent inline line (italic/muted, e.g. "Log in to track your collection") near the toggles for the passive nudge; clicking an inert toggle opens the value-prop popup (BL-57) for motivated users. Passive state stays light; deliberate click gets the full pitch.
+
+**Why:** Gives authenticated users a quick my-collection view (replacing the separation the old Inventory tab provided); the inert-but-visible toggles tease the value to anonymous users.
+
+**Related:** BL-56 (unified list this lives on), BL-57 (popup the click opens).
+
+**Definition of done:** authenticated users can toggle to owned-only; anonymous users see both toggles inert with the light nudge + popup-on-click.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

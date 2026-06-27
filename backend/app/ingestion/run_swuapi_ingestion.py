@@ -40,7 +40,7 @@ def upsert_sets(db: Session, sets: list[dict]) -> None:
                 "ON CONFLICT (code) DO UPDATE SET "
                 "name = EXCLUDED.name, "
                 "is_base_set = EXCLUDED.is_base_set, "
-                "release_date = EXCLUDED.release_date, "
+                "release_date = COALESCE(EXCLUDED.release_date, sets.release_date), "
                 "total_cards = EXCLUDED.total_cards, "
                 "swuapi_updated_at = EXCLUDED.swuapi_updated_at"
             ),

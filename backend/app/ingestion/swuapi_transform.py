@@ -40,6 +40,21 @@ BASE_SET_CODES = {
     "IBH",
 }
 
+# The swuapi export does not include release_date for most sets. This table
+# supplies the canonical dates for the known base sets so that ORDER BY
+# release_date works correctly in a fresh DB (otherwise all dates are null
+# and ordering falls back to insertion order, which varies by environment).
+# Add new base sets here as they are confirmed.
+CANONICAL_RELEASE_DATES: dict[str, str] = {
+    "SOR": "2024-03-08",
+    "SHD": "2024-08-02",
+    "TWI": "2024-11-08",
+    "JTL": "2025-03-14",
+    "LOF": "2025-06-06",
+    "SEC": "2025-09-12",
+    "LAW": "2025-12-05",
+}
+
 
 class AmbiguousFallbackError(ValueError):
     """Raised when the §10.6 fallback finds 0 or >1 non-token Standard
@@ -215,12 +230,14 @@ def transform(export: dict) -> IngestionResult:
 
     sets: list[dict] = []
     for s in export["sets"]:
+        code = s["code"]
+        release_date = s.get("release_date") or CANONICAL_RELEASE_DATES.get(code)
         sets.append(
             {
-                "code": s["code"],
+                "code": code,
                 "name": s["name"],
-                "is_base_set": s["code"] in BASE_SET_CODES,
-                "release_date": s.get("release_date"),
+                "is_base_set": code in BASE_SET_CODES,
+                "release_date": release_date,
                 "total_cards": s.get("total_cards"),
                 "swuapi_updated_at": s.get("updated_at"),
             }

@@ -12,5 +12,6 @@ resource "google_firebase_hosting_custom_domain" "swu_subdomain" {
 
   wait_dns_verification = false
 
-  depends_on = [google_firebase_project.default]
+  # google_firebase_project.default now lives inside module.app.
+  depends_on = [module.app]
 }

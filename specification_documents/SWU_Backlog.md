@@ -1207,6 +1207,88 @@ These items came out of a structured app-review + prioritization session (2026-0
 
 ---
 
+### Epic: Filters
+
+#### BL-70: Cascading / faceted filters
+**Target:** v1.0 · **Epic:** Filters · **Area:** catalog (FilterPanel) · **Type:** feature
+
+**What:** Filter dropdowns show only values that would **further refine** the current result set (e.g. set=JTL → finish shows only finishes present in JTL). **Full multi-directional faceting** — each filter's options reflect all *other* active selections.
+- **Hide** invalid values by default, **plus a toggle** at the top of the filter panel to "show all values (invalids disabled/greyed)."
+- **Dead-end-prevention rule:** a filter's available values = apply all *other* filters, **ignore its own current selection** (so you can always change/broaden it). This makes the stale/zero state impossible for single-select filters.
+- **Multi-select filters (keywords, traits) are OR.** A previously-selected value that becomes invalid after another filter change is **kept visible but flagged inert** (greyed / "(0)" / removable) and reactivates when the conflict clears — never silently dropped.
+
+**Architecture:** filtering is client-side (all data in memory), so computing facet values is cheap — fits the BL-44 client-side perf approach; no backend change.
+
+**Definition of done:** dropdowns faceted per the rules above; the show-all toggle works; inert stale multi-select values handled as described.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-71: Per-filter AND/OR toggle for multi-select filters (keywords, traits)
+**Target:** later · **Epic:** Filters · **Area:** catalog (FilterPanel) · **Type:** feature · **Depends:** BL-70
+
+**What:** A **per-filter** toggle (keywords and traits each independently) switching combine mode between **OR** (BL-70 default, match ANY) and **AND** (match ALL).
+
+**Standalone because AND reintroduces the zero-result trap** OR doesn't:
+- **Faceting (addable values) in AND mode:** only offer values that **co-occur** with the cards already matching all current selections (intersection-aware), so adding can't yield zero.
+- **Cross-filter stale → zero:** if a change makes the AND-combo empty, show a clear empty state ("No cards match all selected traits in JTL") with an easy relax (remove a value / switch to OR).
+- Default = OR.
+
+**Definition of done:** per-filter AND/OR toggle; AND-mode faceting + empty-state handling per above.
+
+**Status:** 🔲 Open — later
+
+---
+
+#### BL-72: Filter layout — stop unnecessary elongation; wrap only when content won't fit
+**Target:** v1.0 · **Epic:** Filters · **Area:** catalog (FilterPanel.css) · **Type:** bug/chore
+
+**What:** Filters should hold a **natural content-based width** and only **wrap/stack** when the available width genuinely can't fit them — not stretch elongated to fill.
+
+**Repro:** 32" monitor, half-width app → filter fields render extremely wide, then stack awkwardly.
+
+**Likely fix:** drop `flex-grow` stretching; size filters to content (`fit-content` / sensible min-width) + `flex-wrap` only when they don't fit. Confirm against `FilterPanel.css` when actioned.
+
+**Definition of done:** filters keep a natural width and wrap only when necessary; no unnecessary elongation on resize.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+### Epic: Help affordance
+
+#### BL-66: Reusable help affordance ("?" info bubble)
+**Target:** v1.1 · **Epic:** Help · **Area:** frontend-shell (cross-cutting) · **Type:** feature
+
+**What:** One **reusable** help component (a "?" hint) applied consistently app-wide, supporting a **`trigger` prop (hover | click)** with content-driven defaults — hover/focus for short one-liners, click popover for longer/richer content (and touch-friendly).
+- **First use:** an info bubble next to the Add Cards title with a "how it works" blurb (click, multi-sentence) — added **after** the Add Cards UI is finalized (BL-46 + Add Cards items).
+- Other locations added opportunistically (no upfront enumeration).
+- A11y: keyboard-focusable, dismissible, `aria-describedby`.
+
+**Infrastructure link:** shares positioning concerns with **BL-45** (portal-based popover positioning) — a robust help-popover wants that portal/edge-detection foundation.
+
+**Why:** keep the UI intuitive with guidance *available* (not required); one component for consistency.
+
+**Definition of done:** a reusable hover/click help component exists; the Add Cards "how it works" instance uses it; a11y handled.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-69: Info bubble on the completion calculations
+**Target:** v1.1 · **Epic:** Help · **Area:** inventory/catalog · **Type:** feature · **Depends:** BL-66
+
+**What:** An info bubble (instance of the BL-66 reusable component) on the completion calculations, explaining that completion is computed against the catalog subset **resulting from the current filter selections** (the denominator changes with filters).
+
+**Why:** clarifies a genuine confusion point — completion % shifting as filters change.
+
+**Definition of done:** completion calcs carry a help bubble explaining the filter-based denominator.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

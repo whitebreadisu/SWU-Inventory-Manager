@@ -237,7 +237,7 @@ These are conversations and walkthroughs, not code changes — Jeremy reviewing 
 
 **Definition of done:** Session held. If it surfaces a reusable explanation (e.g., "how this repo's git/CI workflow works and why"), consider adding it to `SWU_Learning_Guide.md` as a Key Concepts entry.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — merged into BL-55. The git/commit/PR content is fully subsumed by BL-55's branch→PR→CI→deploy walkthrough; no separate session needed (2026-06-26/27 backlog reconciliation).
 
 ---
 
@@ -473,7 +473,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either a data source is found and a backfill script written, or explicitly marked "out of scope indefinitely." If S5's swuapi.com integration happens to surface keyword/unique-card data as a side effect, revisit then.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — overcome by events. `card_keywords` and `is_unique` are now populated from swuapi by the BL-29 ingestion run (1,067 keyword rows; `base_cards.is_unique` set); `sub_text` was dropped by migration 0022 (BL-33 redesign) with no replacement (see migration header) and no longer exists in the schema. Nothing left to do — no card attribute Jeremy wants tracked is currently uncaptured (confirmed 2026-06-27).
 
 ---
 
@@ -549,7 +549,7 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Definition of done:** Script exists; successfully upserts a new set into a populated production catalog; existing records are unaffected; instructions documented for the "add a new set" procedure.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — largely delivered by BL-29. `run_swuapi_ingestion.py` already upserts new sets by `swuapi_id` against a populated catalog. The residual "operational procedure for applying a new set" lives in BL-36 (new-set onboarding considerations); no separate dedicated-upsert-script item is needed.
 
 ---
 
@@ -563,7 +563,7 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Definition of done:** Export endpoint returns a downloadable file; import endpoint accepts a file and upserts inventory quantities; both are authenticated and tenant-scoped; at least one test each for export shape and import idempotency.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — absorbed into BL-54. Same feature; BL-54 is the v1.0-scoped import/export item (with the decomposition note). Tracking continues under BL-54.
 
 ---
 
@@ -853,7 +853,7 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 - **Catalog** bootstrap on a fresh DB = `run_swuapi_ingestion --file backend/app/tests/fixtures/swuapi_export_2026-06-21.json` (the committed 13MB export is the swuapi-sourced "seed"). Whether to auto-run it on startup vs. keep it manual is a small deferred decision — **ADR pending**, not blocking.
 - **Inventory** = a one-time `regenerate_inventory` load into prod, **deferred by Jeremy** (2026-06-25) — no longer needed for personal feature-testing; he's confident in the functionality and doesn't need his real collection in prod yet.
 
-**Status:** 🟢 Core delivered (2026-06-25) — schema/ingestion (steps 1-3) live in prod; remap tool + self-contained §8.5 reload test + `apply_seed` fix shipped; static seed/snapshot file generation dropped as throwaway (reframe above); frontend catalog/inventory/popups (steps 5-6) shipped in the 2026-06-21 redesign. **Remaining threads are tracked as their own items:** one-time prod inventory load (deferred), catalog-bootstrap ADR, BL-32 (stamp consolidation UI), BL-36/BL-37 (ongoing sync), BL-30 (bulk-add), BL-54 (import/export, which retires this scaffolding).
+**Status:** ✅ Resolved 2026-06-27 (2026-06-27 reconciliation) — core delivered 2026-06-25 — schema/ingestion (steps 1-3) live in prod; remap tool + self-contained §8.5 reload test + `apply_seed` fix shipped; static seed/snapshot file generation dropped as throwaway (reframe above); frontend catalog/inventory/popups (steps 5-6) shipped in the 2026-06-21 redesign. **Remaining threads are tracked as their own items:** one-time prod inventory load (deferred), catalog-bootstrap ADR, BL-32 (stamp consolidation UI), BL-36/BL-37 (ongoing sync), BL-30 (bulk-add), BL-54 (import/export, which retires this scaffolding).
 
 ---
 

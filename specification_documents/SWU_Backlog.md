@@ -1380,7 +1380,12 @@ These are conversations to pick back up, not work items — recorded so the *rea
 
 Jeremy's instinct is to use GitHub Issues for execution-tracking (linked to PRs via "Fixes #N"), but the value of an issue tracker is more aligned to multi-developer environments than this currently-solo project.
 
-**How to apply:** For now, this file (`SWU_Backlog.md`) is the single source of truth for both narrative context and status (`🔲 Open` / `✅ Resolved`). Revisit if/when collaborators join, or if this file grows unwieldy (rough threshold: >20 open items, or items frequently need their own discussion threads).
+**✅ Resolved 2026-06-27 — adopt GitHub Issues in execution-tracking mode (a hybrid, not a migration).** Both triggers from the original note fired: >20 open items, and Jeremy plans a two-developer pipeline experiment. The division of labor:
+- **`SWU_Backlog.md` = narrative source of truth** — the durable "why" + decision history per item, and *the only work registry* (everything points to a BL-ID, per CLAUDE.md).
+- **GitHub Issues + Projects board = execution/status** (status, assignee, `type:`/`area:`/`priority:` labels, milestone). Each issue points back to its BL-ID; **status is not duplicated in the backlog** — a per-item Status line records only resolved/superseded for the historical record.
+- **ADRs (`docs/decisions/`) = heavyweight architectural decisions**, referenced by the relevant BL entries.
+
+The label scheme, milestones (`two-dev experiment`, `v1.0`), and the linked repo Project board were created 2026-06-27. The legacy Status Tables near the top of this doc are superseded by the board for live status (their handling is the one open reconciliation step — see the session summary).
 
 ### B. ADR adoption for "Selection & Comparison" decision records
 

@@ -12,6 +12,14 @@
 #     explicitly so the plan sees no diff.
 #   - groupByFields=[] is omitted by the API; omit it here too.
 resource "google_monitoring_dashboard" "backend" {
+  # The GCP API injects `etag` and `name` into the returned JSON; Terraform
+  # sees them in state but not in our jsonencode(), which produces a perpetual
+  # plan diff (BL-43 Phase 6). Suppress it here — deliberate updates are done
+  # by temporarily removing this block and re-adding it after apply.
+  lifecycle {
+    ignore_changes = [dashboard_json]
+  }
+
   dashboard_json = jsonencode({
     displayName = "Backend Overview"
     mosaicLayout = {

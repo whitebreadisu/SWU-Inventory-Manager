@@ -17,6 +17,11 @@ resource "google_cloud_run_v2_service" "backend" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
+  # Wired to the env's deletion_protection (prod default true = no prod change;
+  # dev passes false so a disposable env can be torn down). Added 2026-06-27
+  # (BL-43 Phase 3) — see #69.
+  deletion_protection = var.deletion_protection
+
   template {
     service_account = google_service_account.backend_runtime.email
 
@@ -77,7 +82,19 @@ resource "google_cloud_run_v2_service" "backend" {
     }
   }
 
-  depends_on = [google_project_service.p2]
+  # Cloud Run reads these secrets via `versions/latest`; that reference does not
+  # create a Terraform dependency on the *version* resources, so on a clean
+  # from-scratch apply Cloud Run can deploy before the versions exist
+  # ("Secret .../versions/latest was not found"). Explicit depends_on fixes the
+  # ordering. (Surfaced by the BL-43 dev environment's first clean apply, 2026-06-27;
+  # prod never hit it because it was built incrementally. depends_on is ordering-only,
+  # so prod's plan stays 0/0/0.)
+  depends_on = [
+    google_project_service.p2,
+    google_secret_manager_secret_version.database_url,
+    google_secret_manager_secret_version.app_db_password,
+    google_secret_manager_secret_version.app_database_url,
+  ]
 }
 
 # Required for "It's alive" (P2 milestone): the API has no auth in front of

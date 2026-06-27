@@ -17,3 +17,4 @@ A decision earns an ADR when it is *most* of: structural / cross-cutting · expe
 | [0002](0002-csv-to-swuapi-rewrite.md) | Rewrite catalog ingestion from CSV to swuapi | Accepted |
 | [0003](0003-two-axis-variant-model.md) | Two-axis variant model (finish × provenance) | Accepted |
 | [0004](0004-catalog-bootstrap-from-swuapi-export.md) | Bootstrap the catalog by ingesting the committed swuapi export on startup | Accepted |
+| [0005](0005-catalog-performance-client-side.md) | Catalog performance — client-side payload-shrink + virtualization | Accepted |

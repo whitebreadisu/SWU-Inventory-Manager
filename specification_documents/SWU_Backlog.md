@@ -377,7 +377,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 - **Payload-shrink (lever 2):** add a `base-cards-with-nested-variants` **list** endpoint. The nested shape already exists for the single-card popup (`GET /api/base-cards/{id}` → `BaseCardDetail` with `variants[]`), so a list version is cheap. Fixes initial LOAD — today's flat `GET /api/cards` duplicates full base-card data (name/subtitle/aspects/keywords/traits/cost…) across all ~8,353 variant rows vs. only ~2,306 base cards (~3.6× redundancy). All data stays client-side → filtering stays instant and faceting (BL-70) is preserved.
 - **Virtualization (lever 1):** window the DOM render of the fully-loaded in-memory list (~30 rows rendered at a time); continuous scroll, not page controls (scrollbar reflects the true full length). Fixes render jank.
 
-The architectural rationale (client-side vs. server-side) will be captured as an ADR. DevTools measurement is a learning exercise, not a gate — decision made on code analysis.
+The architectural rationale (client-side vs. server-side) is captured in **ADR-0005** (`docs/decisions/0005-catalog-performance-client-side.md`). DevTools measurement is a learning exercise, not a gate — decision made on code analysis.
 
 **Status:** 🟡 Approach decided 2026-06-27 (payload-shrink + virtualization, client-side) → **v1.0**; pending implementation
 

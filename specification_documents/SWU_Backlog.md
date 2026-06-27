@@ -12,71 +12,9 @@
 
 ---
 
-## Status Tables
+## Status & Tracking
 
-### Outstanding
-
-| ID    | Name                                                         | Tier                      | Description                                                                                                                  |
-| ----- | ------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| BL-13 | Manual review of `SWU_Platform_Spec.md` and `SWU_Backlog.md` | 2 — Guided Review         | Jeremy reads and verifies both new reference docs while context is fresh                                                     |
-| BL-14 | Understanding commits, pushes, and PRs                       | 2 — Guided Review         | Guided conversation on this repo's git/CI workflow model and solo-dev practices                                              |
-| BL-15 | Observability walkthrough                                    | 2 — Guided Review         | Hands-on tour of swu-prod dashboards, logs, and alert policies built in P6                                                   |
-| BL-16 | Authentication hardening — email verification on signup      | 4 — Operational Hardening | Decide whether email verification should gate any part of the signup flow                                                    |
-| BL-17 | Public catalog view, auth-gated inventory                    | 4 — Operational Hardening | Investigate allowing logged-out catalog browsing while keeping inventory auth-gated                                          |
-| BL-10 | `card_keywords` / `sub_text` / `is_unique` data gaps         | 5 — Opportunistic         | Three unpopulated columns with no known source; revisit if S5 swuapi.com integration surfaces data                           |
-| BL-11 | Local cleanup — source files                                 | 5 — Opportunistic         | Delete stale source CSVs and old Excel tracker from local disk whenever convenient                                           |
-| BL-19 | Add new card sets to catalog                                 | 6 — Feature Enhancements  | Dedicated upsert script for adding new SWU sets; new sets may have new attributes requiring manual inspection before running |
-| BL-20 | Import/export inventory                                      | 6 — Feature Enhancements  | User-facing CSV or JSON import/export for inventory; serves as user-managed backup until DR is live                          |
-| BL-21 | Disaster recovery — automated DB backup                      | 6 — Feature Enhancements  | Automated Cloud SQL backup and restore on behalf of users, removing the burden of manual exports for recovery                |
-| BL-22 | User settings page scaffolding                                | 6 — Feature Enhancements  | New account-menu entry and empty Settings route/container; infra for BL-23 and BL-25                                       |
-| BL-23 | Change password from settings                                 | 6 — Feature Enhancements  | Firebase client-side reauth + password update, surfaced in the Settings page                                                |
-| BL-24 | Per-tenant, per-variant inventory limit overrides (data model) | 6 — Feature Enhancements  | Configurable limits keyed by type-category × variant_type (open vocabulary per BL-33/BL-27), replacing the hardcoded shared-pool playset cap with independent per-variant caps; default-driven (per-category defaults + stored overrides) |
-| BL-25 | Settings UI for inventory limit overrides                     | 6 — Feature Enhancements  | Grid UI to edit BL-24's limit matrix; updates frontend constants to use tenant-specific values                              |
-| BL-26 | Claude.ai design-system sync workflow — inspection needed      | 6 — Feature Enhancements  | The conversion layer (`components/*.jsx`, `screens/*/*.jsx`) that actually renders in claude.ai isn't covered by `source/src/` syncs; needs a dedicated session |
-| BL-27 | Additional card variant types (Judge, Showcase, Prerelease Promo, etc.) | 6 — Feature Enhancements  | Use swuapi.com to identify the full set of variant types beyond our existing 8; analyze and implement all touchpoints across the app |
-| BL-29 | Replace CSV-based catalog seed with swuapi.com | 6 — Feature Enhancements  | Build catalog creation (new environments / full rebuilds) directly from swuapi.com instead of the F3/F4 TCGPlayer CSV pipeline |
-| BL-30 | Bulk-add a pre-built product to inventory (IBH / Twin Suns / Starter Decks) | 6 — Feature Enhancements  | Add every card in a precon product to inventory in one action instead of scanning each card; blocked on a decklist (card+quantity) data source swuapi doesn't provide || BL-32 | Inline inventory editing — consolidated entry for tournament-tier variants | 6 — Feature Enhancements  | The flat per-variant +/- row pattern doesn't scale to cards with 5-6 tournament-tier variants; needs its own interaction pattern |
-| BL-33 | Catalog schema redesign — `base_cards`/`card_variants` split, swuapi-id-keyed sync, scoped sequencing for BL-27/29/30/31/32/S6 | 6 — Feature Enhancements  | Replaces the flat boolean-flag `cards` table with an explicit base-card/variant model anchored on swuapi's own IDs; scopes BL-29 and orders the remaining swuapi-dependent backlog |
-| BL-34 | Standard variant mapping — test suite | 6 — Feature Enhancements  | Build the fixture-based test suite specified in `SWU_Standard_Variant_Mapping_Spec.md` §8, including the one large variant-graph invariant test |
-| BL-35 | Hard/soft inventory keep-limit mode (user override) | 6 — Feature Enhancements  | User-level preference toggling limit enforcement between hard cap (block adds past limit — today's behavior) and soft cap (commit over-limit cards with a visual over-limit warning). Universal rule, not per-variant |
-| BL-36 | New-set onboarding considerations (applying new cards/sets) | 6 — Feature Enhancements  | Enumerate everything beyond a raw upsert that applying a new set requires — set logo asset for the Add Cards modal, new variant-type vocabulary, new attributes, preview-vs-completion interaction; applies to gated and auto apply alike |
-| BL-37 | Convert ongoing catalog sync to full auto-apply | 6 — Feature Enhancements  | Future: remove the operator gate from the ongoing sync once the pipeline is validated and BL-36's onboarding considerations are automatable |
-| BL-38 | Aspect double-pip multiplicity — display fidelity gap | 5 — Opportunistic | swuapi flattens same-aspect double pips (no `aspectDuplicates`); accept its fidelity now, revisit if accurate pip display + a data source appear |
-| BL-39 | Judge/Prerelease variant stamp classification (visual analysis) | 6 — Feature Enhancements | Judge Program / Prerelease Judge / Prerelease Promo are a mixed bag (some stamps over a finish, some distinct art); needs visual set-by-set inspection to assign finish+stamped; ungrouped by default until done |
-| BL-40 | Revisit variant grouping model — finish+stamp vs. group-by-art | 6 — Feature Enhancements | Reconsider whether stamp_group should collapse by base art across finishes (Standard+Foil, Hyperspace+HS Foil, all prestiges) rather than the BL-27 finish+stamp rule; BL-39's visual pass is an input |
-| BL-41 | Channel-rule quirk: base-set tournament-tier variants classify as Retail, not Promo | 6 — Feature Enhancements | §10.4's channel rule ties "Promo / Tournament-tier" to source_set_code P25/P26 only, not the PQ/RQ/SQ/GC/SS variant_type prefix itself — so the same tier label sourced from a base set (SOR/SHD/TWI) falls through to Retail instead. Found and implemented literally during BL-29; needs an analysis pass to decide if that's actually correct |
-| BL-42 | Upgrade local Node to ≥20.19 (vite 8 / vitest 4 requirement) | 3 — Tooling Investment | Local Node 20.12 is below vite 8 / vitest 4 / rolldown's ≥20.19 requirement, so the frontend dev server, vitest, and build only run via a `docker node:20` workaround; the frontend container's node_modules volume is also stale at vite 5. Upgrade host Node and rebuild the image so local dev/test work natively |
-| BL-43 | Cloud dev environment — robust dev→prod pipeline | 4 — Operational Hardening | Stand up a persistent deployed dev environment (likely on the existing `swu-sandbox` GCP project) between local and prod, with a branch→dev-deploy CI path, so changes are validated in a real cloud env before prod instead of going local→prod |
-| BL-44 | Catalog performance at full scale | 4 — Operational Hardening | Catalog fetches all ~8,353 variant rows and renders all ~2,306 base-card rows at once (no virtualization/pagination) — render jank + heavy payload at full catalog size. Levers for later discussion: (1) virtualization/windowing (keep client-side filtering); (2) base-cards-with-nested-variants payload (~2.3k rows not 8.3k); (3) server-side pagination+filtering (heaviest, last resort) |
-| BL-45 | Bulletproof popover positioning (portal-based) | 5 — Opportunistic | Catalog Variants tooltip uses absolute positioning anchored to the button's right edge (good enough for the current right-edge column). For robustness against any column position / horizontal scroll / bottom-row vertical clipping, render the popover in a React portal with fixed positioning from the button's screen rect + edge detection. Polish; not urgent |
-| BL-46 | Add Cards experience — rethink with real-card exploration | 6 — Feature Enhancements | The two-axis (provenance × finish) Add Cards flow is functionally correct but the UX isn't satisfying at full catalog scale; needs hands-on exploration with real cards/examples to define the optimal add-to-inventory experience before redesigning |
-| BL-48 | Learning guide rationalization | 1 — Documentation Foundation | Reconcile the stale main `SWU_Learning_Guide.md` and the accumulated per-session standalone guides into a coherent set; split out from BL-47 because the guide is personal/gitignored and a distinct effort |
-| BL-50 | Token printed-number display ("T02") | 5 — Opportunistic | Tokens show swuapi's set-sequence number (Shield "2") not the printed token number ("T02"); swuapi exposes no printed token number, so decide whether it's derivable vs. an accepted gap, incl. Add Cards resolver + sort impact (graduated from frontend-fix triage #2) |
-| BL-51 | Browser Back closes popups; Add Cards unsaved-changes confirm | 6 — Feature Enhancements | Back should close an open popup and return to the app (not exit to the portal) via one shared history mechanism in the currently router-less SPA; + unsaved-changes confirm on Add Cards (graduated from triage #3; relates BL-18) |
-| BL-52 | Cross-set "all printings" reprint view | 6 — Feature Enhancements | Group `base_cards` roots by case-insensitive `(name, subtitle)` across sets for a card-detail "all printings" view; query-time derived (swuapi has no reprint lineage); graduated from variant mapping spec §7's deferred concept |
-| BL-53 | API rate limiting on `/api/*` | 4 — Operational Hardening | No per-IP/per-tenant cap on API routes; flagged deferred in the P7 security review (OWASP A04) and platform spec §5 — low severity at current scale, real gap before broader exposure |
-| BL-54 | Inventory import/export (user-facing) | 6 — Feature Enhancements | **v1.0 goal.** Let users import inventory exported from other SWU apps (CSV/JSON) so they don't re-enter collections by hand, and export from this app. **Likely decomposes** into several items once designed (formats, parse/validate, map to `card_variants`, dedupe/merge, UI, error reporting). Landing this **retires the throwaway personal inventory-seed scaffolding** (`regenerate_inventory`, `apply_inventory_snapshot`, §8.5 test, snapshot files) |
-| BL-55 | Learning — dissect the branch → PR → CI → deploy workflow | 2 — Guided Review | Walkthrough (no code): when branching matters vs. when working on `main` is fine; the full loop and **who** runs each part **when**; what CI does at each stage and why a failing check blocks deploy; solo vs. second-developer; what matters for prod vs. local. Deferred ("not tonight") |
-
-### Completed
-
-| ID | Name | Tier | Description |
-|----|------|------|-------------|
-| BL-1 | Create `SWU_Platform_Spec.md` | 1 — Documentation Foundation | New as-built platform reference covering auth, CI/CD, Terraform, observability, and security |
-| BL-2 | Slim `SWU_Platform_Roadmap.md` | 1 — Documentation Foundation | Trim roadmap to phase/status tracker; cross-reference new platform spec for architecture details |
-| BL-3 | Retire Learning Guide docx; rename Platform Learning Guide | 1 — Documentation Foundation | Archive docx, rename platform guide to canonical `SWU_Learning_Guide.md` |
-| BL-4 | Update `README.md` | 1 — Documentation Foundation | Rewrite README to reflect live production architecture, multi-tenancy, and documentation map |
-| BL-5 | Add CLAUDE.md file aliases | 1 — Documentation Foundation | Add "the backlog" and "the platform spec" aliases; update "the learning guide" path |
-| BL-12 | Spec-vs-implementation reconciliation | 1 — Documentation Foundation | Reconcile `SWU_ClaudeCode_Spec.md` Sections 6-9 with what S2-S4 actually built |
-| BL-47 | Documentation reconnaissance & cleanup | 1 — Documentation Foundation | ✅ 2026-06-24 — per-file dispositions; file moves (`analysis/`, gitignored `working/`); froze ClaudeCode spec + renamed redesign → `SWU_Application_Spec.md`; ADRs (`docs/decisions/`); backlog consolidation; README/CLAUDE.md authority map. Spillover: BL-48, BL-49 (+ memory cleanup). Record: `analysis/BL47_Documentation_Reconciliation_Plan.md` |
-| BL-49 | Absorb API/ingestion/architecture into the Application Spec | 1 — Documentation Foundation | ✅ 2026-06-24 — added Application Spec §11 (architecture & tech stack), §12 (API reference), §13 (ingestion), §14 (environment), all code-verified against `backend/`; froze ClaudeCode spec as historical-only for every domain. Surfaced a latent bug — `apply_seed.py` still queries the dropped `cards` table (flagged for review, not fixed; sits in BL-33 step 4's seed/snapshot regen) |
-| BL-6 | Backend linting/formatting | 3 — Tooling Investment | Add ruff to backend; fix five genuine lint issues; wire `ruff check` + `ruff format` into CI |
-| BL-7 | Frontend linting/formatting | 3 — Tooling Investment | Add ESLint + Prettier to frontend; one genuine fix; wire lint and format checks into CI |
-| BL-8 | Backend Dockerfile / Cloud Run startup review | 4 — Operational Hardening | Remove `--reload`; move seed/snapshot checks in-process via FastAPI lifespan |
-| BL-9 | Dependabot PR backlog triage | 4 — Operational Hardening | Merge/close all 18 open Dependabot PRs; resolve two coordinated breaking-version pairs |
-| BL-18 | Frontend tab switching — keep pages mounted | 4 — Operational Hardening | Replace `&&` conditional rendering in `App.tsx` so tab switches are instant after first load |
-| BL-28 | swuapi.com analysis — ongoing sync and schema alignment | 6 — Feature Enhancements | Five-phase analysis of swuapi.com's live export; produced BL-29/30/31/32 and a field-by-field schema delta |
-| BL-31 | Card detail popup — consolidated stamp-only variants | 6 — Feature Enhancements | Popup consolidates variants by `stamp_group` into one representative image with per-variant inventory underneath; shipped in the catalog redesign frontend rewire, deployed 2026-06-21 |
+> **The Outstanding / Completed status tables were retired 2026-06-27** (reconciliation). Live status, priority, assignment, and milestone are now tracked in **GitHub Issues + the linked Project board** (see Open Question A). The durable work registry is the **per-item entries** in this document — each carries its narrative plus a Status line recording resolved / superseded state for the historical record. The tables were removed to avoid duplicating issue status (single-source principle): for a quick status snapshot use the board; for the *why* behind any item, read its entry below.
 
 ---
 
@@ -237,7 +175,7 @@ These are conversations and walkthroughs, not code changes — Jeremy reviewing 
 
 **Definition of done:** Session held. If it surfaces a reusable explanation (e.g., "how this repo's git/CI workflow works and why"), consider adding it to `SWU_Learning_Guide.md` as a Key Concepts entry.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — merged into BL-55. The git/commit/PR content is fully subsumed by BL-55's branch→PR→CI→deploy walkthrough; no separate session needed (2026-06-26/27 backlog reconciliation).
 
 ---
 
@@ -385,7 +323,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Decision (2026-06-20, Open Question D resolved):** **Implement** — the public catalog is wanted. A logged-out visitor browses the Catalog *and* the S6 card detail popup freely; `GET /api/inventory` and all inventory mutations stay authenticated and tenant-scoped exactly as today. The Inventory tab stays visible for anonymous users as a conversion hook and renders a value-prop empty state (lock icon + "Track your SWU collection" + Sign up / Log in) instead of the grid. The Catalog and popup are read-only for everyone, so there is no in-context "track" action to convert on — the Inventory tab is the single auth gate. **Implementation shape:** a second, non-authenticating DB dependency for the four catalog routes that opens a *tenant-less* session — RLS already fails safe here, a tenant-less session matches zero inventory rows by construction; `frontend/src/App.tsx` renders shell + Catalog when signed out (today it renders only `AuthScreen`); `SWU_Platform_Spec.md` §1/§5 and `SWU_Platform_Security_Review.md` A01 updated at implementation time to document the intentional catalog-vs-inventory asymmetry.
 
-**Status:** 🔲 Open — decided 2026-06-20 (implement public catalog); pending implementation
+**Status:** ⤴️ Superseded 2026-06-27 by **BL-56** (catalog/inventory unification). BL-17's *access* decisions remain authoritative and are **inherited by BL-56** — public catalog reads, auth-gated inventory, the tenant-less catalog DB session (RLS fail-safe), and the anonymous value-prop gate. Only BL-17's *two-tab UI model* is replaced (BL-56 makes it one unified list with inventory columns shown by auth state).
 
 ---
 
@@ -435,7 +373,13 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 2. **Payload shape** — a base-cards-with-nested-variants list endpoint so the client fetches ~2,306 rows instead of ~8,353 (the table groups to base cards anyway); cuts network + parse ~3.6×.
 3. **Server-side pagination + filtering** — the heavier architectural option; only warranted if the catalog grows much larger, and it requires moving filtering server-side (today's client-side filtering can't paginate what it hasn't fetched).
 
-**Status:** 🔲 Open — flagged 2026-06-21, deferred for later discussion
+**Decision (2026-06-27 reconciliation) — approach chosen, scoped to v1.0:** stay **client-side** (server-side pagination/filtering rejected — it would degrade the instant client-side filter response Jeremy values and break the new faceted-filter design in BL-70/BL-71). Two locked levers:
+- **Payload-shrink (lever 2):** add a `base-cards-with-nested-variants` **list** endpoint. The nested shape already exists for the single-card popup (`GET /api/base-cards/{id}` → `BaseCardDetail` with `variants[]`), so a list version is cheap. Fixes initial LOAD — today's flat `GET /api/cards` duplicates full base-card data (name/subtitle/aspects/keywords/traits/cost…) across all ~8,353 variant rows vs. only ~2,306 base cards (~3.6× redundancy). All data stays client-side → filtering stays instant and faceting (BL-70) is preserved.
+- **Virtualization (lever 1):** window the DOM render of the fully-loaded in-memory list (~30 rows rendered at a time); continuous scroll, not page controls (scrollbar reflects the true full length). Fixes render jank.
+
+The architectural rationale (client-side vs. server-side) is captured in **ADR-0005** (`docs/decisions/0005-catalog-performance-client-side.md`). DevTools measurement is a learning exercise, not a gate — decision made on code analysis.
+
+**Status:** 🟡 Approach decided 2026-06-27 (payload-shrink + virtualization, client-side) → **v1.0**; pending implementation
 
 ---
 
@@ -473,7 +417,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Definition of done:** Either a data source is found and a backfill script written, or explicitly marked "out of scope indefinitely." If S5's swuapi.com integration happens to surface keyword/unique-card data as a side effect, revisit then.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — overcome by events. `card_keywords` and `is_unique` are now populated from swuapi by the BL-29 ingestion run (1,067 keyword rows; `base_cards.is_unique` set); `sub_text` was dropped by migration 0022 (BL-33 redesign) with no replacement (see migration header) and no longer exists in the schema. Nothing left to do — no card attribute Jeremy wants tracked is currently uncaptured (confirmed 2026-06-27).
 
 ---
 
@@ -533,9 +477,11 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Why:** Flagged by Jeremy during the 2026-06-21 smoke test ("not loving the add cards experience"). The optimal design isn't clear from analysis alone — it needs hands-on use against the real, much larger card set. This is a design-exploration item, not a defined build yet.
 
-**Related:** BL-30 (bulk-add precon products), BL-32 (consolidated entry for tournament-tier variants), redesign spec §5.4 (current resolver design).
+**Related:** BL-30 (bulk-add precon products), BL-32 (consolidated entry for tournament-tier variants), `SWU_Application_Spec.md` §5.4 (current resolver design).
 
-**Status:** 🔲 Open — design exploration (gather real-use feedback first)
+**Reframed as a SPIKE (2026-06-27 reconciliation) → v1.0.** This is the *behavior-analysis* item Jeremy owns: define the wanted add-to-inventory experience (entry method, ambiguity handling, source/set selection, bulk patterns) via hands-on exploration with real cards. Its **definition of done is a behavior spec, not shipped code** — it closes by spawning/reshaping the implementation items it gates: **BL-61** (cross-set batch), **BL-62/BL-63** (card-image preview + add/won't-add cue), **BL-64** (inventory-feedback copy), **BL-67** (provenance-default bug — may be deleted if the rethink supersedes it). May then warrant a Claude Designer pass for the modal layout, gated on this analysis.
+
+**Status:** 🔲 Open — v1.0 spike (Jeremy-owned analysis; spawns BL-61/62/63/64/67)
 
 ---
 
@@ -549,7 +495,7 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Definition of done:** Script exists; successfully upserts a new set into a populated production catalog; existing records are unaffected; instructions documented for the "add a new set" procedure.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — largely delivered by BL-29. `run_swuapi_ingestion.py` already upserts new sets by `swuapi_id` against a populated catalog. The residual "operational procedure for applying a new set" lives in BL-36 (new-set onboarding considerations); no separate dedicated-upsert-script item is needed.
 
 ---
 
@@ -563,7 +509,7 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Definition of done:** Export endpoint returns a downloadable file; import endpoint accepts a file and upserts inventory quantities; both are authenticated and tenant-scoped; at least one test each for export shape and import idempotency.
 
-**Status:** 🔲 Open
+**Status:** ✅ Retired 2026-06-27 — absorbed into BL-54. Same feature; BL-54 is the v1.0-scoped import/export item (with the decomposition note). Tracking continues under BL-54.
 
 ---
 
@@ -583,13 +529,15 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 ### BL-22: User settings page scaffolding
 
-**What:** A new "Settings" entry in the account menu (under the existing user email/logout area in `Header.tsx`), routing to an empty Settings page/container. No real settings logic yet — this item only establishes where settings UI will live.
+**What:** *(Revised 2026-06-27 — absorbs NEW-11.)* Replace the current inline "logged-in email + logout" line (`Header.tsx`) with a **top-right user-status menu** — an avatar/initials circle (à la Claude.ai's profile circle, but top-right) that opens a dropdown. The dropdown is the container/entry point for user-level options: **logout**, **change password** (BL-23), **edit inventory limits** (BL-25), with room for future options. The account email is surfaced *within* the menu rather than inline.
 
-**Why:** Both BL-23 (change password) and BL-25 (inventory limit overrides UI) need a settings surface to render in. Splitting this out lets it ship independently and keeps the UI-infra concern separate from the feature logic that will populate it.
+**Why:** Both BL-23 and BL-25 need a home, and the inline email+logout line is being replaced by the more conventional top-right account menu. This item establishes that menu as the shared surface those features plug into. Standard pattern → low Claude Designer value.
 
-**Definition of done:** Account menu has a "Settings" entry; navigating to it renders an empty (or placeholder) Settings page; existing nav (Catalog/Inventory/Decks) and the account menu's other items (email display, logout) are unaffected.
+**Open question (deferred by Jeremy):** do the menu items navigate to a **Settings page** (menu = shortcut) or does each **open its own modal** from the dropdown? He may try options in Claude Designer. Resolution determines whether this stays a "settings page" model or becomes per-item modals.
 
-**Status:** 🔲 Open
+**Definition of done:** the inline email+logout line is replaced by a top-right avatar menu; the menu contains at least logout, plus entry points for BL-23/BL-25 as those land; the account email is shown within the menu; existing primary nav is unaffected.
+
+**Status:** 🔲 Open — v1.0 (absorbs NEW-11; supersedes the original "Settings entry under email/logout" framing)
 
 ---
 
@@ -853,7 +801,7 @@ Direct visual comparison (Rey - Keeping the Past, 6 RQ-tier variants; confirmed 
 - **Catalog** bootstrap on a fresh DB = `run_swuapi_ingestion --file backend/app/tests/fixtures/swuapi_export_2026-06-21.json` (the committed 13MB export is the swuapi-sourced "seed"). Whether to auto-run it on startup vs. keep it manual is a small deferred decision — **ADR pending**, not blocking.
 - **Inventory** = a one-time `regenerate_inventory` load into prod, **deferred by Jeremy** (2026-06-25) — no longer needed for personal feature-testing; he's confident in the functionality and doesn't need his real collection in prod yet.
 
-**Status:** 🟢 Core delivered (2026-06-25) — schema/ingestion (steps 1-3) live in prod; remap tool + self-contained §8.5 reload test + `apply_seed` fix shipped; static seed/snapshot file generation dropped as throwaway (reframe above); frontend catalog/inventory/popups (steps 5-6) shipped in the 2026-06-21 redesign. **Remaining threads are tracked as their own items:** one-time prod inventory load (deferred), catalog-bootstrap ADR, BL-32 (stamp consolidation UI), BL-36/BL-37 (ongoing sync), BL-30 (bulk-add), BL-54 (import/export, which retires this scaffolding).
+**Status:** ✅ Resolved 2026-06-27 (2026-06-27 reconciliation) — core delivered 2026-06-25 — schema/ingestion (steps 1-3) live in prod; remap tool + self-contained §8.5 reload test + `apply_seed` fix shipped; static seed/snapshot file generation dropped as throwaway (reframe above); frontend catalog/inventory/popups (steps 5-6) shipped in the 2026-06-21 redesign. **Remaining threads are tracked as their own items:** one-time prod inventory load (deferred), catalog-bootstrap ADR, BL-32 (stamp consolidation UI), BL-36/BL-37 (ongoing sync), BL-30 (bulk-add), BL-54 (import/export, which retires this scaffolding).
 
 ---
 
@@ -1021,6 +969,347 @@ This is real, not hypothetical — the captured export has both shapes for the s
 
 ---
 
+## App Review Items — v1.0 Redesign & Beyond (added 2026-06-27)
+
+These items came out of a structured app-review + prioritization session (2026-06-26/27, Opus). Unlike the legacy Tier 1–6 grouping above, they're organized by **epic** and tagged with a **target milestone** (v1.0 / v1.1 / later) — reflecting the move to a milestone model + GitHub Issues for execution tracking (see Open Question A, now resolved). Fine-grained status lives in GitHub Issues; these entries are the durable narrative + decisions. Architectural decisions are captured as ADRs in `docs/decisions/`.
+
+### Epic: Catalog/Inventory Unification
+
+#### BL-56: Unify Catalog & Inventory into one list (supersedes BL-17)
+**Target:** v1.0 · **Epic:** Unification · **Area:** catalog/auth · **Type:** feature
+
+**What:** Collapse the separate Catalog and Inventory tabs into a single list.
+- **Anonymous visitor:** sees the existing catalog list as-is, with a light prompt to log in / create an account to manage inventory.
+- **Authenticated user:** the *same* list with inventory + playset columns inserted to the right of the card name (the position they occupy in today's Inventory tab), plus the completion calculations and the Add Cards button.
+- One table structure; inventory columns conditionally rendered by auth state — *additive columns, not a separate view*.
+
+**Why:** The two-tab split is unnecessary — catalog and inventory are the same card list viewed with/without ownership data. One list is simpler and makes the public-catalog/conversion story cleaner.
+
+**Inherits from BL-17 (superseded):** the access model is unchanged and authoritative — public catalog reads, auth-gated inventory + mutations, the tenant-less catalog DB session (RLS fail-safe), and the anonymous value-prop gate. BL-56 replaces only BL-17's two-tab UI.
+
+**Not a Claude Designer candidate** (confirmed twice) — it's column insertion on the existing view, not a net-new layout.
+
+**Open question:** variant button / hover-over position in the anonymous vs. authenticated view (or both) — undecided.
+
+**Related:** BL-57 (value-prop popup), BL-59 (remove Decks tab), BL-60 (owned/playset toggles), BL-44 (perf, same view), BL-70 (filters, same view).
+
+**Definition of done:** a single unified list replaces the Catalog/Inventory tabs; anonymous sees catalog + login prompt; authenticated sees inventory/playset columns + completion + Add Cards; access model matches BL-17's decisions; no regression in filtering or inventory editing.
+
+**Status:** 🔲 Open — v1.0 (foundational; the other view items sit on it)
+
+---
+
+#### BL-57: "Create an account & here's what you get" value-prop popup
+**Target:** v1.1 · **Epic:** Unification · **Area:** auth · **Type:** feature · **Designer candidate**
+
+**What:** A value-prop popup with screen snippets + blurbs describing the inventory-management experience, shown to anonymous users as a conversion surface (a richer version of the inline login nudge).
+
+**Why:** Convert browsers to signups by showing what tracking inventory gives them. The inline nudge (BL-60) is the light touch; this is the full pitch on intent.
+
+**Designer candidate** (per rubric): net-new, purely visual marketing surface, wide-open solution space — a good batch partner for a Claude Designer session.
+
+**Related:** BL-56 (unification), BL-60 (the inert-toggle click can open this popup).
+
+**Definition of done:** an anonymous user can open a compelling value-prop popup (e.g. via the login nudge / inert-toggle click) that explains inventory management and routes to sign up / log in.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-58: Revisit default column widths
+**Target:** later · **Epic:** Unification · **Area:** catalog · **Type:** chore
+
+**What:** Revisit the catalog table's default column widths.
+
+**Why:** Current defaults aren't ideal. Bundled into BL-56 if that redesign ships as a whole; standalone otherwise.
+
+**Definition of done:** column widths tuned to sensible defaults.
+
+**Status:** 🔲 Open — later (or fold into BL-56)
+
+---
+
+#### BL-59: Remove the Decks tab until the deck feature ships
+**Target:** v1.0 · **Epic:** Unification · **Area:** frontend-shell · **Type:** chore
+
+**What:** Remove the Decks placeholder tab/nav entry; reinstate when the deck feature is built.
+
+**Why:** It's an empty placeholder; removing it cleans up the nav (especially as the Catalog/Inventory tabs merge under BL-56). The deck feature itself is a forthcoming, separately-scoped item (Jeremy will define it).
+
+**Definition of done:** Decks tab/nav entry removed; no dead route; reinstated when the deck feature lands.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-60: "Show only cards I own" toggle (+ anonymous teaser)
+**Target:** v1.0 · **Epic:** Unification · **Area:** catalog/inventory · **Type:** feature
+
+**What:** Add a "show only cards I own" toggle (a my-collection filter) to the unified list. This toggle **and** the existing playset toggle are **shown for anonymous users too**, but **inert** (no inventory to act on) — a conversion incentive.
+
+**Nudge treatment:** layered — a quiet persistent inline line (italic/muted, e.g. "Log in to track your collection") near the toggles for the passive nudge; clicking an inert toggle opens the value-prop popup (BL-57) for motivated users. Passive state stays light; deliberate click gets the full pitch.
+
+**Why:** Gives authenticated users a quick my-collection view (replacing the separation the old Inventory tab provided); the inert-but-visible toggles tease the value to anonymous users.
+
+**Related:** BL-56 (unified list this lives on), BL-57 (popup the click opens).
+
+**Definition of done:** authenticated users can toggle to owned-only; anonymous users see both toggles inert with the light nudge + popup-on-click.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+### Epic: Add Cards (gated by the BL-46 behavior spike)
+
+#### BL-61: Add Cards — preserve batch across set changes (cross-set batch)
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards · **Type:** bug/behavior · **Gated by:** BL-46 spike
+
+**What:** Changing the selected set in the Add Cards modal must be **non-destructive** — the already-entered batch persists and the user can keep adding cards from the newly selected set. A single batch spans multiple sets until commit. The chip list **and** the verification step **show the set and group by set**.
+
+**Current:** changing set deletes/drops the entered batch.
+
+**Why:** Building a multi-set batch in one session is natural; losing it on set change is a real friction bug.
+
+**Definition of done:** switching sets preserves the batch; a batch can contain cards from multiple sets; chip list + verification group by and label the set.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-62: Add Cards — live card-image preview on entry
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards · **Type:** feature · **Designer candidate** · **Gated by:** BL-46 spike
+
+**What:** Display the card image for the entered card number as a **live preview as the number is typed**. Front only. Jeremy is open to reworking the modal layout to accommodate it.
+
+**Data note:** image URLs already exist (`card_variants.front_image_url`), so this is display/layout, not a data gap.
+
+**Open question:** which image when a card number resolves to multiple variants (resolver ambiguity) — **depends on the BL-46 resolver rethink** (Jeremy is exploring a different experience).
+
+**Definition of done:** entering a card number shows its front image live; the layout accommodates it; ambiguity behavior follows BL-46's resolved experience.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-63: Add Cards — use the card image as the add/won't-add cue (extends BL-62)
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards · **Type:** feature · **Depends:** BL-62 · **Gated by:** BL-46 spike
+
+**What:** Replace the green/red circle indicator with the **card image** as the cue: **addable** → image unaltered / full color; **won't be added** → dulled colors or black & white (desaturated).
+
+**Open question:** what counts as "won't be added" — at cap only, or also invalid card number / ambiguous? (may warrant distinct cues).
+
+**Accessibility:** image-state alone is a weak signal (colorblind users; doesn't say *why*) — pair with a small text/icon companion (e.g. the BL-64 copy, or "invalid number"), not saturation alone.
+
+**Definition of done:** add/won't-add state is conveyed via the card-image treatment + a text/icon companion; the green/red circle is removed.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-64: Add Cards — clearer live inventory feedback (replace "Headroom: 1 of 1")
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards/inventory · **Type:** feature · **Gated by:** BL-46 spike
+
+**What:** Replace the unintuitive "Headroom: 1 of 1" with readable live feedback, e.g. **"Owned 1 → 2 (max 3)"**. Handle edge states: at cap → "Owned 3 (max 3)" (disabled); once soft-cap exists → over cap → "Owned 3 → 4 (over limit)".
+
+**Dependency note:** the "max" value and over-limit behavior tie to **BL-24** (per-variant tenant-configurable limits) and **BL-35** (hard vs. soft cap) — write the copy to accommodate a variable max and an over-limit state even though max is hardcoded 3 today.
+
+**Definition of done:** Add Cards shows owned→projected vs. cap in intuitive copy; edge states handled; copy not hardcoded to "3".
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-65: Add Cards — remove extraneous helper copy
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards · **Type:** chore
+
+**What:** Remove the bottom "Enter a card number to begin" text and the helper/subtitle text directly below the "Add Cards" title.
+
+**Why:** UI cleanup; the flow is intuitive enough without them (a help affordance — BL-66 — can carry guidance instead).
+
+**Definition of done:** both copy elements removed.
+
+**Status:** 🔲 Open — v1.0 (independent of the BL-46 spike; safe quick win)
+
+---
+
+#### BL-67: Add Cards — provenance-default bug (JTL #1 → Retail despite collision)
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards (resolver) · **Type:** bug · **Claim:** reported, not yet code-verified
+
+**What:** Reported repro: select set JTL, enter card number 1 → provenance auto-sets to **Retail**, even though other JTL cards exist at card_number 1 (e.g. Weekly Play). An ambiguous card number shouldn't silently default to one provenance.
+
+**Standalone, with a contingency (Jeremy):** kept standalone for now. If the BL-46 resolver rethink is done first, **BL-67 can be deleted** (no longer valid); if the fix is done and the rethink deferred, the fix stands. Order undecided. Verify against `addCardsResolver.ts` + variant data when actioned.
+
+**Definition of done:** ambiguous card numbers don't silently default provenance (or this item is deleted as superseded by BL-46).
+
+**Status:** 🔲 Open — v1.0 (may be retired by BL-46)
+
+---
+
+### Epic: Filters
+
+#### BL-70: Cascading / faceted filters
+**Target:** v1.0 · **Epic:** Filters · **Area:** catalog (FilterPanel) · **Type:** feature
+
+**What:** Filter dropdowns show only values that would **further refine** the current result set (e.g. set=JTL → finish shows only finishes present in JTL). **Full multi-directional faceting** — each filter's options reflect all *other* active selections.
+- **Hide** invalid values by default, **plus a toggle** at the top of the filter panel to "show all values (invalids disabled/greyed)."
+- **Dead-end-prevention rule:** a filter's available values = apply all *other* filters, **ignore its own current selection** (so you can always change/broaden it). This makes the stale/zero state impossible for single-select filters.
+- **Multi-select filters (keywords, traits) are OR.** A previously-selected value that becomes invalid after another filter change is **kept visible but flagged inert** (greyed / "(0)" / removable) and reactivates when the conflict clears — never silently dropped.
+
+**Architecture:** filtering is client-side (all data in memory), so computing facet values is cheap — fits the BL-44 client-side perf approach; no backend change.
+
+**Definition of done:** dropdowns faceted per the rules above; the show-all toggle works; inert stale multi-select values handled as described.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-71: Per-filter AND/OR toggle for multi-select filters (keywords, traits)
+**Target:** later · **Epic:** Filters · **Area:** catalog (FilterPanel) · **Type:** feature · **Depends:** BL-70
+
+**What:** A **per-filter** toggle (keywords and traits each independently) switching combine mode between **OR** (BL-70 default, match ANY) and **AND** (match ALL).
+
+**Standalone because AND reintroduces the zero-result trap** OR doesn't:
+- **Faceting (addable values) in AND mode:** only offer values that **co-occur** with the cards already matching all current selections (intersection-aware), so adding can't yield zero.
+- **Cross-filter stale → zero:** if a change makes the AND-combo empty, show a clear empty state ("No cards match all selected traits in JTL") with an easy relax (remove a value / switch to OR).
+- Default = OR.
+
+**Definition of done:** per-filter AND/OR toggle; AND-mode faceting + empty-state handling per above.
+
+**Status:** 🔲 Open — later
+
+---
+
+#### BL-72: Filter layout — stop unnecessary elongation; wrap only when content won't fit
+**Target:** v1.0 · **Epic:** Filters · **Area:** catalog (FilterPanel.css) · **Type:** bug/chore
+
+**What:** Filters should hold a **natural content-based width** and only **wrap/stack** when the available width genuinely can't fit them — not stretch elongated to fill.
+
+**Repro:** 32" monitor, half-width app → filter fields render extremely wide, then stack awkwardly.
+
+**Likely fix:** drop `flex-grow` stretching; size filters to content (`fit-content` / sensible min-width) + `flex-wrap` only when they don't fit. Confirm against `FilterPanel.css` when actioned.
+
+**Definition of done:** filters keep a natural width and wrap only when necessary; no unnecessary elongation on resize.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+### Epic: Help affordance
+
+#### BL-66: Reusable help affordance ("?" info bubble)
+**Target:** v1.1 · **Epic:** Help · **Area:** frontend-shell (cross-cutting) · **Type:** feature
+
+**What:** One **reusable** help component (a "?" hint) applied consistently app-wide, supporting a **`trigger` prop (hover | click)** with content-driven defaults — hover/focus for short one-liners, click popover for longer/richer content (and touch-friendly).
+- **First use:** an info bubble next to the Add Cards title with a "how it works" blurb (click, multi-sentence) — added **after** the Add Cards UI is finalized (BL-46 + Add Cards items).
+- Other locations added opportunistically (no upfront enumeration).
+- A11y: keyboard-focusable, dismissible, `aria-describedby`.
+
+**Infrastructure link:** shares positioning concerns with **BL-45** (portal-based popover positioning) — a robust help-popover wants that portal/edge-detection foundation.
+
+**Why:** keep the UI intuitive with guidance *available* (not required); one component for consistency.
+
+**Definition of done:** a reusable hover/click help component exists; the Add Cards "how it works" instance uses it; a11y handled.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-69: Info bubble on the completion calculations
+**Target:** v1.1 · **Epic:** Help · **Area:** inventory/catalog · **Type:** feature · **Depends:** BL-66
+
+**What:** An info bubble (instance of the BL-66 reusable component) on the completion calculations, explaining that completion is computed against the catalog subset **resulting from the current filter selections** (the denominator changes with filters).
+
+**Why:** clarifies a genuine confusion point — completion % shifting as filters change.
+
+**Definition of done:** completion calcs carry a help bubble explaining the filter-based denominator.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+### Epic: Card Detail Popup
+
+#### BL-74: Card detail popup — layout for many-variant cards
+**Target:** v1.1 · **Epic:** Card Detail Popup · **Area:** catalog (CardDetailPopup) · **Type:** feature/UX · **Designer candidate**
+
+**What:** Fix the popup layout for cards with many variants (e.g. JTL Black One), where variant buttons stack below the image and scrolling to pick one pushes the image out of view.
+
+**Root cause:** single-column layout + one shared scroll context.
+**Recommended fix:** keep the image visible (sticky/pinned, or a two-column layout using the dead space below the detail fields) while the variant list scrolls in its own bounded region.
+
+**On grouping:** BL-31 already consolidates by `stamp_group`; further shortening is BL-40 (group-by-art) — but many-finish cards stay long, so the layout/scroll fix is the primary lever, grouping a complement. **BL-52** (cross-set printings) will add more to this popup later — more reason to fix layout now.
+
+**Definition of done:** the image stays visible while variants scroll independently; usable for high-variant-count cards.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-75: Card detail popup — "Base Set (Sub-set)" display for non-base-set variants
+**Target:** v1.1 · **Epic:** Card Detail Popup · **Area:** catalog (CardDetailPopup) · **Type:** feature (display)
+
+**What:** When a selected variant comes from a non-base set, show the Set value as **"<Base Set> (<sub-set/provenance>)"** — e.g. JTL Director Krennic, Weekly Play variant → "Jump to Lightspeed (Weekly Play)". Base-set variants show just "Jump to Lightspeed". **Popup only** for now.
+
+**Data source:** base set name from `base_cards.set`; parenthetical = the variant's channel/provenance label (derived per BL-27 §10.4 from `source_set_code` + variant_type). Confirm: channel label vs. container set's own display name. Edge: BL-41 (base-set tournament-tier → Retail) may affect the parenthetical for those rows.
+
+**Definition of done:** non-base-set variants display "Base Set (Sub-set)" in the popup; base-set variants unchanged.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+### Epic: Performance & Views (new view/image items; perf *approach* lives in BL-44)
+
+#### BL-73: Gallery view — toggle table ↔ grid of card images
+**Target:** later · **Epic:** Performance & Views · **Area:** catalog · **Type:** feature · **Designer candidate**
+
+**What:** A toggle swapping the table for a **grid of card images** (gallery), optionally with some fields beside/beneath each image. The grid honors the **same filter + sort** as the table; cards laid out in sort order left→right, top→bottom.
+- **Click the card image → existing CardDetailPopup.**
+- **Logged in:** show inventory info below each card; **clicking the inventory info → the existing inventory popup** (per-variant editing; relates BL-32). Two click targets per card.
+
+**Perf:** loads many images at once. Mitigations: **lazy-loading** (works even with today's hotlinked CDN; makes it viable), **thumbnails** (needs BL-76 self-hosting), **virtualization** (BL-44). Not blocked on BL-76; lazy-load + virtualization make it work, thumbnails make it great.
+
+**Open (minor):** exact fields under image; card sizing / cards-per-row; whether the table↔gallery toggle persists.
+
+**Definition of done:** a gallery toggle renders a filtered/sorted card grid with the two click targets; images load performantly.
+
+**Status:** 🔲 Open — later
+
+---
+
+#### BL-76: Card image hosting strategy / DR (self-host vs. hotlink official CDN)
+**Target:** v1.1 · **Epic:** Performance & Views · **Area:** platform (+ sync-ingestion, catalog) · **Type:** spike→feature
+
+**What:** Decide and (likely) implement self-hosting of card images instead of hotlinking the official SWU CDN.
+
+**Finding (code-verified):** the app stores image **URLs**, not binaries; URLs point to the **official SWU CDN** (`https://cdn.starwarsunlimited.com/...`), not swuapi. The frontend renders `<img src=...>` directly, so the browser hits that CDN every render → a hard external dependency on an asset host we don't control (CDN down / URL change / hotlink-block → all images break at once; mild ToS concern at scale). Many variants share art (ingestion tracks duplicate image URLs), so distinct images ≪ 8,353 → storage is modest.
+
+**Options:** (1) status quo hotlink; (2) **self-host** to a GCS bucket + CDN (DR resilience, insulation from their changes, enables webp/thumbnails — synergy with BL-44 perf and BL-73 gallery, dedupe); (3) hybrid lazy cache.
+**Claude lean:** self-host (option 2) for a real multi-user product. Relates to **BL-21** (DR). Full pros/cons discussion deferred.
+
+**Definition of done:** a decision (ADR) and, if self-hosting, images served from our own storage with thumbnails; ingestion mirrors images.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+### Epic: Visual / Misc
+
+#### BL-68: SWU-styled banner / section-separator image
+**Target:** v1.1 · **Epic:** Visual/Misc · **Area:** frontend-shell · **Type:** feature/asset · **Designer candidate**
+
+**What:** A banner / section-separator line styled to match the official Star Wars Unlimited site (same design lineage as the existing button shape). Placement: top of page, below the tabs/nav, above the completion calculations.
+
+**History:** couldn't recreate it in Claude Designer before; retry now that designer has improved — a genuine designer-asset attempt.
+
+**Notes:** placement may shift once BL-56 (unified list) / BL-59 (Decks removal) rework the nav — finalize after. Alternative if designer still can't produce it: source/extract from the official site (licensing caveat). Should scale full-width.
+
+**Definition of done:** a SWU-styled full-width separator renders in the intended position.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.
@@ -1029,7 +1318,12 @@ These are conversations to pick back up, not work items — recorded so the *rea
 
 Jeremy's instinct is to use GitHub Issues for execution-tracking (linked to PRs via "Fixes #N"), but the value of an issue tracker is more aligned to multi-developer environments than this currently-solo project.
 
-**How to apply:** For now, this file (`SWU_Backlog.md`) is the single source of truth for both narrative context and status (`🔲 Open` / `✅ Resolved`). Revisit if/when collaborators join, or if this file grows unwieldy (rough threshold: >20 open items, or items frequently need their own discussion threads).
+**✅ Resolved 2026-06-27 — adopt GitHub Issues in execution-tracking mode (a hybrid, not a migration).** Both triggers from the original note fired: >20 open items, and Jeremy plans a two-developer pipeline experiment. The division of labor:
+- **`SWU_Backlog.md` = narrative source of truth** — the durable "why" + decision history per item, and *the only work registry* (everything points to a BL-ID, per CLAUDE.md).
+- **GitHub Issues + Projects board = execution/status** (status, assignee, `type:`/`area:`/`priority:` labels, milestone). Each issue points back to its BL-ID; **status is not duplicated in the backlog** — a per-item Status line records only resolved/superseded for the historical record.
+- **ADRs (`docs/decisions/`) = heavyweight architectural decisions**, referenced by the relevant BL entries.
+
+The label scheme, milestones (`two-dev experiment`, `v1.0`), and the linked repo Project board were created 2026-06-27. The legacy Status Tables near the top of this doc are superseded by the board for live status (their handling is the one open reconciliation step — see the session summary).
 
 ### B. ADR adoption for "Selection & Comparison" decision records
 

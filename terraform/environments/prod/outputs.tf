@@ -16,15 +16,15 @@ output "workload_identity_provider" {
 
 output "backend_repository_url" {
   description = "Base path for backend image tags, e.g. <this>/api:<tag>"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.backend.repository_id}"
+  value       = module.app.backend_repository_url
 }
 
 output "cloud_sql_connection_name" {
-  value = google_sql_database_instance.main.connection_name
+  value = module.app.cloud_sql_connection_name
 }
 
 output "backend_url" {
-  value = google_cloud_run_v2_service.backend.uri
+  value = module.app.backend_url
 }
 
 output "custom_domain_required_dns_updates" {
@@ -42,10 +42,10 @@ output "custom_domain_state" {
 
 output "firebase_web_app_api_key" {
   description = "Firebase Web App API key (P5 stage 4 prerequisite), passed to the frontend build as VITE_FIREBASE_API_KEY."
-  value       = data.google_firebase_web_app_config.default.api_key
+  value       = module.app.firebase_web_app_api_key
 }
 
 output "firebase_web_app_auth_domain" {
   description = "Firebase Web App auth domain (P5 stage 4 prerequisite), passed to the frontend build as VITE_FIREBASE_AUTH_DOMAIN."
-  value       = data.google_firebase_web_app_config.default.auth_domain
+  value       = module.app.firebase_web_app_auth_domain
 }

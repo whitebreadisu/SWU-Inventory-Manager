@@ -6,10 +6,10 @@ module "app" {
   backend_image_tag = var.backend_image_tag
 
   # Dev-specific overrides
-  sql_instance_name = "swu-dev-pg"
-  sql_tier          = "db-f1-micro"
+  sql_instance_name   = "swu-dev-pg"
+  sql_tier            = "db-f1-micro"
   deletion_protection = false # dev environment must be tear-down-able
-  environment_name  = "development"
+  environment_name    = "development"
 
   notification_email                = "jeremy.braden@gmail.com"
   notification_channel_display_name = "Jeremy (dev)"

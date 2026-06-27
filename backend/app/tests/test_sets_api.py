@@ -35,9 +35,15 @@ class TestListSets:
         codes = {s["code"] for s in client.get("/api/sets").json()}
         assert {"SOR", "SHD", "TWI", "JTL", "LOF", "SEC", "LAW"} <= codes
 
-    def test_sets_returned_in_canonical_release_order(self, client):
-        codes = [s["code"] for s in client.get("/api/sets").json()]
-        assert codes == ["SOR", "SHD", "TWI", "JTL", "LOF", "SEC", "LAW"]
+    def test_sets_returned_in_release_date_order(self, client):
+        # Ordering must be by release_date ASC so new sets (added via ingestion
+        # in any insertion order) appear in correct chronological position.
+        # The previous ORDER BY id worked in prod only because sets happened to
+        # be inserted chronologically; a fresh dev DB seeded all-at-once exposed
+        # the bug (found via dev smoke test in BL-43 Phase 7).
+        sets = client.get("/api/sets").json()
+        dates = [s["release_date"] for s in sets if s["release_date"] is not None]
+        assert dates == sorted(dates)
 
 
 class TestGetSetByCode:

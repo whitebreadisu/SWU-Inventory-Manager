@@ -1,6 +1,6 @@
 # SWU Platform Roadmap: Enterprise & Multi-Tenant Transformation
 
-**Version 1.1 | June 2026** — slimmed 2026-06-15 per `SWU_Backlog.md` BL-2; see `SWU_Platform_Spec.md` for the as-built reference this roadmap now cross-references.
+**Version 1.2 | June 2026** — slimmed 2026-06-15 per `SWU_Backlog.md` BL-2; **§7 (Agentic Platform Evolution) added 2026-06-27** as the post-P7 platform track. See `SWU_Platform_Spec.md` for the as-built reference this roadmap cross-references.
 
 ---
 
@@ -13,6 +13,8 @@ Like the application itself, this effort is dual-purpose: (1) produce a real pro
 **Application feature work is paused for the duration of P1–P7.** This includes S5 (Official Card Images) and the unscoped Decks section. Once the platform reaches a stable state at the end of P7, feature work resumes — and becomes the first "real" features to flow through the now-mature CI/CD pipeline.
 
 **P7 completed 2026-06-14** — all four stages (Dependabot, concurrency-safe upserts, expanded RLS/coverage tests, OWASP/secrets review) done; see the Phase Table and Decision Log below. The platform has reached that stable, audited state — feature work (S5, Decks) is unpaused as of this point.
+
+**Post-P7, a new platform track opened: §7 (Agentic Platform Evolution, 2026-06-27)** — evolving the platform toward agentic engineering workflows, with a cloud dev environment (BL-43) as its first stage.
 
 **Since P7, `SWU_Platform_Spec.md` was created** (`SWU_Backlog.md` BL-1) as the as-built platform reference — auth/tenancy, CI/CD, Terraform, observability, and security, with file/line references precise enough to verify against the code. This document remains the phase-by-phase **history and status tracker**: read it for *when and why* a decision was made; read `SWU_Platform_Spec.md` for *how the system works now*. Section 5 below was condensed accordingly (BL-2) — each resolved decision now points to its as-built reference rather than repeating it.
 
@@ -95,6 +97,50 @@ Decided 2026-06-13, ahead of P3. Jeremy plans to build 2-5 additional apps over 
 - **E**: `swu.jeremybradenapps.com` mapped as a custom domain on `swu-prod`'s Hosting site — live at `https://swu.jeremybradenapps.com`; the portal's landing page links here
 
 Nothing from this cross-cutting work blocks P3 or any later P-phase.
+
+---
+
+## 7. Agentic Platform Evolution (post-P7 track)
+
+**Added 2026-06-27.** A new platform track — the natural successor to P1–P7 — biased toward **agentic engineering workflows**: humans set policy and review; agents execute. Unlike P1–P7 (a fixed phase sequence), this is a *direction* with staged increments, each justified by safety and value, not autonomy for its own sake. Concepts are taught in `learning_guide/SWU_Learning_Guide_CD_Environments_and_Release_Gates_2026-06-27.md` and `learning_guide/SWU_Learning_Guide_Agentic_Workflows_and_Autonomy_2026-06-27.md`; heavyweight decisions are ADRs (`docs/decisions/0006`, `0007`, …).
+
+### 7.1 Thesis
+The platform is evolving toward a model where **humans set policy and review; agents execute** — progressing from supervised agents (work up to a PR / a gate) toward agents that ship low-risk changes within policy while humans handle judgment, design, and exceptions. The operating pattern is **Opus orchestrates, Sonnet builds**: an Opus session plans, spawns Sonnet implementation agents, reviews their work for quality and safety, and assembles approval-ready evidence; the human is the final approver.
+
+### 7.2 Governing principles (the "laws")
+1. **Spec quality is the autonomy ceiling.** An agent runs autonomously only as far as the DoD is crisp and machine-verifiable. Raise the ceiling by writing better specs + verification, not by waiting for better models.
+2. **A gate decouples agent-scope from prod-risk.** An enforced release gate lets you grant *more* agent autonomy without letting *more* risk reach users — the two dials turn independently.
+3. **You can thin the gate only as fast as detect + undo improves.** A lighter gate is tolerable only with fast detection (observability/alerting) and cheap reversal (rollback).
+4. **A tier or gate earns its place by catching a failure class nothing else catches.** Don't add environments/gates by ladder-completion instinct.
+5. **Build once, promote the same artifact.** Never rebuild per environment; the tested artifact and the shipped artifact must be the same bytes.
+6. **plan-safe, apply-gated.** Agents may run `terraform plan` (read-only) freely; `terraform apply` to cloud infra is always human-gated. The plan *is* the approval artifact.
+7. **Single source of truth, point don't copy.** Narrative lives once (backlog); execution status lives once (Issues/board); decisions live once (ADRs). Each layer points, never duplicates.
+
+### 7.3 Current enablers & gaps
+**Already built:** the P1–P7 CI/CD pipeline; test discipline (coverage floor + port/replace/retire rule); keyless WIF auth; P6 observability (the *detection* half of principle 3); Cloud Run revision rollback (the *undo* half); the Opus/Sonnet pattern; and the hybrid work registry (backlog + GitHub Issues/board).
+
+**Missing (to climb the autonomy spectrum):** a cloud **dev environment** (BL-43, *current priority*); a **build-once/promote pipeline with a gated prod release**; **automated rollback + tighter alerting**; a **risk-tiered gating policy**; and eventual **automated prod-fidelity checks** (canary / staging, added only when triggers fire).
+
+### 7.4 Staged roadmap (direction, not commitments)
+| Stage | State |
+|-------|-------|
+| **0 — Supervised-to-PR** *(now)* | Agents build to an open PR; human reviews/merges. Tier A/B v1.0 issues are the proving ground. |
+| **1 — Dev environment** | Stand up `swu-dev` (new project; sandbox left dormant for its original experimentation intent). Agents deploy to dev and verify on a live URL. **= BL-43, epic #63 + phases #64–#70.** |
+| **2 — Build-once + promote + prod gate** | One artifact built on merge to `main`, auto-deployed to dev, promoted to prod behind a GitHub Environment approval. Agent assembles the approval packet; human approves. |
+| **3 — Risk-tiered gating** | Low-risk change classes auto-promote on green CI + dev smoke; the human gate fires only for high-blast-radius changes (auth, migrations, infra). |
+| **4 — Automated prod-fidelity + rollback** | Canary (Cloud Run traffic-split) and/or staging substitute for the human gate on routine changes; fast automated rollback catches misses. |
+| **5 — Autonomous within policy** *(aspirational)* | Human moves from "approve each release" to "set policy and monitor." |
+
+### 7.5 Open decisions
+- **Branch/promotion mechanics** — exact GitHub Environments config, where the approval lives, which branch may deploy to prod (refined during BL-43 Phase 6).
+- **Risk-tier classification** — what counts as "low-risk auto-promotable" vs. "must review" (Stage 3).
+- **When canary/staging enters** — the trigger conditions in ADR-0007 / the CD learning guide §5.
+
+### 7.6 Relationships
+- **BL-43** (cloud dev environment) is Stage 1 and the immediate work — tracked as **epic #63** with phase sub-issues **#64–#70** (milestone `two-dev experiment`).
+- **ADR-0006** (dedicated `swu-dev`) and **ADR-0007** (build-once/promote) are this track's foundational decisions.
+- The **Sandbox Infrastructure Exploration** row in the Phase Table (§3) is the dormant `swu-sandbox` slot ADR-0006 preserves — this track deliberately does *not* repurpose it.
+- **Platform-generator idea** (future): extracting the shared Terraform module in BL-43 Phase 2 is the "hand-extract before automating" validation step for a future reusable internal developer platform.
 
 ---
 

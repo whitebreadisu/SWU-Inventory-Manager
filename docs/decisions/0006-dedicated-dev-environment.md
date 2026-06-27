@@ -1,7 +1,7 @@
 # ADR-0006: Stand up a dedicated `swu-dev` cloud environment (new project, not repurposed sandbox)
 
 ## Status
-Accepted — 2026-06-27 (pending implementation; tracked as BL-43, Stage 1 of `specification_documents/Agentic_Platform_Evolution.md`)
+Accepted — 2026-06-27 (pending implementation; tracked as BL-43, Stage 1 of `SWU_Platform_Roadmap.md` §7)
 
 ## Context
 The delivery pipeline today is **local → prod only** (`SWU_Platform_Roadmap.md`). There is no deployed cloud tier between the local Docker stack and production, so an entire class of failures is only ever caught in prod: managed Cloud SQL behavior (IAM-authenticated proxy connections, `alembic upgrade head` on cold start), Cloud Run cold starts, the real Firebase Auth / Identity Platform (not the local emulator), RLS/tenancy under pooled connections, and Secret Manager wiring. A cloud **dev** environment exists to catch that class before users do, and is the prerequisite for letting agents validate work somewhere realistic before prod (Stage 1 of the agentic roadmap).
@@ -29,4 +29,4 @@ Adopt **Option B** — create a new `swu-dev` GCP project for the dev environmen
 - **−** **Bootstrap chicken-and-egg:** the Terraform GCS state bucket must exist *before* the first `terraform init`, so standing up the project needs a small manual/scripted pre-step that Terraform cannot do for itself.
 - **−** Two more projects in the org to keep an eye on (mitigated: dormant sandbox is free and unmanaged).
 
-**Related:** BL-43 (implementation), ADR-0007 (the deploy model that ships to this environment), `specification_documents/Agentic_Platform_Evolution.md` Stage 1, `project_platform_generator_idea` (the shared-module extraction in BL-43 is its validation step).
+**Related:** BL-43 (implementation), ADR-0007 (the deploy model that ships to this environment), `SWU_Platform_Roadmap.md` §7 Stage 1, `project_platform_generator_idea` (the shared-module extraction in BL-43 is its validation step).

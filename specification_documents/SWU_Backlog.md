@@ -1121,6 +1121,92 @@ These items came out of a structured app-review + prioritization session (2026-0
 
 ---
 
+### Epic: Add Cards (gated by the BL-46 behavior spike)
+
+#### BL-61: Add Cards — preserve batch across set changes (cross-set batch)
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards · **Type:** bug/behavior · **Gated by:** BL-46 spike
+
+**What:** Changing the selected set in the Add Cards modal must be **non-destructive** — the already-entered batch persists and the user can keep adding cards from the newly selected set. A single batch spans multiple sets until commit. The chip list **and** the verification step **show the set and group by set**.
+
+**Current:** changing set deletes/drops the entered batch.
+
+**Why:** Building a multi-set batch in one session is natural; losing it on set change is a real friction bug.
+
+**Definition of done:** switching sets preserves the batch; a batch can contain cards from multiple sets; chip list + verification group by and label the set.
+
+**Status:** 🔲 Open — v1.0
+
+---
+
+#### BL-62: Add Cards — live card-image preview on entry
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards · **Type:** feature · **Designer candidate** · **Gated by:** BL-46 spike
+
+**What:** Display the card image for the entered card number as a **live preview as the number is typed**. Front only. Jeremy is open to reworking the modal layout to accommodate it.
+
+**Data note:** image URLs already exist (`card_variants.front_image_url`), so this is display/layout, not a data gap.
+
+**Open question:** which image when a card number resolves to multiple variants (resolver ambiguity) — **depends on the BL-46 resolver rethink** (Jeremy is exploring a different experience).
+
+**Definition of done:** entering a card number shows its front image live; the layout accommodates it; ambiguity behavior follows BL-46's resolved experience.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-63: Add Cards — use the card image as the add/won't-add cue (extends BL-62)
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards · **Type:** feature · **Depends:** BL-62 · **Gated by:** BL-46 spike
+
+**What:** Replace the green/red circle indicator with the **card image** as the cue: **addable** → image unaltered / full color; **won't be added** → dulled colors or black & white (desaturated).
+
+**Open question:** what counts as "won't be added" — at cap only, or also invalid card number / ambiguous? (may warrant distinct cues).
+
+**Accessibility:** image-state alone is a weak signal (colorblind users; doesn't say *why*) — pair with a small text/icon companion (e.g. the BL-64 copy, or "invalid number"), not saturation alone.
+
+**Definition of done:** add/won't-add state is conveyed via the card-image treatment + a text/icon companion; the green/red circle is removed.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-64: Add Cards — clearer live inventory feedback (replace "Headroom: 1 of 1")
+**Target:** v1.1 · **Epic:** Add Cards · **Area:** add-cards/inventory · **Type:** feature · **Gated by:** BL-46 spike
+
+**What:** Replace the unintuitive "Headroom: 1 of 1" with readable live feedback, e.g. **"Owned 1 → 2 (max 3)"**. Handle edge states: at cap → "Owned 3 (max 3)" (disabled); once soft-cap exists → over cap → "Owned 3 → 4 (over limit)".
+
+**Dependency note:** the "max" value and over-limit behavior tie to **BL-24** (per-variant tenant-configurable limits) and **BL-35** (hard vs. soft cap) — write the copy to accommodate a variable max and an over-limit state even though max is hardcoded 3 today.
+
+**Definition of done:** Add Cards shows owned→projected vs. cap in intuitive copy; edge states handled; copy not hardcoded to "3".
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-65: Add Cards — remove extraneous helper copy
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards · **Type:** chore
+
+**What:** Remove the bottom "Enter a card number to begin" text and the helper/subtitle text directly below the "Add Cards" title.
+
+**Why:** UI cleanup; the flow is intuitive enough without them (a help affordance — BL-66 — can carry guidance instead).
+
+**Definition of done:** both copy elements removed.
+
+**Status:** 🔲 Open — v1.0 (independent of the BL-46 spike; safe quick win)
+
+---
+
+#### BL-67: Add Cards — provenance-default bug (JTL #1 → Retail despite collision)
+**Target:** v1.0 · **Epic:** Add Cards · **Area:** add-cards (resolver) · **Type:** bug · **Claim:** reported, not yet code-verified
+
+**What:** Reported repro: select set JTL, enter card number 1 → provenance auto-sets to **Retail**, even though other JTL cards exist at card_number 1 (e.g. Weekly Play). An ambiguous card number shouldn't silently default to one provenance.
+
+**Standalone, with a contingency (Jeremy):** kept standalone for now. If the BL-46 resolver rethink is done first, **BL-67 can be deleted** (no longer valid); if the fix is done and the rethink deferred, the fix stands. Order undecided. Verify against `addCardsResolver.ts` + variant data when actioned.
+
+**Definition of done:** ambiguous card numbers don't silently default provenance (or this item is deleted as superseded by BL-46).
+
+**Status:** 🔲 Open — v1.0 (may be retired by BL-46)
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

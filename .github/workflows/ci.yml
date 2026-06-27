@@ -1,16 +1,21 @@
 name: CI
 
-# P3 stage 1: run the existing pytest/Vitest suites on every push and pull
-# request. Pure CI — no GCP/Terraform involved yet (that's stages 2-3).
+# Build-once / promote model (BL-43 Phase 6, ADR-0007):
 #
-# P3 stage 2: on a push to main, once both test jobs pass, build the backend
-# image and push it to Artifact Registry tagged with the commit SHA.
+# On every push/PR:
+#   backend  — pytest + ruff
+#   frontend — vitest + eslint/prettier/tsc
+#   terraform-fmt — fmt -check across all TF (no GCP auth needed)
 #
-# P3 stage 3: once the image is pushed, run `terraform apply` against
-# terraform/environments/prod, pointing Cloud Run at that SHA-tagged image.
+# On push to main only:
+#   build-and-push   — build image once; push to both dev and prod AR
+#   deploy-dev       — terraform validate + apply dev; build + deploy frontend to swu-dev-jbapps
+#   promote-prod     — environment: production (required reviewer); terraform validate +
+#                      apply prod; build + deploy frontend to swu-prod
 #
-# P3 stage 4: also rebuild the frontend and deploy frontend/dist to Firebase
-# Hosting, so a merge to main updates both backend and frontend.
+# Prod is never touched without a human approval in the GitHub "production"
+# Environment. Dev is auto-deployed on every merge to main.
+
 on:
   push:
   pull_request:
@@ -104,6 +109,19 @@ jobs:
         working-directory: frontend
         run: npx vitest run --coverage
 
+  terraform-fmt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive terraform/
+
+  # ── main-only: build image once, push to both dev and prod AR ──────────────
+
   build-and-push:
     needs: [backend, frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -114,7 +132,8 @@ jobs:
       id-token: write
 
     env:
-      IMAGE: us-central1-docker.pkg.dev/swu-prod/backend/api
+      PROD_IMAGE: us-central1-docker.pkg.dev/swu-prod/backend/api
+      DEV_IMAGE: us-central1-docker.pkg.dev/swu-dev-jbapps/backend/api
 
     steps:
       - uses: actions/checkout@v7
@@ -133,12 +152,19 @@ jobs:
 
       - name: Build image
         working-directory: backend
-        run: docker build -t ${{ env.IMAGE }}:${{ github.sha }} .
+        run: docker build -t ${{ env.PROD_IMAGE }}:${{ github.sha }} .
 
-      - name: Push image
-        run: docker push ${{ env.IMAGE }}:${{ github.sha }}
+      - name: Push to prod AR
+        run: docker push ${{ env.PROD_IMAGE }}:${{ github.sha }}
 
-  deploy:
+      - name: Re-tag and push to dev AR
+        run: |
+          docker tag ${{ env.PROD_IMAGE }}:${{ github.sha }} ${{ env.DEV_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.DEV_IMAGE }}:${{ github.sha }}
+
+  # ── auto-deploy to dev ─────────────────────────────────────────────────────
+
+  deploy-dev:
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -153,31 +179,31 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v3
         with:
-          project_id: swu-prod
-          workload_identity_provider: projects/373324715123/locations/global/workloadIdentityPools/github-actions/providers/github
-          service_account: terraform-ci@swu-prod.iam.gserviceaccount.com
+          project_id: swu-dev-jbapps
+          workload_identity_provider: projects/887823370605/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: terraform-ci@swu-dev-jbapps.iam.gserviceaccount.com
 
       - uses: hashicorp/setup-terraform@v4
 
-      - name: Terraform init
-        working-directory: terraform/environments/prod
+      - name: Terraform init (dev)
+        working-directory: terraform/environments/dev
         run: terraform init
 
-      - name: Terraform apply
-        working-directory: terraform/environments/prod
+      - name: Terraform validate (dev)
+        working-directory: terraform/environments/dev
+        run: terraform validate
+
+      - name: Terraform apply (dev)
+        working-directory: terraform/environments/dev
         run: terraform apply -auto-approve -var="backend_image_tag=${{ github.sha }}"
 
-  frontend-deploy:
-    needs: [backend, frontend, deploy]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v7
+      - name: Read dev Firebase config
+        id: firebase_config
+        working-directory: terraform/environments/dev
+        run: |
+          echo "api_key=$(terraform output -raw firebase_web_app_api_key)" >> "$GITHUB_OUTPUT"
+          echo "auth_domain=$(terraform output -raw firebase_web_app_auth_domain)" >> "$GITHUB_OUTPUT"
+          echo "project_id=$(terraform output -raw project_id)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v6
         with:
@@ -185,9 +211,36 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Build frontend (dev)
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ steps.firebase_config.outputs.api_key }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ steps.firebase_config.outputs.auth_domain }}
+          VITE_FIREBASE_PROJECT_ID: ${{ steps.firebase_config.outputs.project_id }}
+        run: npm run build
+
+      - name: Deploy frontend to dev Firebase Hosting
+        working-directory: frontend
+        run: npx firebase-tools@latest deploy --only hosting --project swu-dev-jbapps --non-interactive
+
+  # ── gated prod promote ─────────────────────────────────────────────────────
+
+  promote-prod:
+    needs: deploy-dev
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
 
       - id: auth
         uses: google-github-actions/auth@v3
@@ -198,14 +251,19 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v4
 
-      - name: Terraform init
+      - name: Terraform init (prod)
         working-directory: terraform/environments/prod
         run: terraform init
 
-      # P5 stage 4 prerequisite: by this point `deploy` has already applied
-      # firebase.tf's google_firebase_web_app, so its real SDK config is in
-      # state -- read it here and inject it into the frontend build below.
-      - name: Read Firebase web app config
+      - name: Terraform validate (prod)
+        working-directory: terraform/environments/prod
+        run: terraform validate
+
+      - name: Terraform apply (prod)
+        working-directory: terraform/environments/prod
+        run: terraform apply -auto-approve -var="backend_image_tag=${{ github.sha }}"
+
+      - name: Read prod Firebase config
         id: firebase_config
         working-directory: terraform/environments/prod
         run: |
@@ -213,7 +271,17 @@ jobs:
           echo "auth_domain=$(terraform output -raw firebase_web_app_auth_domain)" >> "$GITHUB_OUTPUT"
           echo "project_id=$(terraform output -raw project_id)" >> "$GITHUB_OUTPUT"
 
-      - name: Build
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend (prod)
         working-directory: frontend
         env:
           VITE_FIREBASE_API_KEY: ${{ steps.firebase_config.outputs.api_key }}
@@ -221,6 +289,6 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ steps.firebase_config.outputs.project_id }}
         run: npm run build
 
-      - name: Deploy to Firebase Hosting
+      - name: Deploy frontend to prod Firebase Hosting
         working-directory: frontend
         run: npx firebase-tools@latest deploy --only hosting --project swu-prod --non-interactive

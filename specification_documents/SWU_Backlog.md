@@ -1289,6 +1289,89 @@ These items came out of a structured app-review + prioritization session (2026-0
 
 ---
 
+### Epic: Card Detail Popup
+
+#### BL-74: Card detail popup — layout for many-variant cards
+**Target:** v1.1 · **Epic:** Card Detail Popup · **Area:** catalog (CardDetailPopup) · **Type:** feature/UX · **Designer candidate**
+
+**What:** Fix the popup layout for cards with many variants (e.g. JTL Black One), where variant buttons stack below the image and scrolling to pick one pushes the image out of view.
+
+**Root cause:** single-column layout + one shared scroll context.
+**Recommended fix:** keep the image visible (sticky/pinned, or a two-column layout using the dead space below the detail fields) while the variant list scrolls in its own bounded region.
+
+**On grouping:** BL-31 already consolidates by `stamp_group`; further shortening is BL-40 (group-by-art) — but many-finish cards stay long, so the layout/scroll fix is the primary lever, grouping a complement. **BL-52** (cross-set printings) will add more to this popup later — more reason to fix layout now.
+
+**Definition of done:** the image stays visible while variants scroll independently; usable for high-variant-count cards.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+#### BL-75: Card detail popup — "Base Set (Sub-set)" display for non-base-set variants
+**Target:** v1.1 · **Epic:** Card Detail Popup · **Area:** catalog (CardDetailPopup) · **Type:** feature (display)
+
+**What:** When a selected variant comes from a non-base set, show the Set value as **"<Base Set> (<sub-set/provenance>)"** — e.g. JTL Director Krennic, Weekly Play variant → "Jump to Lightspeed (Weekly Play)". Base-set variants show just "Jump to Lightspeed". **Popup only** for now.
+
+**Data source:** base set name from `base_cards.set`; parenthetical = the variant's channel/provenance label (derived per BL-27 §10.4 from `source_set_code` + variant_type). Confirm: channel label vs. container set's own display name. Edge: BL-41 (base-set tournament-tier → Retail) may affect the parenthetical for those rows.
+
+**Definition of done:** non-base-set variants display "Base Set (Sub-set)" in the popup; base-set variants unchanged.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+### Epic: Performance & Views (new view/image items; perf *approach* lives in BL-44)
+
+#### BL-73: Gallery view — toggle table ↔ grid of card images
+**Target:** later · **Epic:** Performance & Views · **Area:** catalog · **Type:** feature · **Designer candidate**
+
+**What:** A toggle swapping the table for a **grid of card images** (gallery), optionally with some fields beside/beneath each image. The grid honors the **same filter + sort** as the table; cards laid out in sort order left→right, top→bottom.
+- **Click the card image → existing CardDetailPopup.**
+- **Logged in:** show inventory info below each card; **clicking the inventory info → the existing inventory popup** (per-variant editing; relates BL-32). Two click targets per card.
+
+**Perf:** loads many images at once. Mitigations: **lazy-loading** (works even with today's hotlinked CDN; makes it viable), **thumbnails** (needs BL-76 self-hosting), **virtualization** (BL-44). Not blocked on BL-76; lazy-load + virtualization make it work, thumbnails make it great.
+
+**Open (minor):** exact fields under image; card sizing / cards-per-row; whether the table↔gallery toggle persists.
+
+**Definition of done:** a gallery toggle renders a filtered/sorted card grid with the two click targets; images load performantly.
+
+**Status:** 🔲 Open — later
+
+---
+
+#### BL-76: Card image hosting strategy / DR (self-host vs. hotlink official CDN)
+**Target:** v1.1 · **Epic:** Performance & Views · **Area:** platform (+ sync-ingestion, catalog) · **Type:** spike→feature
+
+**What:** Decide and (likely) implement self-hosting of card images instead of hotlinking the official SWU CDN.
+
+**Finding (code-verified):** the app stores image **URLs**, not binaries; URLs point to the **official SWU CDN** (`https://cdn.starwarsunlimited.com/...`), not swuapi. The frontend renders `<img src=...>` directly, so the browser hits that CDN every render → a hard external dependency on an asset host we don't control (CDN down / URL change / hotlink-block → all images break at once; mild ToS concern at scale). Many variants share art (ingestion tracks duplicate image URLs), so distinct images ≪ 8,353 → storage is modest.
+
+**Options:** (1) status quo hotlink; (2) **self-host** to a GCS bucket + CDN (DR resilience, insulation from their changes, enables webp/thumbnails — synergy with BL-44 perf and BL-73 gallery, dedupe); (3) hybrid lazy cache.
+**Claude lean:** self-host (option 2) for a real multi-user product. Relates to **BL-21** (DR). Full pros/cons discussion deferred.
+
+**Definition of done:** a decision (ADR) and, if self-hosting, images served from our own storage with thumbnails; ingestion mirrors images.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
+### Epic: Visual / Misc
+
+#### BL-68: SWU-styled banner / section-separator image
+**Target:** v1.1 · **Epic:** Visual/Misc · **Area:** frontend-shell · **Type:** feature/asset · **Designer candidate**
+
+**What:** A banner / section-separator line styled to match the official Star Wars Unlimited site (same design lineage as the existing button shape). Placement: top of page, below the tabs/nav, above the completion calculations.
+
+**History:** couldn't recreate it in Claude Designer before; retry now that designer has improved — a genuine designer-asset attempt.
+
+**Notes:** placement may shift once BL-56 (unified list) / BL-59 (Decks removal) rework the nav — finalize after. Alternative if designer still can't produce it: source/extract from the official site (licensing caveat). Should scale full-width.
+
+**Definition of done:** a SWU-styled full-width separator renders in the intended position.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

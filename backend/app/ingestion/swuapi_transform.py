@@ -46,13 +46,13 @@ BASE_SET_CODES = {
 # and ordering falls back to insertion order, which varies by environment).
 # Add new base sets here as they are confirmed.
 CANONICAL_RELEASE_DATES: dict[str, str] = {
-    "SOR":  "2024-03-08",
-    "SHD":  "2024-08-02",
-    "TWI":  "2024-11-08",
-    "JTL":  "2025-03-14",
-    "LOF":  "2025-06-06",
-    "SEC":  "2025-09-12",
-    "LAW":  "2025-12-05",
+    "SOR": "2024-03-08",
+    "SHD": "2024-08-02",
+    "TWI": "2024-11-08",
+    "JTL": "2025-03-14",
+    "LOF": "2025-06-06",
+    "SEC": "2025-09-12",
+    "LAW": "2025-12-05",
 }
 
 

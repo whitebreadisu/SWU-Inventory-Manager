@@ -385,7 +385,7 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 
 **Decision (2026-06-20, Open Question D resolved):** **Implement** — the public catalog is wanted. A logged-out visitor browses the Catalog *and* the S6 card detail popup freely; `GET /api/inventory` and all inventory mutations stay authenticated and tenant-scoped exactly as today. The Inventory tab stays visible for anonymous users as a conversion hook and renders a value-prop empty state (lock icon + "Track your SWU collection" + Sign up / Log in) instead of the grid. The Catalog and popup are read-only for everyone, so there is no in-context "track" action to convert on — the Inventory tab is the single auth gate. **Implementation shape:** a second, non-authenticating DB dependency for the four catalog routes that opens a *tenant-less* session — RLS already fails safe here, a tenant-less session matches zero inventory rows by construction; `frontend/src/App.tsx` renders shell + Catalog when signed out (today it renders only `AuthScreen`); `SWU_Platform_Spec.md` §1/§5 and `SWU_Platform_Security_Review.md` A01 updated at implementation time to document the intentional catalog-vs-inventory asymmetry.
 
-**Status:** 🔲 Open — decided 2026-06-20 (implement public catalog); pending implementation
+**Status:** ⤴️ Superseded 2026-06-27 by **BL-56** (catalog/inventory unification). BL-17's *access* decisions remain authoritative and are **inherited by BL-56** — public catalog reads, auth-gated inventory, the tenant-less catalog DB session (RLS fail-safe), and the anonymous value-prop gate. Only BL-17's *two-tab UI model* is replaced (BL-56 makes it one unified list with inventory columns shown by auth state).
 
 ---
 
@@ -435,7 +435,13 @@ Separately, investigate whether running `alembic upgrade head` + seed/snapshot-a
 2. **Payload shape** — a base-cards-with-nested-variants list endpoint so the client fetches ~2,306 rows instead of ~8,353 (the table groups to base cards anyway); cuts network + parse ~3.6×.
 3. **Server-side pagination + filtering** — the heavier architectural option; only warranted if the catalog grows much larger, and it requires moving filtering server-side (today's client-side filtering can't paginate what it hasn't fetched).
 
-**Status:** 🔲 Open — flagged 2026-06-21, deferred for later discussion
+**Decision (2026-06-27 reconciliation) — approach chosen, scoped to v1.0:** stay **client-side** (server-side pagination/filtering rejected — it would degrade the instant client-side filter response Jeremy values and break the new faceted-filter design in BL-70/BL-71). Two locked levers:
+- **Payload-shrink (lever 2):** add a `base-cards-with-nested-variants` **list** endpoint. The nested shape already exists for the single-card popup (`GET /api/base-cards/{id}` → `BaseCardDetail` with `variants[]`), so a list version is cheap. Fixes initial LOAD — today's flat `GET /api/cards` duplicates full base-card data (name/subtitle/aspects/keywords/traits/cost…) across all ~8,353 variant rows vs. only ~2,306 base cards (~3.6× redundancy). All data stays client-side → filtering stays instant and faceting (BL-70) is preserved.
+- **Virtualization (lever 1):** window the DOM render of the fully-loaded in-memory list (~30 rows rendered at a time); continuous scroll, not page controls (scrollbar reflects the true full length). Fixes render jank.
+
+The architectural rationale (client-side vs. server-side) will be captured as an ADR. DevTools measurement is a learning exercise, not a gate — decision made on code analysis.
+
+**Status:** 🟡 Approach decided 2026-06-27 (payload-shrink + virtualization, client-side) → **v1.0**; pending implementation
 
 ---
 
@@ -533,9 +539,11 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 **Why:** Flagged by Jeremy during the 2026-06-21 smoke test ("not loving the add cards experience"). The optimal design isn't clear from analysis alone — it needs hands-on use against the real, much larger card set. This is a design-exploration item, not a defined build yet.
 
-**Related:** BL-30 (bulk-add precon products), BL-32 (consolidated entry for tournament-tier variants), redesign spec §5.4 (current resolver design).
+**Related:** BL-30 (bulk-add precon products), BL-32 (consolidated entry for tournament-tier variants), `SWU_Application_Spec.md` §5.4 (current resolver design).
 
-**Status:** 🔲 Open — design exploration (gather real-use feedback first)
+**Reframed as a SPIKE (2026-06-27 reconciliation) → v1.0.** This is the *behavior-analysis* item Jeremy owns: define the wanted add-to-inventory experience (entry method, ambiguity handling, source/set selection, bulk patterns) via hands-on exploration with real cards. Its **definition of done is a behavior spec, not shipped code** — it closes by spawning/reshaping the implementation items it gates: **BL-61** (cross-set batch), **BL-62/BL-63** (card-image preview + add/won't-add cue), **BL-64** (inventory-feedback copy), **BL-67** (provenance-default bug — may be deleted if the rethink supersedes it). May then warrant a Claude Designer pass for the modal layout, gated on this analysis.
+
+**Status:** 🔲 Open — v1.0 spike (Jeremy-owned analysis; spawns BL-61/62/63/64/67)
 
 ---
 
@@ -583,13 +591,15 @@ Because the source flattens it, **no schema sourced from swuapi can represent do
 
 ### BL-22: User settings page scaffolding
 
-**What:** A new "Settings" entry in the account menu (under the existing user email/logout area in `Header.tsx`), routing to an empty Settings page/container. No real settings logic yet — this item only establishes where settings UI will live.
+**What:** *(Revised 2026-06-27 — absorbs NEW-11.)* Replace the current inline "logged-in email + logout" line (`Header.tsx`) with a **top-right user-status menu** — an avatar/initials circle (à la Claude.ai's profile circle, but top-right) that opens a dropdown. The dropdown is the container/entry point for user-level options: **logout**, **change password** (BL-23), **edit inventory limits** (BL-25), with room for future options. The account email is surfaced *within* the menu rather than inline.
 
-**Why:** Both BL-23 (change password) and BL-25 (inventory limit overrides UI) need a settings surface to render in. Splitting this out lets it ship independently and keeps the UI-infra concern separate from the feature logic that will populate it.
+**Why:** Both BL-23 and BL-25 need a home, and the inline email+logout line is being replaced by the more conventional top-right account menu. This item establishes that menu as the shared surface those features plug into. Standard pattern → low Claude Designer value.
 
-**Definition of done:** Account menu has a "Settings" entry; navigating to it renders an empty (or placeholder) Settings page; existing nav (Catalog/Inventory/Decks) and the account menu's other items (email display, logout) are unaffected.
+**Open question (deferred by Jeremy):** do the menu items navigate to a **Settings page** (menu = shortcut) or does each **open its own modal** from the dropdown? He may try options in Claude Designer. Resolution determines whether this stays a "settings page" model or becomes per-item modals.
 
-**Status:** 🔲 Open
+**Definition of done:** the inline email+logout line is replaced by a top-right avatar menu; the menu contains at least logout, plus entry points for BL-23/BL-25 as those land; the account email is shown within the menu; existing primary nav is unaffected.
+
+**Status:** 🔲 Open — v1.0 (absorbs NEW-11; supersedes the original "Settings entry under email/logout" framing)
 
 ---
 

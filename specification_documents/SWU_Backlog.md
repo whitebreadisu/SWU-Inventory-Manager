@@ -1312,6 +1312,28 @@ These items came out of a structured app-review + prioritization session (2026-0
 
 ---
 
+#### BL-77: Set selector tiering — main-line sets vs. standalone products
+**Target:** v1.1 · **Epic:** Catalog/Inventory Unification · **Area:** frontend (catalog, add-cards) · **Type:** feature
+
+**What:** The set filter panel and Add Cards modal currently treat all sets equally. Two distinct product tiers exist that should be reflected in the selector:
+
+- **Tier 1-a (main-line sets):** Traditional booster-pack sets with randomness/collectability (SOR, SHD, TWI, JTL, LOF, SEC, LAW, ASH, …). These are the primary collection targets.
+- **Tier 1-b (standalone products):** Fixed-contents products — starter decks, intro sets, event/promo sets (IBH = Intro Battle: Hoth, TS26 = 2026 Twin Suns, and any future similar releases). Tier-1 in the selector (not hidden behind a toggle), but visually subordinate to 1-a — e.g., a separator or indent below the main-line sets.
+
+Both tiers remain **first-class filter options** (tier-1 in the current tier-1 / tier-2 toggle model); the distinction is *within* tier-1, not between tier-1 and tier-2.
+
+**Why:** Surfaced during BL-43 Phase 7 dev smoke test (2026-06-27). The set ordering bug (BL-43 fix) exposed that `ORDER BY release_date` can't distinguish tier-1a from tier-1b because standalone products don't follow the main-line release cadence, and their release dates may not be consistently populated by swuapi. More fundamentally, a collector thinks of these differently: "which booster set is this card from?" is a different question from "is this card from the Hoth starter?"
+
+**Data model implication:** the `sets` table's `is_base_set` flag already distinguishes base sets from everything else, but doesn't capture the 1a/1b split within base sets. A `product_type` column (e.g. `'booster'` / `'standalone'` / `'promo'`) or a boolean `is_standalone_product` would be the right addition, populated by the ingestion pipeline (probably via a curated lookup in `CANONICAL_RELEASE_DATES` / `swuapi_transform.py`). The existing `CANONICAL_RELEASE_DATES` dict in the transform is a natural home for the curated set metadata.
+
+**Ordering within each tier:** tier-1a ordered by `release_date ASC`; tier-1b ordered by `release_date ASC` (or by a curated sort_order if release dates are unavailable from swuapi).
+
+**Depends on / relates to:** BL-43 Phase 7 (set ordering fix, the immediate trigger); `swuapi_transform.py` `BASE_SET_CODES` and `CANONICAL_RELEASE_DATES`; the set filter panel (FilterPanel.tsx) and Add Cards modal.
+
+**Status:** 🔲 Open — v1.1
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

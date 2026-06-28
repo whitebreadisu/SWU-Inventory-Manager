@@ -8,16 +8,63 @@ Personal card inventory management for the Star Wars Unlimited collectible tradi
 
 | Layer | Technology | Details |
 |-------|-----------|---------|
-| Frontend | React + Vite | Firebase Hosting (prod); Vite dev server (local) |
-| Backend | FastAPI (Python) | Cloud Run (prod); Docker (local) |
-| Database | PostgreSQL 16 | Cloud SQL (prod); Docker (local) |
-| Auth | Firebase Authentication | Bearer token required on all `/api/*` routes |
-| Infrastructure | GCP + Terraform | Cloud Run, Cloud SQL, Artifact Registry, Secret Manager, Cloud DNS |
-| CI/CD | GitHub Actions | test → build/push → deploy on every push to `main` |
+| Frontend | React + Vite | Firebase Hosting (prod + dev); Vite dev server (local) |
+| Backend | FastAPI (Python) | Cloud Run (prod + dev); Docker (local) |
+| Database | PostgreSQL 16 | Cloud SQL (prod + dev); Docker (local) |
+| Auth | Firebase Authentication | Bearer token required on all `/api/*` routes; each user gets an isolated inventory via Postgres Row-Level Security |
+| Infrastructure | GCP + Terraform | Shared `modules/app` called by each environment; Cloud Run, Cloud SQL, Artifact Registry, Secret Manager, Cloud DNS |
+| CI/CD | GitHub Actions | Build-once / promote: tests → single image build → auto-deploy to `swu-dev` → gated prod release (`risk:low` changes auto-promote; everything else requires human approval) |
 
 **Multi-tenancy:** every Firebase user gets their own isolated inventory, auto-provisioned on first login via Postgres Row-Level Security. See `specification_documents/SWU_Platform_Spec.md` Section 1 for the auth/tenancy architecture.
 
 **Note on API docs:** Swagger UI (`/docs`) and ReDoc (`/redoc`) are disabled in production (`ENVIRONMENT=production`) and available only in local development.
+
+---
+
+## Environments
+
+| Environment | URL | Purpose |
+|------------|-----|---------|
+| **Production** | [swu.jeremybradenapps.com](https://swu.jeremybradenapps.com) | Live app. Every merge to `main` deploys here — gated by human approval, or auto-promoted for `risk:low` changes. |
+| **Dev** | [swu-dev-jbapps.web.app](https://swu-dev-jbapps.web.app) | Staging environment. Every merge auto-deploys here first; validates before prod. Full prod-fidelity (real Cloud SQL, real Firebase Auth, same Docker image). |
+| **Local** | `localhost:5173` | Docker Compose + Firebase Auth Emulator. No GCP credentials needed. |
+
+---
+
+## Agentic Development Workflow
+
+This project actively experiments with AI-agent-driven engineering — not as a prototype, but as the primary development model. The platform was designed to make agent autonomy safe, measurable, and incrementally expandable.
+
+### Pattern
+
+**Opus orchestrates, Sonnet builds.** A Claude Opus session sets direction, spawns Claude Sonnet implementation agents for well-scoped tasks, reviews their output for safety and quality, and assembles approval-ready evidence. The human approves gates; agents execute.
+
+### Autonomy tiers (current state)
+
+| Stage | Status | What it means in practice |
+|-------|--------|--------------------------|
+| 0 — Supervised-to-PR | ✅ Complete | Agents build to an open PR; human reviews and merges |
+| 1 — Dev environment | ✅ Complete | Agents deploy to `swu-dev` and verify on a live URL before prod |
+| 2 — Build-once + promote | ✅ Complete | One image per merge; auto-deploys to dev; prod behind a required-reviewer gate |
+| 3 — Risk-tiered gating | ✅ Live | `risk:low` changes (CSS, copy, logic fixes with test coverage) auto-promote; high-blast-radius changes (auth, migrations, infra) keep the human gate |
+| 4 — Automated prod-fidelity | Planned | Canary or staging with automated rollback replaces the human gate on routine changes |
+| 5 — Autonomous within policy | Aspirational | Human sets policy and monitors; agent ships within it |
+
+### How the gate works
+
+PRs labeled `risk:low` take the `promote-prod-fast` CI path — no human approval required. Everything else goes through `promote-prod` with a required reviewer in the GitHub `production` Environment. The gate decouples agent scope from prod risk: more agent autonomy does not mean more prod risk, because the gate and the `risk:low` criteria tune independently.
+
+### Governing principle
+
+**Spec quality is the autonomy ceiling.** An agent operates autonomously only as far as the Definition of Done is crisp and machine-verifiable. The human's role shifts from approving each change to writing better specs, setting policy, and handling judgment calls.
+
+### Validated by real runs
+
+The dev environment's first clean apply (Phase 3) caught two latent bugs that prod never hit — exactly its purpose. The prod gate (Phase 7) caught a set-ordering bug before it reached users. Stage 3's first real test: four `risk:low` PRs (Decks tab removal, Add Cards copy cleanup, filter layout fix, token resolver bug) merged and auto-promoted to prod without human approval within a single session.
+
+See `specification_documents/SWU_Platform_Roadmap.md §7` for the full roadmap, governing laws, and the complete 6-stage autonomy progression.
+
+---
 
 ## Prerequisites
 
@@ -135,9 +182,12 @@ docker compose exec frontend npm test
 │   ├── package.json
 │   └── vite.config.ts
 ├── terraform/
+│   ├── modules/
+│   │   └── app/            # Shared module: Cloud Run, Cloud SQL, Firebase, Monitoring
 │   └── environments/
-│       ├── prod/           # swu-prod: Cloud Run, Cloud SQL, Firebase, Monitoring
-│       └── sandbox/        # swu-sandbox: P1 bootstrap only (ephemeral exploration)
+│       ├── prod/           # swu-prod — calls modules/app; state in swu-prod-tfstate
+│       ├── dev/            # swu-dev-jbapps — same module, isolated environment
+│       └── sandbox/        # swu-sandbox — bootstrap only (ephemeral exploration)
 ├── specification_documents/  # See Documentation Map below
 ├── learning_guide/           # Teaching companion (Key Concepts, decision comparisons)
 ├── learning_journal/         # Session-by-session development notes
@@ -172,7 +222,7 @@ The authoritative source for each domain — start here to find "where does X li
 | `specification_documents/SWU_Standard_Variant_Mapping_Spec.md` | Variant **mechanism** (`variant_of_uuid` resolution); current exceptions in `swuapi_standard_variant_exceptions.md` |
 | `specification_documents/CARD_RULES.md` | Card catalog domain rules (enforced by `backend/app/tests/test_card_domain_rules.py`) |
 | `specification_documents/SWU_Platform_Spec.md` | **Platform** — auth/tenancy, CI/CD, Terraform, observability, security (as-built) |
-| `specification_documents/SWU_Platform_Roadmap.md` | Platform phase history (P1-P7) — *when and why* each platform decision was made |
+| `specification_documents/SWU_Platform_Roadmap.md` | Platform phase history (P1-P7) + **§7 Agentic Platform Evolution** — the autonomy roadmap and governing principles |
 | `specification_documents/SWU_Platform_Security_Review.md` | Full OWASP Top 10 + secrets/network walkthrough |
 | `specification_documents/SWU_Backlog.md` | **All outstanding work** — the single registry; everything else points to a BL-ID |
 | `docs/decisions/` | **Architecture Decision Records** — why the key architectural decisions were made |

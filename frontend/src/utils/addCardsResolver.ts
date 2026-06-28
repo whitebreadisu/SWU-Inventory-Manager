@@ -80,8 +80,11 @@ function distinct(values: string[]): string[] {
 export function resolveRow(sourceSetCode: string, row: Row, catalog: CardWithQty[]): ResolveResult {
   if (!row.cardNumber) return { status: "empty" };
 
+  // Tokens share card_number space with playable cards (e.g. JTL #1 is both
+  // Asajj Ventress and TIE Fighter Token). Exclude them so the resolver
+  // never silently auto-resolves to a token when a playable card is intended.
   const candidates = catalog.filter(
-    (c) => c.source_set_code === sourceSetCode && c.card_number === row.cardNumber
+    (c) => c.source_set_code === sourceSetCode && c.card_number === row.cardNumber && !c.is_token
   );
 
   if (candidates.length === 0) {

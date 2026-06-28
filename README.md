@@ -31,41 +31,6 @@ Personal card inventory management for the Star Wars Unlimited collectible tradi
 
 ---
 
-## Agentic Development Workflow
-
-This project actively experiments with AI-agent-driven engineering — not as a prototype, but as the primary development model. The platform was designed to make agent autonomy safe, measurable, and incrementally expandable.
-
-### Pattern
-
-**Opus orchestrates, Sonnet builds.** A Claude Opus session sets direction, spawns Claude Sonnet implementation agents for well-scoped tasks, reviews their output for safety and quality, and assembles approval-ready evidence. The human approves gates; agents execute.
-
-### Autonomy tiers (current state)
-
-| Stage | Status | What it means in practice |
-|-------|--------|--------------------------|
-| 0 — Supervised-to-PR | ✅ Complete | Agents build to an open PR; human reviews and merges |
-| 1 — Dev environment | ✅ Complete | Agents deploy to `swu-dev` and verify on a live URL before prod |
-| 2 — Build-once + promote | ✅ Complete | One image per merge; auto-deploys to dev; prod behind a required-reviewer gate |
-| 3 — Risk-tiered gating | ✅ Live | `risk:low` changes (CSS, copy, logic fixes with test coverage) auto-promote; high-blast-radius changes (auth, migrations, infra) keep the human gate |
-| 4 — Automated prod-fidelity | Planned | Canary or staging with automated rollback replaces the human gate on routine changes |
-| 5 — Autonomous within policy | Aspirational | Human sets policy and monitors; agent ships within it |
-
-### How the gate works
-
-PRs labeled `risk:low` take the `promote-prod-fast` CI path — no human approval required. Everything else goes through `promote-prod` with a required reviewer in the GitHub `production` Environment. The gate decouples agent scope from prod risk: more agent autonomy does not mean more prod risk, because the gate and the `risk:low` criteria tune independently.
-
-### Governing principle
-
-**Spec quality is the autonomy ceiling.** An agent operates autonomously only as far as the Definition of Done is crisp and machine-verifiable. The human's role shifts from approving each change to writing better specs, setting policy, and handling judgment calls.
-
-### Validated by real runs
-
-The dev environment's first clean apply (Phase 3) caught two latent bugs that prod never hit — exactly its purpose. The prod gate (Phase 7) caught a set-ordering bug before it reached users. Stage 3's first real test: four `risk:low` PRs (Decks tab removal, Add Cards copy cleanup, filter layout fix, token resolver bug) merged and auto-promoted to prod without human approval within a single session.
-
-See `specification_documents/SWU_Platform_Roadmap.md §7` for the full roadmap, governing laws, and the complete 6-stage autonomy progression.
-
----
-
 ## Prerequisites
 
 The following tools must already be installed:
@@ -229,3 +194,38 @@ The authoritative source for each domain — start here to find "where does X li
 | `specification_documents/analysis/` | Supporting analyses & evidence (variant census, test-disposition logs) |
 | `specification_documents/SWU_ClaudeCode_Spec.md` | *Frozen* — original V1 design spec (historical; superseded by the Application Spec) |
 | `learning_guide/`, `learning_journal/`, `claude_design/` | Personal teaching notes, session journal, and design assets (gitignored — not in the repo) |
+
+---
+
+## Agentic Development Workflow
+
+This project actively experiments with AI-agent-driven engineering — not as a prototype, but as the primary development model. The platform was designed to make agent autonomy safe, measurable, and incrementally expandable.
+
+### Pattern
+
+**Opus orchestrates, Sonnet builds.** A Claude Opus session sets direction, spawns Claude Sonnet implementation agents for well-scoped tasks, reviews their output for safety and quality, and assembles approval-ready evidence. The human approves gates; agents execute.
+
+### Autonomy tiers (current state)
+
+| Stage | Status | What it means in practice |
+|-------|--------|--------------------------|
+| 0 — Supervised-to-PR | ✅ Complete | Agents build to an open PR; human reviews and merges |
+| 1 — Dev environment | ✅ Complete | Agents deploy to `swu-dev` and verify on a live URL before prod |
+| 2 — Build-once + promote | ✅ Complete | One image per merge; auto-deploys to dev; prod behind a required-reviewer gate |
+| 3 — Risk-tiered gating | ✅ Live | `risk:low` changes (CSS, copy, logic fixes with test coverage) auto-promote; high-blast-radius changes (auth, migrations, infra) keep the human gate |
+| 4 — Automated prod-fidelity | Planned | Canary or staging with automated rollback replaces the human gate on routine changes |
+| 5 — Autonomous within policy | Aspirational | Human sets policy and monitors; agent ships within it |
+
+### How the gate works
+
+PRs labeled `risk:low` take the `promote-prod-fast` CI path — no human approval required. Everything else goes through `promote-prod` with a required reviewer in the GitHub `production` Environment. The gate decouples agent scope from prod risk: more agent autonomy does not mean more prod risk, because the gate and the `risk:low` criteria tune independently.
+
+### Governing principle
+
+**Spec quality is the autonomy ceiling.** An agent operates autonomously only as far as the Definition of Done is crisp and machine-verifiable. The human's role shifts from approving each change to writing better specs, setting policy, and handling judgment calls.
+
+### Validated by real runs
+
+The dev environment's first clean apply (Phase 3) caught two latent bugs that prod never hit — exactly its purpose. The prod gate (Phase 7) caught a set-ordering bug before it reached users. Stage 3's first real test: four `risk:low` PRs (Decks tab removal, Add Cards copy cleanup, filter layout fix, token resolver bug) merged and auto-promoted to prod without human approval within a single session.
+
+See `specification_documents/SWU_Platform_Roadmap.md §7` for the full roadmap, governing laws, and the complete 6-stage autonomy progression.

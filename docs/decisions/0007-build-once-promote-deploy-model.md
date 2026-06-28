@@ -37,4 +37,4 @@ Adopt **Model B — build once, promote the artifact**, right-sized:
 - **−** The gate becomes **theater if rubber-stamped** — it must be genuinely exercised or the change class formally moved to auto-promote.
 - **−** How far the human gate can later thin is **bounded by detection + rollback maturity** (P6 observability + Cloud Run revision rollback are the levers).
 
-**Related:** BL-43 (implementation), ADR-0006 (the `swu-dev` environment this ships to), `SWU_Platform_Roadmap.md` §7 (principles 2/3/5/6; Stages 2–4), `learning_guide/SWU_Learning_Guide_CD_Environments_and_Release_Gates_2026-06-27.md`.
+**Related:** BL-43 (implementation), ADR-0006 (the `swu-dev` environment this ships to), `SWU_Platform_Roadmap.md` §7 (principles 2/3/5/6; Stages 2–4), `docs/decisions/agentic-platform-concepts.md` (§4–9: build-once comparison, staging triggers, gate mechanics, autonomy concepts).

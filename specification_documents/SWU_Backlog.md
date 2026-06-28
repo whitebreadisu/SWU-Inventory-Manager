@@ -1334,6 +1334,21 @@ Both tiers remain **first-class filter options** (tier-1 in the current tier-1 /
 
 ---
 
+#### BL-78: CI path filter — skip deploy jobs for docs-only changes
+**Target:** v1.1 · **Epic:** Platform · **Area:** platform (CI/CD) · **Type:** chore
+
+**What:** Add a path filter to the CI workflow so that pushes touching only non-deployed files (README, `specification_documents/`, `docs/`, `learning_guide/`, etc.) skip `build-and-push`, `deploy-dev`, and `promote-prod-fast`. Tests + `terraform-fmt` still run (they're cheap and catch drift); only the image build and deploy jobs are skipped.
+
+**Why:** Discovered 2026-06-28 — a README reorder (move Agentic Workflow section to bottom) required a full prod deploy even though the README is a git artifact not deployed anywhere. The right answer is a path filter; the workaround is batching docs changes with the next substantive PR or holding them. The "hold and batch" discipline is acceptable at this scale, but the filter is the correct long-term fix.
+
+**Likely implementation:** a `check-docs-only` job that inspects `github.event.commits[].added/modified` (or uses `tj-actions/changed-files`) and sets an output flag; `build-and-push`, `deploy-dev`, `promote-prod-fast` add `needs.check-docs-only.outputs.docs_only != 'true'` to their `if` conditions. The `terraform-fmt` and test jobs keep running unconditionally.
+
+**Depends on / relates to:** `.github/workflows/ci.yml`; the Stage 3 `check-risk-level` job (same pattern); the `risk:low` fast path (BL-43 Phase 6).
+
+**Status:** 🔲 Open — v1.1
+
+---
+
 ## Open Questions / Deferred Decisions
 
 These are conversations to pick back up, not work items — recorded so the *reasoning so far* isn't lost.

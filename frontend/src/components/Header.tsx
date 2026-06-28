@@ -1,4 +1,4 @@
-type Section = "inventory" | "catalog" | "decks";
+type Section = "inventory" | "catalog";
 
 interface Props {
   activeSection: Section;
@@ -10,7 +10,6 @@ interface Props {
 const NAV_ITEMS: { key: Section; label: string }[] = [
   { key: "inventory", label: "Inventory" },
   { key: "catalog", label: "Catalog" },
-  { key: "decks", label: "Decks" },
 ];
 
 export function Header({ activeSection, onSectionChange, userEmail, onLogout }: Props) {

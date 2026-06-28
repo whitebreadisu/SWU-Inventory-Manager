@@ -6,7 +6,7 @@ import { InventoryPage } from "./screens/inventory/InventoryPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AuthScreen } from "./screens/auth/AuthScreen";
 
-type Section = "inventory" | "catalog" | "decks";
+type Section = "inventory" | "catalog";
 
 function AppContent() {
   const [activeSection, setActiveSection] = useState<Section>("catalog");
@@ -36,7 +36,6 @@ function AppContent() {
         <div style={{ display: activeSection === "inventory" ? "block" : "none" }}>
           <InventoryPage />
         </div>
-        {activeSection === "decks" && <p className="placeholder">Decks — coming soon</p>}
       </main>
     </div>
   );

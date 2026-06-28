@@ -29,4 +29,4 @@ Adopt **Option B** — create a new `swu-dev` GCP project for the dev environmen
 - **−** **Bootstrap chicken-and-egg:** the Terraform GCS state bucket must exist *before* the first `terraform init`, so standing up the project needs a small manual/scripted pre-step that Terraform cannot do for itself.
 - **−** Two more projects in the org to keep an eye on (mitigated: dormant sandbox is free and unmanaged).
 
-**Related:** BL-43 (implementation), ADR-0007 (the deploy model that ships to this environment), `SWU_Platform_Roadmap.md` §7 Stage 1, `project_platform_generator_idea` (the shared-module extraction in BL-43 is its validation step).
+**Related:** BL-43 (implementation), ADR-0007 (the deploy model that ships to this environment), `SWU_Platform_Roadmap.md` §7 Stage 1, `docs/decisions/agentic-platform-concepts.md` (§1–3: environment ladder, dev vs. local failure classes, GCP project ID immutability), `project_platform_generator_idea` (the shared-module extraction in BL-43 is its validation step).

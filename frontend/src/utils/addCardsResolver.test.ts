@@ -607,3 +607,68 @@ describe("splitForVerification", () => {
     expect(willSkip).toHaveLength(0);
   });
 });
+
+// ─── Token exclusion (BL-67) ─────────────────────────────────────────────────
+//
+// Tokens share card_number space with playable cards (e.g. JTL #1 = Asajj
+// Ventress Leader AND TIE Fighter Token, both Standard/Retail). The resolver
+// must exclude is_token=true variants so card_number lookup always targets
+// the playable card, never silently resolves to a token.
+
+describe("resolveRow — token exclusion", () => {
+  const jtlLeader = makeCard({
+    id: 100,
+    set_code: "JTL",
+    source_set_code: "JTL",
+    card_number: "1",
+    base_card_number: "1",
+    name: "Asajj Ventress",
+    type: "Leader",
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    is_token: false,
+  });
+
+  const jtlToken = makeCard({
+    id: 101,
+    set_code: "JTL",
+    source_set_code: "JTL",
+    card_number: "1",
+    base_card_number: "1",
+    name: "TIE Fighter Token",
+    type: "Unit",
+    variant_type: "Standard",
+    finish: "Standard",
+    channel: "Retail",
+    is_token: true,
+  });
+
+  const jtlCatalog = [jtlLeader, jtlToken];
+
+  it("resolves to the playable card, not the token, when both share a card_number", () => {
+    const row = makeRow({ cardNumber: "1" });
+    const result = resolveRow("JTL", row, jtlCatalog);
+    expect(result.status).toBe("resolved");
+    if (result.status === "resolved") {
+      expect(result.variantId).toBe(100);
+      expect(result.name).toBe("Asajj Ventress");
+    }
+  });
+
+  it("does not surface needs_provenance due to a token sharing the same channel", () => {
+    // Both Leader and Token are Retail/Standard — without token exclusion,
+    // channels.length would be 1 but names would differ, and the wrong card
+    // could be silently returned. With exclusion only the Leader remains.
+    const row = makeRow({ cardNumber: "1" });
+    const result = resolveRow("JTL", row, jtlCatalog);
+    expect(result.status).not.toBe("needs_provenance");
+  });
+
+  it("errors when only a token exists at the card_number (no playable card)", () => {
+    const tokenOnly = [jtlToken];
+    const row = makeRow({ cardNumber: "1" });
+    const result = resolveRow("JTL", row, tokenOnly);
+    expect(result.status).toBe("error");
+  });
+});

@@ -110,7 +110,7 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
       const count = state.rows.filter((r) => r.cardNumber).length;
       return `${count} ${count === 1 ? "card" : "cards"} ready to add.`;
     }
-    return "Enter a card number to begin.";
+    return "";
   }, [state.setCode, state.rows, hasErrors, canSubmit]);
 
   async function handleCommit() {
@@ -144,11 +144,6 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
             <h2 className="ac-modal__title" id="ac-title">
               {state.phase === "verification" ? "Verify cards to add" : "Add cards"}
             </h2>
-            <div className="ac-modal__subtitle">
-              {state.phase === "verification"
-                ? "Review which cards will and won't be added before committing to inventory."
-                : "Enter cards to add to inventory. Tab between fields — no need for the mouse."}
-            </div>
           </div>
           <button type="button" className="ac-modal__close" onClick={onClose} aria-label="Close">
             ×
@@ -180,7 +175,7 @@ export function AddCardsModal({ catalog, onClose, onCommitted }: Props) {
         <div className="ac-modal__foot">
           {state.phase === "editing" ? (
             <>
-              <span className="ac-modal__foot-hint">{hintText}</span>
+              {hintText && <span className="ac-modal__foot-hint">{hintText}</span>}
               <span className="ac-modal__foot-spacer" />
               <SWUButton size="sm" onClick={onClose}>
                 Cancel

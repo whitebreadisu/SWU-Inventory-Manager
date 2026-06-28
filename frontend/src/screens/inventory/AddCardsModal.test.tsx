@@ -141,7 +141,7 @@ describe("AddCardsModal", () => {
     });
   });
 
-  it("shows keypad and hint update after set is selected", async () => {
+  it("shows keypad and batch list after set is selected", async () => {
     await renderModal();
     await waitFor(() => screen.getByText(/Spark of Rebellion/i));
 
@@ -150,7 +150,7 @@ describe("AddCardsModal", () => {
       fireEvent.change(select, { target: { value: "SOR" } });
     });
 
-    expect(screen.getByText("Enter a card number to begin.")).toBeTruthy();
+    // "Enter a card number to begin." hint retired (BL-65: removed idle hint copy)
     expect(screen.getByText("Cards in this batch")).toBeTruthy();
   });
 
@@ -172,9 +172,8 @@ describe("AddCardsModal", () => {
       fireEvent.change(input, { target: { value: "12" } });
     });
 
-    // Submit button stays inactive until a finish is picked; the modal stays
-    // in editing with the "enter a card number" hint (no resolved rows yet).
-    expect(screen.getByText(/Enter a card number/i)).toBeTruthy();
+    // Submit button stays inactive until a finish is picked; the modal stays in
+    // editing phase. Hint-text check retired (BL-65: idle hint removed).
     expect(screen.getByText(/select a finish/i)).toBeTruthy();
   });
 

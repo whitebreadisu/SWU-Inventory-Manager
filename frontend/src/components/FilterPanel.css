@@ -174,21 +174,25 @@
 .ifp-grid {
   display: grid;
   gap: 14px;
+  /* justify-content: start keeps columns at their natural max width rather
+     than stretching to fill the container (BL-72: prevents elongation on
+     wide monitors). */
+  justify-content: start;
 }
 .ifp-grid--4 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(160px, 260px));
 }
 .ifp-grid--3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(200px, 300px));
   gap: 18px;
 }
 
 @media (max-width: 1100px) {
   .ifp-grid--4 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(160px, 260px));
   }
   .ifp-grid--3 {
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: minmax(200px, 300px);
   }
 }
 
